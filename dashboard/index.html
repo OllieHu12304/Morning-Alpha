@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta
+        name="description"
+        content="Morning Alpha 最新科技新聞 dashboard"
+    >
+    <title>Morning Alpha | 最新科技新聞</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="app.js" defer></script>
+</head>
+<body>
+    <header class="page-header">
+        <div class="header-content">
+            <p class="eyebrow">Morning Alpha v0.1</p>
+            <h1>最新科技新聞</h1>
+            <p class="subtitle">
+                從 MySQL 匯出的科技新聞資料，預設依發布時間由新到舊排列。
+            </p>
+        </div>
+    </header>
+
+    <main class="page-content">
+        <section class="news-panel" aria-labelledby="news-heading">
+            <div class="panel-heading">
+                <div>
+                    <p class="section-label">Latest News</p>
+                    <h2 id="news-heading">新聞列表</h2>
+                </div>
+                <p id="status-message" class="status-message" role="status">
+                    正在載入新聞資料…
+                </p>
+            </div>
+
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th scope="col" data-key="title" aria-sort="none">
+                                <button class="sort-button" type="button">
+                                    Title <span class="sort-indicator">↕</span>
+                                </button>
+                            </th>
+                            <th
+                                scope="col"
+                                data-key="publish_time"
+                                aria-sort="descending"
+                            >
+                                <button class="sort-button" type="button">
+                                    Publish Time
+                                    <span class="sort-indicator">↓</span>
+                                </button>
+                            </th>
+                            <th scope="col" data-key="url" aria-sort="none">
+                                <button class="sort-button" type="button">
+                                    URL <span class="sort-indicator">↕</span>
+                                </button>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody id="news-table-body"></tbody>
+                </table>
+            </div>
+
+            <noscript>
+                <p class="error-message">
+                    請啟用 JavaScript，才能載入及排序新聞資料。
+                </p>
+            </noscript>
+        </section>
+    </main>
+</body>
+</html>

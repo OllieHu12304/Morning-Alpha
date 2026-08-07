@@ -11,7 +11,7 @@ Morning Alpha 是一個以繁體中文為主要介面的科技新聞儀表板學
 3. 使用 Pandas 進行統計分析。
 4. 產生提供投資人閱讀的 HTML 儀表板。
 
-目前已經可以收集 TechNews 首頁最新五篇文章、使用 Pandas 整理資料、寫入 MySQL，並讀取全部新聞後顯示最新 20 筆。尚未包含視覺化或 HTML 功能。
+目前已經可以收集 TechNews 首頁最新五篇文章、使用 Pandas 整理資料、寫入及讀取 MySQL，並產生可排序的 HTML 新聞 dashboard。尚未包含資料視覺化。
 
 ## 技術範圍
 
@@ -33,12 +33,17 @@ morning-alpha/
 │   ├── crawler.py
 │   ├── analyze_news.py
 │   ├── store_news.py
-│   └── read_news.py
+│   ├── read_news.py
+│   └── export_news_json.py
 ├── data/
 │   ├── raw/
 │   └── processed/
 ├── sql/
 ├── dashboard/
+│   ├── index.html
+│   ├── styles.css
+│   ├── app.js
+│   └── news.json
 ├── tests/
 ├── requirements.txt
 └── README.md
@@ -64,6 +69,11 @@ morning-alpha/
 - `src/analyze_news.py`：將爬蟲結果轉成 Pandas DataFrame，去除重複標題、轉換發布時間並排序。
 - `src/store_news.py`：使用 PyMySQL 建立 `news_records` table，並將整理後的新聞寫入 MySQL。
 - `src/read_news.py`：讀取 `news_records` 全部資料，轉成 DataFrame，並印出發布時間最新的 20 筆。
+- `src/export_news_json.py`：將 MySQL 全部新聞整理並匯出為 dashboard 使用的 JSON。
+- `dashboard/index.html`：定義 dashboard 的標題、狀態區與新聞 table。
+- `dashboard/styles.css`：負責 dashboard 排版、顏色、table 與響應式樣式。
+- `dashboard/app.js`：載入 JSON、建立 table rows，並處理欄位排序。
+- `dashboard/news.json`：保存 Python 從 MySQL 匯出的本機新聞資料。
 
 各空資料夾中的 `.gitkeep` 是空白占位檔，讓 Git 能夠追蹤目前尚未放入程式或資料的資料夾。
 
@@ -326,12 +336,36 @@ python3 src/read_news.py
 
 如果 table 少於 20 筆，程式會印出所有現有資料；如果沒有資料，會顯示空資料提示。
 
+## 產生並開啟 HTML Dashboard
+
+先依照「每次執行專案前的 MySQL 設定」準備環境變數，再匯出 JSON：
+
+```bash
+python3 src/export_news_json.py
+```
+
+接著使用 Python 內建 HTTP server：
+
+```bash
+python3 -m http.server 8000 --directory dashboard
+```
+
+在瀏覽器開啟：
+
+```text
+http://localhost:8000
+```
+
+不要直接雙擊 `dashboard/index.html`。Dashboard 使用 JavaScript `fetch()` 載入 `news.json`，瀏覽器通常會限制網頁直接讀取本機檔案。
+
+Dashboard 會顯示全部匯出新聞，預設依 `publish_time` 由新到舊排列。點擊 Title、Publish Time 或 URL 欄位標題，可以切換排序欄位與方向。
+
 ## 目前限制
 
 - 只收集 TechNews 首頁最新五篇文章。
 - 目前只讀取全部新聞並顯示最新 20 筆，尚未提供條件查詢。
-- 尚未加入資料視覺化。
-- 尚未產生 HTML 儀表板。
+- Dashboard 目前只有可排序 table，尚未加入 Chart.js 或其他圖表。
+- Dashboard 使用本機 JSON，不會直接連接 MySQL。
 - 網站 HTML 結構改變時，爬蟲 selector 可能需要更新。
 
 ## 目前進度
@@ -341,5 +375,6 @@ python3 src/read_news.py
 - [x] 使用 Pandas 建立並整理 DataFrame
 - [x] 儲存新聞到 MySQL
 - [x] 讀取全部新聞並顯示最新 20 筆
+- [x] 產生本機 JSON 與可排序 HTML dashboard
 - [ ] 使用 Pandas 進行統計分析
-- [ ] 產生 HTML 儀表板
+- [ ] 加入 dashboard 資料視覺化
