@@ -11,7 +11,7 @@ Morning Alpha 是一個以繁體中文為主要介面的科技新聞儀表板學
 3. 使用 Pandas 進行統計分析。
 4. 產生提供投資人閱讀的 HTML 儀表板。
 
-目前已經可以收集 TechNews 首頁最新五篇文章，並使用 Pandas 整理資料。尚未包含 MySQL 或 HTML 功能。
+目前已經可以收集 TechNews 首頁最新五篇文章、使用 Pandas 整理資料，並將結果寫入 MySQL。尚未包含資料查詢或 HTML 功能。
 
 ## 技術範圍
 
@@ -31,7 +31,8 @@ Morning Alpha 是一個以繁體中文為主要介面的科技新聞儀表板學
 morning-alpha/
 ├── src/
 │   ├── crawler.py
-│   └── analyze_news.py
+│   ├── analyze_news.py
+│   └── store_news.py
 ├── data/
 │   ├── raw/
 │   └── processed/
@@ -60,6 +61,7 @@ morning-alpha/
 
 - `src/crawler.py`：使用 Requests 下載 TechNews 首頁，並使用 BeautifulSoup 解析最新五篇文章。
 - `src/analyze_news.py`：將爬蟲結果轉成 Pandas DataFrame，去除重複標題、轉換發布時間並排序。
+- `src/store_news.py`：使用 PyMySQL 建立 `news_records` table，並將整理後的新聞寫入 MySQL。
 
 各空資料夾中的 `.gitkeep` 是空白占位檔，讓 Git 能夠追蹤目前尚未放入程式或資料的資料夾。
 
@@ -99,10 +101,206 @@ python3 src/analyze_news.py
 4. 依照發布時間由新到舊排序。
 5. 在終端機印出整理後的 DataFrame。
 
+## MySQL 首次設定
+
+以下步驟只需要在第一次準備專案時執行。這個專案使用 Homebrew 的 MySQL 8.4。
+
+### 1. 安裝並啟動 MySQL
+
+```bash
+brew install mysql@8.4
+export PATH="/opt/homebrew/opt/mysql@8.4/bin:$PATH"
+brew services start mysql@8.4
+mysql --version
+```
+
+`mysql@8.4` 是 keg-only，因此新的終端機可能需要重新執行上面的 `export PATH`，才能直接使用 `mysql` 指令。
+
+接著執行安全設定：
+
+```bash
+mysql_secure_installation
+```
+
+依照提示設定 MySQL root 密碼，並建議移除匿名使用者、禁止遠端 root 登入及移除 test database。root 密碼只用於管理 MySQL，不應提供給 Morning Alpha 程式。
+
+### 2. 建立專案 database 與專用帳號
+
+使用 root 登入。`-p` 會讓 MySQL 在下一步安全地詢問密碼：
+
+```bash
+mysql -u root -p
+```
+
+進入 `mysql>` 後執行：
+
+```sql
+CREATE DATABASE IF NOT EXISTS morning_alpha
+CHARACTER SET utf8mb4
+COLLATE utf8mb4_unicode_ci;
+
+CREATE USER 'morning_alpha_app'@'localhost'
+IDENTIFIED BY RANDOM PASSWORD;
+
+GRANT CREATE, INSERT
+ON morning_alpha.*
+TO 'morning_alpha_app'@'localhost';
+```
+
+`IDENTIFIED BY RANDOM PASSWORD` 會顯示一組 MySQL 自動產生的密碼。請立即將它保存到 macOS Passwords、1Password、Bitwarden 或其他密碼管理器，不要寫入專案檔案。
+
+目前只授予以下權限：
+
+- `CREATE`：讓程式建立 `news_records` table。
+- `INSERT`：讓程式新增新聞。
+
+目前沒有授予 `SELECT`、`UPDATE`、`DELETE` 或 `DROP`。
+
+完成後離開 MySQL：
+
+```sql
+exit;
+```
+
+### 3. 測試專案帳號
+
+```bash
+mysql \
+  -h localhost \
+  -P 3306 \
+  -u morning_alpha_app \
+  -p \
+  morning_alpha
+```
+
+輸入 app password 後，如果看到 `mysql>`，代表帳號、密碼、database 和 server 連線正常。測試完成後輸入 `exit;`，目前不需要執行資料查詢。
+
+## 每次執行專案前的 MySQL 設定
+
+### 1. 確認 MySQL server 已啟動
+
+```bash
+brew services list
+```
+
+如果 `mysql@8.4` 沒有顯示 `started`：
+
+```bash
+brew services start mysql@8.4
+```
+
+### 2. 進入專案並啟用虛擬環境
+
+```bash
+cd /Users/olliehu/Documents/Codex/2026-08-07/project-constitution
+source .venv/bin/activate
+```
+
+如果尚未建立 `.venv`：
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python3 -m pip install -r requirements.txt
+```
+
+不要將 `.venv/` 提交到 Git。
+
+### 3. 設定連線環境變數
+
+非機密資訊可以直接設定：
+
+```bash
+export MYSQL_HOST="localhost"
+export MYSQL_PORT="3306"
+export MYSQL_USER="morning_alpha_app"
+export MYSQL_DATABASE="morning_alpha"
+```
+
+使用隱藏輸入設定密碼：
+
+```bash
+read -s "MYSQL_PASSWORD?MySQL app password: "
+echo
+export MYSQL_PASSWORD
+```
+
+輸入或貼上密碼時，終端機不會顯示字元，這是正常行為。不要使用 `export MYSQL_PASSWORD="真實密碼"`，因為完整指令可能進入 shell history。
+
+### 4. 執行完成後清除密碼
+
+```bash
+unset MYSQL_PASSWORD
+```
+
+## MySQL 密碼儲存位置
+
+- MySQL server 保存帳號驗證資訊，不會讓應用程式讀回原始密碼。
+- 原始 app password 應保存在個人密碼管理器。
+- Morning Alpha 不會將密碼寫入 Python、README、`.env` 或 MySQL 新聞 table。
+- `MYSQL_PASSWORD` 只暫存在目前 shell process 的 environment，關閉終端機或執行 `unset MYSQL_PASSWORD` 後即移除。
+- 不要將 root password 或 app password 提交到 Git。
+
+## MySQL 常見錯誤
+
+`command not found: mysql`
+
+```bash
+export PATH="/opt/homebrew/opt/mysql@8.4/bin:$PATH"
+```
+
+`Can't connect to MySQL server`
+
+```bash
+brew services start mysql@8.4
+```
+
+`Access denied for user`
+
+- 確認 `MYSQL_USER` 是 `morning_alpha_app`。
+- 重新從密碼管理器輸入 app password。
+- 確認帳號的 host 是 `localhost`。
+
+`Unknown database 'morning_alpha'`
+
+- 使用 root 登入 MySQL，重新執行建立 `morning_alpha` database 的 SQL。
+
+`ModuleNotFoundError: No module named 'pymysql'`
+
+```bash
+source .venv/bin/activate
+python3 -m pip install -r requirements.txt
+```
+
+官方參考資料：
+
+- [Homebrew mysql@8.4](https://formulae.brew.sh/formula/mysql%408.4)
+- [MySQL CREATE USER](https://dev.mysql.com/doc/refman/8.4/en/create-user.html)
+- [MySQL GRANT](https://dev.mysql.com/doc/refman/8.4/en/grant.html)
+- [PyMySQL Connection](https://pymysql.readthedocs.io/en/latest/modules/connections.html)
+
+## 寫入 MySQL
+
+從專案根目錄執行：
+
+```bash
+python3 src/store_news.py
+```
+
+程式會建立 `news_records` table，並插入最新五篇整理完成的新聞。相同標題已存在時，`INSERT IGNORE` 會略過該筆資料。
+
+`news_records` 包含以下欄位：
+
+- `id`：自動增加的識別碼。
+- `title`：新聞標題，不允許重複。
+- `publish_time`：新聞發布時間。
+- `url`：原始文章網址。
+- `created_at`：資料寫入 MySQL 的時間。
+
 ## 目前限制
 
 - 只收集 TechNews 首頁最新五篇文章。
-- 尚未將資料儲存到 MySQL。
+- 目前只支援寫入 MySQL，尚未查詢資料。
 - 尚未產生 HTML 儀表板。
 - 網站 HTML 結構改變時，爬蟲 selector 可能需要更新。
 
@@ -111,6 +309,6 @@ python3 src/analyze_news.py
 - [x] 初始化專案結構
 - [x] 收集 TechNews 首頁最新五篇文章
 - [x] 使用 Pandas 建立並整理 DataFrame
-- [ ] 儲存新聞到 MySQL
+- [x] 儲存新聞到 MySQL
 - [ ] 使用 Pandas 進行統計分析
 - [ ] 產生 HTML 儀表板
