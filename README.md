@@ -11,7 +11,7 @@ Morning Alpha 是一個以繁體中文為主要介面的科技新聞儀表板學
 3. 使用 Pandas 進行統計分析。
 4. 產生提供投資人閱讀的 HTML 儀表板。
 
-目前已經可以收集 TechNews 首頁最新五篇文章、使用 Pandas 整理資料，並將結果寫入 MySQL。尚未包含資料查詢或 HTML 功能。
+目前已經可以收集 TechNews 首頁最新五篇文章、使用 Pandas 整理資料、寫入 MySQL，並讀取全部新聞後顯示最新 20 筆。尚未包含視覺化或 HTML 功能。
 
 ## 技術範圍
 
@@ -32,7 +32,8 @@ morning-alpha/
 ├── src/
 │   ├── crawler.py
 │   ├── analyze_news.py
-│   └── store_news.py
+│   ├── store_news.py
+│   └── read_news.py
 ├── data/
 │   ├── raw/
 │   └── processed/
@@ -62,6 +63,7 @@ morning-alpha/
 - `src/crawler.py`：使用 Requests 下載 TechNews 首頁，並使用 BeautifulSoup 解析最新五篇文章。
 - `src/analyze_news.py`：將爬蟲結果轉成 Pandas DataFrame，去除重複標題、轉換發布時間並排序。
 - `src/store_news.py`：使用 PyMySQL 建立 `news_records` table，並將整理後的新聞寫入 MySQL。
+- `src/read_news.py`：讀取 `news_records` 全部資料，轉成 DataFrame，並印出發布時間最新的 20 筆。
 
 各空資料夾中的 `.gitkeep` 是空白占位檔，讓 Git 能夠追蹤目前尚未放入程式或資料的資料夾。
 
@@ -142,7 +144,7 @@ COLLATE utf8mb4_unicode_ci;
 CREATE USER 'morning_alpha_app'@'localhost'
 IDENTIFIED BY RANDOM PASSWORD;
 
-GRANT CREATE, INSERT
+GRANT CREATE, INSERT, SELECT
 ON morning_alpha.*
 TO 'morning_alpha_app'@'localhost';
 ```
@@ -153,8 +155,17 @@ TO 'morning_alpha_app'@'localhost';
 
 - `CREATE`：讓程式建立 `news_records` table。
 - `INSERT`：讓程式新增新聞。
+- `SELECT`：讓程式讀取新聞。
 
-目前沒有授予 `SELECT`、`UPDATE`、`DELETE` 或 `DROP`。
+目前沒有授予 `UPDATE`、`DELETE` 或 `DROP`。
+
+如果已經在 Feature 4 建立過帳號，請使用 root 登入 MySQL，額外執行一次：
+
+```sql
+GRANT SELECT
+ON morning_alpha.*
+TO 'morning_alpha_app'@'localhost';
+```
 
 完成後離開 MySQL：
 
@@ -297,10 +308,29 @@ python3 src/store_news.py
 - `url`：原始文章網址。
 - `created_at`：資料寫入 MySQL 的時間。
 
+## 讀取 MySQL
+
+先依照「每次執行專案前的 MySQL 設定」準備環境變數，再從專案根目錄執行：
+
+```bash
+python3 src/read_news.py
+```
+
+程式會執行以下步驟：
+
+1. 從 `news_records` 讀取所有新聞，不在 SQL 使用 `LIMIT`。
+2. 使用查詢結果與欄位名稱建立完整 DataFrame。
+3. 將 `publish_time` 確認為 Pandas datetime。
+4. 依 `publish_time` 由新到舊排序。
+5. 使用 `.head(20)` 取得並印出最新 20 筆。
+
+如果 table 少於 20 筆，程式會印出所有現有資料；如果沒有資料，會顯示空資料提示。
+
 ## 目前限制
 
 - 只收集 TechNews 首頁最新五篇文章。
-- 目前只支援寫入 MySQL，尚未查詢資料。
+- 目前只讀取全部新聞並顯示最新 20 筆，尚未提供條件查詢。
+- 尚未加入資料視覺化。
 - 尚未產生 HTML 儀表板。
 - 網站 HTML 結構改變時，爬蟲 selector 可能需要更新。
 
@@ -310,5 +340,6 @@ python3 src/store_news.py
 - [x] 收集 TechNews 首頁最新五篇文章
 - [x] 使用 Pandas 建立並整理 DataFrame
 - [x] 儲存新聞到 MySQL
+- [x] 讀取全部新聞並顯示最新 20 筆
 - [ ] 使用 Pandas 進行統計分析
 - [ ] 產生 HTML 儀表板
