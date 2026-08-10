@@ -2,6 +2,7 @@
 
 from email.utils import parsedate_to_datetime
 import logging
+from urllib.parse import urlparse
 from xml.etree import ElementTree
 from zoneinfo import ZoneInfo
 
@@ -18,6 +19,11 @@ REQUEST_TIMEOUT = 10
 TAIPEI_TIMEZONE = ZoneInfo("Asia/Taipei")
 
 logger = logging.getLogger(__name__)
+
+
+def is_finance_article_url(url):
+    """只接受中央社產經證券分類的文章 URL。"""
+    return urlparse(url).path.startswith("/news/afe/")
 
 
 def fetch_feed():
@@ -59,6 +65,7 @@ def parse_articles(xml_text):
     articles = []
     item_elements = root.findall("./channel/item")
     skipped_count = 0
+    filtered_count = 0
 
     if not item_elements:
         raise ValueError("中央社 RSS 結構異常：找不到 item。")
@@ -72,6 +79,10 @@ def parse_articles(xml_text):
             skipped_count += 1
             continue
 
+        if not is_finance_article_url(url):
+            filtered_count += 1
+            continue
+
         article = create_news_record(
             source=SOURCE,
             source_category=SOURCE_CATEGORY,
@@ -83,6 +94,12 @@ def parse_articles(xml_text):
 
     if skipped_count:
         logger.warning("中央社 RSS 有 %s 筆 item 缺少必要欄位。", skipped_count)
+
+    if filtered_count:
+        logger.info(
+            "中央社 RSS 已排除 %s 筆非產經證券分類文章。",
+            filtered_count,
+        )
 
     if not articles:
         raise ValueError("中央社 RSS 結構異常：沒有可用文章。")

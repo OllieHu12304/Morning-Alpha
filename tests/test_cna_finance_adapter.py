@@ -26,6 +26,10 @@ class CnaFinanceAdapterTests(unittest.TestCase):
             "url": "https://www.cna.com.tw/news/afe/202608110001.aspx",
         })
         self.assertEqual(len(articles), 2)
+        self.assertNotIn(
+            "今彩539第115193期　頭獎1注中獎",
+            [article["title"] for article in articles],
+        )
 
     def test_parse_articles_skips_item_with_missing_fields(self):
         xml_text = """
