@@ -42,7 +42,12 @@ class CnaFinanceAdapterTests(unittest.TestCase):
         <rss><channel><item><title>缺少網址</title></item></channel></rss>
         """
 
-        self.assertEqual(parse_articles(xml_text), [])
+        with self.assertRaisesRegex(ValueError, "沒有可用文章"):
+            parse_articles(xml_text)
+
+    def test_parse_articles_detects_missing_item_structure(self):
+        with self.assertRaisesRegex(ValueError, "找不到 item"):
+            parse_articles("<rss><channel></channel></rss>")
 
     def test_parse_articles_rejects_invalid_xml(self):
         with self.assertRaisesRegex(ValueError, "XML"):

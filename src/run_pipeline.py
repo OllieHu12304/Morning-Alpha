@@ -23,6 +23,7 @@ from generate_chart_data import (
     generate_chart_data,
     load_news_records,
 )
+from logging_config import configure_logging
 from news_sources import fetch_all_articles
 from read_news import load_all_news
 from store_news import save_news
@@ -94,6 +95,8 @@ def print_summary(summary):
 
 def main():
     """執行 pipeline，發生錯誤時停止並回傳失敗狀態。"""
+    configure_logging()
+
     try:
         summary = run_pipeline()
         print_summary(summary)

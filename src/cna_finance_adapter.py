@@ -1,11 +1,13 @@
 """將中央社財經 RSS 轉成 Morning Alpha 共同新聞格式。"""
 
 from email.utils import parsedate_to_datetime
+import logging
 from xml.etree import ElementTree
 from zoneinfo import ZoneInfo
 
 import requests
 
+from http_client import fetch_text
 from news_record import create_news_record
 
 
@@ -15,19 +17,20 @@ RSS_URL = "https://feeds.feedburner.com/rsscna/finance"
 REQUEST_TIMEOUT = 10
 TAIPEI_TIMEZONE = ZoneInfo("Asia/Taipei")
 
+logger = logging.getLogger(__name__)
+
 
 def fetch_feed():
     """下載中央社財經 RSS，並回傳 XML 文字。"""
     headers = {
         "User-Agent": "MorningAlphaLearningCrawler/0.1"
     }
-    response = requests.get(
+    return fetch_text(
         RSS_URL,
-        headers=headers,
+        source_name="中央社財經 RSS",
         timeout=REQUEST_TIMEOUT,
+        headers=headers,
     )
-    response.raise_for_status()
-    return response.text
 
 
 def parse_publish_time(publish_time_text):
@@ -54,13 +57,19 @@ def parse_articles(xml_text):
         raise ValueError("中央社 RSS XML 格式無法解析。") from error
 
     articles = []
+    item_elements = root.findall("./channel/item")
+    skipped_count = 0
 
-    for item in root.findall("./channel/item"):
+    if not item_elements:
+        raise ValueError("中央社 RSS 結構異常：找不到 item。")
+
+    for item in item_elements:
         title = item.findtext("title")
         url = item.findtext("link")
         publish_time_text = item.findtext("pubDate")
 
         if not title or not url or not publish_time_text:
+            skipped_count += 1
             continue
 
         article = create_news_record(
@@ -71,6 +80,12 @@ def parse_articles(xml_text):
             url=url,
         )
         articles.append(article)
+
+    if skipped_count:
+        logger.warning("中央社 RSS 有 %s 筆 item 缺少必要欄位。", skipped_count)
+
+    if not articles:
+        raise ValueError("中央社 RSS 結構異常：沒有可用文章。")
 
     return articles
 

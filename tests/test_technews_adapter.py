@@ -38,7 +38,12 @@ class TechNewsAdapterTests(unittest.TestCase):
     def test_parse_articles_skips_incomplete_article(self):
         html = '<article class="post"><h1>缺少必要欄位</h1></article>'
 
-        self.assertEqual(parse_articles(html), [])
+        with self.assertRaisesRegex(ValueError, "沒有可用文章"):
+            parse_articles(html)
+
+    def test_parse_articles_detects_missing_article_structure(self):
+        with self.assertRaisesRegex(ValueError, "article.post"):
+            parse_articles("<html><body>新版首頁</body></html>")
 
 
 if __name__ == "__main__":
