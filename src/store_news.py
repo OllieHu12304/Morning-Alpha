@@ -29,7 +29,6 @@ CREATE TABLE IF NOT EXISTS news_records (
         COLLATE ascii_bin
         NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE KEY unique_news_title (title),
     UNIQUE KEY unique_canonical_url_hash (canonical_url_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 """

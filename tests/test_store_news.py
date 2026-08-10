@@ -65,6 +65,7 @@ class StoreNewsTests(unittest.TestCase):
         self.assertIn("canonical_url VARCHAR(1000) NOT NULL", sql)
         self.assertIn("canonical_url_hash CHAR(64)", sql)
         self.assertIn("unique_canonical_url_hash", sql)
+        self.assertNotIn("unique_news_title", sql)
 
     def test_insert_sql_writes_source_and_canonical_url(self):
         sql = store_news.INSERT_NEWS_SQL
@@ -103,6 +104,17 @@ class StoreNewsTests(unittest.TestCase):
         self.assertIn("ADD COLUMN canonical_url_hash", prepare_sql)
         self.assertIn("unique_canonical_url_hash", enforce_sql)
         self.assertNotIn("DROP INDEX unique_news_title", enforce_sql)
+
+    def test_title_unique_migration_preserves_canonical_unique(self):
+        migration_path = (
+            PROJECT_DIRECTORY
+            / "sql"
+            / "004_remove_title_unique.sql"
+        )
+        migration_sql = migration_path.read_text(encoding="utf-8")
+
+        self.assertIn("DROP INDEX unique_news_title", migration_sql)
+        self.assertIn("unique_canonical_url_hash", migration_sql)
 
 
 if __name__ == "__main__":
