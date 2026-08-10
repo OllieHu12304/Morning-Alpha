@@ -9,12 +9,21 @@ from src.generate_chart_data import (
     count_keywords,
     export_chart_data,
     generate_chart_data,
+    get_record_source_label,
     get_source_label,
     infer_category,
 )
 
 
 class GenerateChartDataTests(unittest.TestCase):
+    def test_record_source_label_prefers_formal_source_field(self):
+        record = {
+            "source": "cna",
+            "url": "https://www.cna.com.tw/news/example.aspx",
+        }
+
+        self.assertEqual(get_record_source_label(record), "中央通訊社")
+
     def test_count_keywords_uses_top_twenty_pandas_rules(self):
         records = [{
             "title": "NVIDIA 推出 AI 晶片，nvidia 股價上漲",
@@ -38,6 +47,8 @@ class GenerateChartDataTests(unittest.TestCase):
     def test_generate_chart_data_counts_each_dimension(self):
         records = [
             {
+                "source": "technews",
+                "analysis_category": "半導體",
                 "title": "台積電 AI 晶片投資增加",
                 "url": "https://technews.tw/example-1",
             },
@@ -55,7 +66,7 @@ class GenerateChartDataTests(unittest.TestCase):
 
         self.assertEqual(chart_data["sources"]["values"], [1, 1, 1])
         self.assertEqual(chart_data["categories"]["labels"], [
-            "AI 與人工智慧",
+            "半導體",
             "資訊安全",
             "其他",
         ])

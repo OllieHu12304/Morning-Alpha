@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta
         name="description"
-        content="Morning Alpha 最新科技新聞 dashboard"
+        content="Morning Alpha 最新科技與財經新聞 dashboard"
     >
-    <title>Morning Alpha | 科技新聞分析</title>
+    <title>Morning Alpha | 科技與財經新聞分析</title>
     <link rel="stylesheet" href="styles.css">
     <script
         src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js"
@@ -19,9 +19,12 @@
     <header class="page-header">
         <div class="header-content">
             <p class="eyebrow">Morning Alpha v0.1</p>
-            <h1>科技新聞分析</h1>
+            <h1>科技與財經新聞分析</h1>
             <p class="subtitle">
                 從 MySQL 匯出的新聞資料，快速掌握來源、主題與熱門關鍵字。
+            </p>
+            <p id="last-updated" class="last-updated">
+                資料最後更新：正在載入…
             </p>
         </div>
     </header>
@@ -97,6 +100,40 @@
                 </p>
             </div>
 
+            <div class="table-controls" aria-label="新聞篩選工具">
+                <label class="control-field control-field-search">
+                    <span>搜尋</span>
+                    <input
+                        id="news-search"
+                        type="search"
+                        placeholder="搜尋標題、來源或分類"
+                    >
+                </label>
+                <label class="control-field">
+                    <span>來源</span>
+                    <select id="source-filter">
+                        <option value="">全部來源</option>
+                    </select>
+                </label>
+                <label class="control-field">
+                    <span>分類</span>
+                    <select id="category-filter">
+                        <option value="">全部分類</option>
+                    </select>
+                </label>
+                <label class="control-field">
+                    <span>每頁筆數</span>
+                    <select id="page-size">
+                        <option value="10">10</option>
+                        <option value="20">20</option>
+                        <option value="50">50</option>
+                    </select>
+                </label>
+                <button id="clear-filters" class="secondary-button" type="button">
+                    清除篩選
+                </button>
+            </div>
+
             <div class="table-wrapper">
                 <table>
                     <thead>
@@ -104,6 +141,20 @@
                             <th scope="col" data-key="title" aria-sort="none">
                                 <button class="sort-button" type="button">
                                     Title <span class="sort-indicator">↕</span>
+                                </button>
+                            </th>
+                            <th scope="col" data-key="source" aria-sort="none">
+                                <button class="sort-button" type="button">
+                                    Source <span class="sort-indicator">↕</span>
+                                </button>
+                            </th>
+                            <th
+                                scope="col"
+                                data-key="analysis_category"
+                                aria-sort="none"
+                            >
+                                <button class="sort-button" type="button">
+                                    Category <span class="sort-indicator">↕</span>
                                 </button>
                             </th>
                             <th
@@ -116,16 +167,21 @@
                                     <span class="sort-indicator">↓</span>
                                 </button>
                             </th>
-                            <th scope="col" data-key="url" aria-sort="none">
-                                <button class="sort-button" type="button">
-                                    URL <span class="sort-indicator">↕</span>
-                                </button>
-                            </th>
                         </tr>
                     </thead>
                     <tbody id="news-table-body"></tbody>
                 </table>
             </div>
+
+            <nav class="pagination" aria-label="新聞列表分頁">
+                <button id="previous-page" class="secondary-button" type="button">
+                    上一頁
+                </button>
+                <span id="page-status" aria-live="polite">第 1 / 1 頁</span>
+                <button id="next-page" class="secondary-button" type="button">
+                    下一頁
+                </button>
+            </nav>
 
             <noscript>
                 <p class="error-message">

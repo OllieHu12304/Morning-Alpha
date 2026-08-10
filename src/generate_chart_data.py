@@ -23,6 +23,10 @@ SOURCE_LABELS = {
     "infosecu.technews.tw": "資訊安全",
     "ccc.technews.tw": "3C",
 }
+SOURCE_CODE_LABELS = {
+    "cna": "中央通訊社",
+    "technews": "TechNews 科技新報",
+}
 
 def load_news_records(input_path=NEWS_JSON_PATH):
     """讀取 Feature 6 匯出的新聞 JSON。"""
@@ -44,6 +48,16 @@ def get_source_label(url):
 
     hostname = hostname.removeprefix("www.")
     return SOURCE_LABELS.get(hostname, hostname)
+
+
+def get_record_source_label(record):
+    """優先使用正式 source 欄位，舊資料才由 URL 推導。"""
+    source = record.get("source")
+
+    if source:
+        return SOURCE_CODE_LABELS.get(source, str(source))
+
+    return get_source_label(str(record.get("url", "")))
 
 
 def count_keywords(records):
@@ -81,9 +95,9 @@ def generate_chart_data(records):
             raise ValueError("每一筆新聞資料都必須是 object。")
 
         title = str(record.get("title", ""))
-        url = str(record.get("url", ""))
-        source_counts[get_source_label(url)] += 1
-        category_counts[infer_category(title)] += 1
+        source_counts[get_record_source_label(record)] += 1
+        category = record.get("analysis_category") or infer_category(title)
+        category_counts[category] += 1
 
     keyword_counts = count_keywords(records)
 
