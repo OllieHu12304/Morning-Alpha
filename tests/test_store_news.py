@@ -19,7 +19,10 @@ class StoreNewsTests(unittest.TestCase):
         dataframe = pd.DataFrame([{
             "title": "測試新聞",
             "publish_time": pd.Timestamp("2026-08-11 09:30:00"),
-            "url": "https://technews.tw/example/",
+            "url": (
+                "https://www.technews.tw/example/"
+                "?utm_source=test#content"
+            ),
         }])
 
         records = store_news.prepare_news_records(dataframe)
@@ -28,7 +31,7 @@ class StoreNewsTests(unittest.TestCase):
             "technews",
             "測試新聞",
             pd.Timestamp("2026-08-11 09:30:00").to_pydatetime(),
-            "https://technews.tw/example/",
+            "https://www.technews.tw/example/?utm_source=test#content",
             "https://technews.tw/example/",
         )])
 

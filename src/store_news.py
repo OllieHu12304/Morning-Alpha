@@ -8,6 +8,7 @@ import requests
 
 from analyze_news import create_dataframe, transform_dataframe
 from crawler import fetch_homepage, parse_articles
+from url_normalizer import normalize_url
 
 
 DEFAULT_SOURCE = "technews"
@@ -102,7 +103,7 @@ def prepare_news_records(dataframe):
             title,
             publish_time.to_pydatetime(),
             url,
-            url,
+            normalize_url(url),
         )
         records.append(record)
 
