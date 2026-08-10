@@ -8,6 +8,7 @@ import requests
 
 from analyze_news import create_dataframe, transform_dataframe
 from canonical_url_hash import create_canonical_url_hash
+from news_category import infer_category
 from news_sources import fetch_all_articles
 from url_normalizer import normalize_url
 
@@ -34,13 +35,14 @@ INSERT_NEWS_SQL = """
 INSERT IGNORE INTO news_records (
     source,
     source_category,
+    analysis_category,
     title,
     publish_time,
     url,
     canonical_url,
     canonical_url_hash
 )
-VALUES (%s, %s, %s, %s, %s, %s, %s);
+VALUES (%s, %s, %s, %s, %s, %s, %s, %s);
 """
 
 
@@ -109,6 +111,7 @@ def prepare_news_records(dataframe):
         record = (
             source,
             source_category,
+            infer_category(title),
             title,
             publish_time.to_pydatetime(),
             url,

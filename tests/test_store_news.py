@@ -32,6 +32,7 @@ class StoreNewsTests(unittest.TestCase):
         self.assertEqual(records, [(
             "technews",
             None,
+            "其他",
             "測試新聞",
             pd.Timestamp("2026-08-11 09:30:00").to_pydatetime(),
             "https://www.technews.tw/example/?utm_source=test#content",
@@ -79,9 +80,10 @@ class StoreNewsTests(unittest.TestCase):
 
         self.assertIn("source", sql)
         self.assertIn("source_category", sql)
+        self.assertIn("analysis_category", sql)
         self.assertIn("canonical_url", sql)
         self.assertIn("canonical_url_hash", sql)
-        self.assertEqual(sql.count("%s"), 7)
+        self.assertEqual(sql.count("%s"), 8)
 
     def test_migration_backfills_existing_rows(self):
         migration_path = (

@@ -12,7 +12,12 @@ from analyze_keywords import (
     load_news_dataframe,
 )
 from analyze_news import create_dataframe, transform_dataframe
-from export_news_json import export_json, prepare_dashboard_records
+from export_news_json import (
+    build_metadata,
+    export_json,
+    export_metadata,
+    prepare_dashboard_records,
+)
 from generate_chart_data import (
     export_chart_data,
     generate_chart_data,
@@ -36,6 +41,7 @@ def export_dashboard_news():
     dataframe = load_all_news()
     records = prepare_dashboard_records(dataframe)
     export_json(records)
+    export_metadata(build_metadata())
     return len(records)
 
 

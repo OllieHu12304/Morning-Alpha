@@ -7,7 +7,15 @@ from store_news import connect_to_database, get_database_config
 
 
 READ_ALL_NEWS_SQL = """
-SELECT id, title, publish_time, url, created_at
+SELECT
+    id,
+    source,
+    source_category,
+    analysis_category,
+    title,
+    publish_time,
+    url,
+    created_at
 FROM news_records;
 """
 
