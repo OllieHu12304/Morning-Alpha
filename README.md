@@ -1,60 +1,172 @@
-# Morning Alpha v0.1
+# Morning Alpha v0.2 Alpha
 
-Morning Alpha 是一個繁體中文科技與財經新聞分析學習專案。它會從 TechNews 與中央社財經 RSS 收集文章，以 Pandas 整理後存進 MySQL，再輸出 JSON 給靜態 Dashboard 顯示。
+Morning Alpha 是一個繁體中文科技與財經新聞分析學習專案。它把分散的新聞收集、資料整理、MySQL 儲存、統計分析與 Dashboard 閱讀整合成一條可以重複執行的 Pipeline。
 
-目前可以完成：
+使用者執行一個命令後，可以在同一個 Dashboard：
 
-- 一個命令更新新聞、資料庫、JSON 與統計。
-- 以 canonical URL 避免同一網址重複寫入；相同標題仍可保留。
-- 將不同來源的文章轉成共同格式，分開保存來源分類與分析分類。
-- 使用 `jieba-py` 中文斷詞與 Pandas 計算 Top 20 關鍵字。
-- 將標題與時間相近的新聞分成同事件，但不刪除原始文章。
-- 在 Dashboard 搜尋、依來源／分類篩選、排序、分頁及查看同事件文章。
-- 對 HTTP request 執行 retry，並記錄 log；以固定 fixtures 測試 crawler parser。
+- 閱讀 TechNews 與中央社財經新聞。
+- 搜尋標題，並依來源或分析分類篩選。
+- 查看來源分布、主題分布與熱門中文關鍵字。
+- 查看標題與時間相近的同事件新聞，同時保留每個來源的文章。
+- 透過 canonical URL 避免同一網址被重複寫入。
 
-Morning Alpha v0.1 不是投資建議系統，也沒有即時行情、AI 摘要、使用者帳號、後端 API 或自動排程。
+Morning Alpha 是資料工程與全端資料流程的練習專案，不是投資建議系統。
 
-完整教學、資料格式、資料庫 schema 與疑難排解請閱讀 [使用手冊](docs/USER_GUIDE.md)。
+## v0.2 Alpha 已實作功能
 
-## 資料流程
+### 資料收集
+
+- TechNews HTML adapter：每次解析首頁最多 5 篇文章。
+- 中央社財經 RSS adapter：只接受中央社產經證券 `/news/afe/` 分類。
+- 不同來源會轉成共同 News Record 格式。
+- HTTP request 最多嘗試 3 次，並記錄成功、retry 與錯誤。
+- 網站必要結構缺失或沒有可用文章時，Pipeline 會停止並回報異常。
+
+### 資料品質與 MySQL
+
+- 正式保存 `source`、`source_category` 與 `analysis_category`。
+- 保留原始 URL，另外產生 canonical URL。
+- canonical URL 會轉成 SHA-256 hash，由 MySQL UNIQUE index 防止重複。
+- 標題不再是 UNIQUE；不同網址即使標題相同仍可保存。
+- 提供依序檢查與套用 001～004 schema migrations 的 Python runner。
+- Pandas 缺值會轉成 Python `None`，安全寫成 MySQL `NULL`。
+
+### 分析與 Dashboard
+
+- 使用 `jieba-py` 進行繁體中文斷詞。
+- 使用 Pandas 計算 Top 20 關鍵字；Dashboard 顯示相同結果的前 10 名。
+- 依來源與分析分類產生圖表統計。
+- 以 72 小時、共同關鍵字與 Jaccard similarity 進行保守的事件分組。
+- Dashboard 支援搜尋、來源篩選、分類篩選、排序、分頁與同事件篩選。
+- 顯示資料最後更新時間。
+
+### 測試
+
+- 每個主要模組都有獨立 `unittest`。
+- Crawler parser 使用固定 HTML／XML fixtures，不依賴即時網站內容。
+- Dashboard 具有 JSON 與互動功能的 contract tests。
+
+## 系統流程
 
 ```mermaid
 flowchart LR
     A["TechNews HTML"] --> C["來源 adapters"]
     B["中央社財經 RSS"] --> C
-    C --> D["Pandas 整理"]
-    D --> E[("MySQL news_records")]
-    E --> F["JSON 匯出與事件分組"]
-    F --> G["Pandas + jieba 關鍵字分析"]
-    F --> H["Chart 統計"]
-    G --> I["HTML / JavaScript Dashboard"]
-    H --> I
+    C --> D["共同 News Record"]
+    D --> E["Pandas 整理"]
+    E --> F["Canonical URL 與 SHA-256"]
+    F --> G[("MySQL news_records")]
+    G --> H["JSON 匯出與事件分組"]
+    H --> I["Pandas + jieba 關鍵字分析"]
+    H --> J["來源與分類統計"]
+    I --> K["HTML / JavaScript Dashboard"]
+    J --> K
 ```
 
-## 需求
+日常更新只需要執行：
 
-- Python 3.10 以上（`jieba-py` 的套件需求）
+```bash
+python src/run_pipeline.py
+```
+
+Pipeline 依序完成：
+
+1. 下載並解析所有新聞來源。
+2. 使用 Pandas 整理後寫入 MySQL。
+3. 匯出新聞與資料更新時間。
+4. 產生圖表與 Top 20 關鍵字 JSON。
+
+## 技術
+
+- Python、Requests、BeautifulSoup
+- Pandas、jieba-py
+- MySQL、PyMySQL
+- HTML、CSS、JavaScript
+- Chart.js 4.5.1
+- Git、Python `unittest`
+
+Dashboard 沒有使用 DataTables，也沒有 web backend；搜尋、篩選、排序與分頁由原生 JavaScript 完成。
+
+## 專案結構
+
+```text
+Morning-Alpha/
+├── src/
+│   ├── run_pipeline.py          # 日常資料更新入口
+│   ├── run_migrations.py        # 檢查／套用既有 database migrations
+│   ├── news_sources.py          # 集中啟用所有 adapters
+│   ├── technews_adapter.py
+│   ├── cna_finance_adapter.py
+│   ├── store_news.py            # MySQL 寫入與最新 schema
+│   ├── export_news_json.py
+│   ├── analyze_keywords.py
+│   └── event_grouping.py
+├── sql/                         # 001～004 migrations
+├── data/
+│   ├── raw/                     # jieba 自訂詞典
+│   └── processed/               # runtime log 與稽核報告
+├── dashboard/
+│   ├── index.html
+│   ├── styles.css
+│   ├── app.js
+│   ├── news.json
+│   ├── chart_data.json
+│   ├── keyword.json
+│   └── metadata.json
+├── tests/
+│   └── fixtures/                # 固定 crawler 測試資料
+├── docs/
+│   └── USER_GUIDE.md
+└── requirements.txt
+```
+
+完整檔案說明、Database schema、SQL 範例與疑難排解請閱讀 [Morning Alpha 使用手冊](docs/USER_GUIDE.md)。
+
+## 系統需求
+
+- Python 3.10 以上
 - MySQL（repository 未鎖定版本；開發說明以 Homebrew MySQL 8.4 為例）
-- 現代瀏覽器與網路連線（Chart.js 4.5.1 由 CDN 載入）
-- Python packages：Requests、BeautifulSoup、Pandas、PyMySQL、`jieba-py==0.46.12`
+- 支援 JavaScript、`fetch()` 與 canvas 的現代瀏覽器
+- Pipeline 需要連到新聞來源；Dashboard 需要連到 Chart.js CDN
 
-## 快速開始
+Python packages：
 
-### 1. Clone 與安裝 Python 套件
+```text
+requests
+beautifulsoup4
+pandas
+PyMySQL
+jieba-py==0.46.12
+```
+
+## 快速安裝
+
+### 1. Clone repository
 
 ```bash
 git clone https://github.com/OllieHu12304/Morning-Alpha.git
 cd Morning-Alpha
+```
+
+### 2. 建立虛擬環境
+
+```bash
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install -r requirements.txt
 ```
 
-啟用 `.venv` 可確保 `python` 使用這個專案安裝的套件，不會誤用 Anaconda 或系統 Python。
+確認使用 `.venv`，而不是 Anaconda 或系統 Python：
 
-### 2. 建立 MySQL database 與專用帳號
+```bash
+which python
+```
 
-先用 MySQL 管理員登入：
+輸出路徑應以專案的 `.venv/bin/python` 結尾。
+
+### 3. 建立 MySQL database 與 app user
+
+先以 MySQL 管理員登入：
 
 ```bash
 mysql -u root -p
@@ -73,39 +185,45 @@ ON morning_alpha.*
 TO 'morning_alpha_app'@'localhost';
 ```
 
-不要把真實密碼寫入 repository。
+請把真實密碼保存在密碼管理器，不要寫入 repository。
 
-### 3. 設定目前 terminal 的環境變數
+### 4. 設定目前 terminal 的連線值
 
 ```bash
 export MYSQL_USER="morning_alpha_app"
-read -s "MYSQL_PASSWORD?MySQL password: "
+read -s "MYSQL_PASSWORD?MySQL app password: "
 echo
 export MYSQL_PASSWORD
 ```
 
-選用設定及預設值：
+選用變數與預設值：
+
+| 環境變數 | 預設值 |
+| --- | --- |
+| `MYSQL_HOST` | `localhost` |
+| `MYSQL_PORT` | `3306` |
+| `MYSQL_DATABASE` | `morning_alpha` |
+
+`MYSQL_USER` 與 `MYSQL_PASSWORD` 沒有預設值，而且新 terminal 不會自動保留先前的 export。
+
+## Database migrations
+
+### 全新 database
+
+不需要執行 migration。第一次 Pipeline 會直接建立最新 `news_records` table。
+
+### 從 v0.1 升級的既有 database
+
+先備份，再檢查目前狀態：
 
 ```bash
-export MYSQL_HOST="localhost"
-export MYSQL_PORT="3306"
-export MYSQL_DATABASE="morning_alpha"
-```
-
-環境變數只在目前 shell session 有效。開新 terminal 後需重新設定。
-
-### 4. 既有 database 才需套用 migrations
-
-全新 database 不需要 migration；Pipeline 會建立最新 table。既有 `news_records` 可先唯讀檢查：
-
-```bash
+mysqldump -u root -p morning_alpha > ../morning_alpha_before_v0.2.sql
 python src/run_migrations.py
 ```
 
-套用 migration 需要 `ALTER`、`UPDATE`、`SELECT` 權限，建議先備份，再暫時以管理員 credentials 執行：
+`run_migrations.py` 預設唯讀。套用 001～004 需要 `ALTER`、`UPDATE` 與 `SELECT` 權限，建議暫時使用 MySQL 管理員 credentials：
 
 ```bash
-mysqldump -u root -p morning_alpha > ../morning_alpha_before_upgrade.sql
 export MYSQL_USER="root"
 read -s "MYSQL_PASSWORD?MySQL root password: "
 echo
@@ -113,77 +231,93 @@ export MYSQL_PASSWORD
 python src/run_migrations.py --apply
 ```
 
-完成後，重新設定 `MYSQL_USER` 與 `MYSQL_PASSWORD` 為 `morning_alpha_app`。不要逐一手動重跑已完成的 SQL。
+完成後重新設定 `morning_alpha_app` credentials，再執行日常 Pipeline。
 
-### 5. 執行完整 Pipeline
+## 執行 Morning Alpha
 
-從 repository 根目錄執行：
+### 1. 更新資料
 
-```bash
-python src/run_pipeline.py
-```
-
-它會依序：
-
-1. 下載 TechNews HTML 與中央社財經 RSS、解析並整理文章。
-2. 寫入 MySQL；canonical URL hash 已存在的文章由 `INSERT IGNORE` 跳過。
-3. 匯出 `news.json`、事件分組與 `metadata.json`。
-4. 產生 `chart_data.json` 與 Top 20 `keyword.json`。
-
-### 6. 啟動 Dashboard
-
-不要直接雙擊 `index.html`，因為瀏覽器通常會阻擋 `file://` 載入 JSON。在另一個 terminal 執行：
+請從 repository 根目錄執行：
 
 ```bash
-python -m http.server 8000 --directory dashboard
+./.venv/bin/python src/run_pipeline.py
 ```
 
-開啟 [http://localhost:8000](http://localhost:8000)。Dashboard 會讀取：
-
-- `dashboard/news.json`
-- `dashboard/chart_data.json`
-- `dashboard/keyword.json`
-- `dashboard/metadata.json`
-
-## 專案結構摘要
+成功時會看到：
 
 ```text
-Morning-Alpha/
-├── src/                 # crawler adapters、資料整理、MySQL、分析與 pipeline
-├── sql/                 # 001～004 既有 database migrations
-├── data/raw/            # jieba 自訂詞典
-├── data/processed/      # runtime log／稽核報告（不應提交）
-├── dashboard/           # HTML、CSS、JavaScript 與產生的 JSON
-├── tests/               # 單元、crawler fixtures、Dashboard contract tests
-├── docs/USER_GUIDE.md   # 完整使用手冊
-└── requirements.txt
+Step 1/4：爬取、整理並儲存新聞…
+Step 2/4：匯出 Dashboard 新聞資料…
+Step 3/4：產生 Dashboard 圖表資料…
+Step 4/4：產生 Top 20 關鍵字資料…
+Morning Alpha 資料更新完成。
 ```
 
-## 測試
+實際新增與匯出筆數會依網站與 database 內容不同。
 
-測試不需要連到新聞網站或真實 MySQL：
+### 2. 啟動 Dashboard
+
+在另一個 terminal 執行：
 
 ```bash
-python -m unittest discover -s tests -v
+./.venv/bin/python -m http.server 8000 --directory dashboard
 ```
 
-Crawler tests 使用 `tests/fixtures/` 的固定 HTML／XML，因此網站內容變動不會讓 parser 測試結果飄動。真實網站仍可能改版，所以正式 Pipeline 另外具有空結果／結構異常偵測。
+開啟 [http://localhost:8000](http://localhost:8000)。不要直接雙擊 `index.html`，否則瀏覽器可能阻擋 `file://` 載入 JSON。
 
-## 常用除錯命令
+Dashboard 讀取：
+
+- `dashboard/news.json`：新聞、正式維度與事件分組。
+- `dashboard/chart_data.json`：來源與分類統計。
+- `dashboard/keyword.json`：Top 20 關鍵字；頁面顯示前 10。
+- `dashboard/metadata.json`：最後更新時間。
+
+## 執行測試
+
+測試不需要真實 MySQL 或新聞網站：
 
 ```bash
-# 確認目前使用的 Python
+./.venv/bin/python -m unittest discover -s tests -v
+```
+
+## 常用除錯
+
+```bash
+# 確認 interpreter
 which python
-python --version
 
-# 唯讀檢查 migration 狀態
-python src/run_migrations.py
+# 唯讀檢查 migration
+./.venv/bin/python src/run_migrations.py
 
-# 查看 crawler retry 與錯誤 log
-tail -n 50 data/processed/morning_alpha.log
+# 查看 retry、排除文章與 crawler 錯誤
+tail -n 100 data/processed/morning_alpha.log
 
-# 查看 MySQL 最新資料
-python src/read_news.py
+# 查看 MySQL 最新 20 筆
+./.venv/bin/python src/read_news.py
 ```
 
-若 Pipeline 出現 `Unknown column 'source'`，代表既有 table 尚未完成 migrations；不要修改 Python 欄位名稱，請依上方 migration 流程升級 schema。
+- `ModuleNotFoundError: jieba`：通常是誤用 Anaconda Python；改用 `./.venv/bin/python` 並重新安裝 requirements。
+- `Unknown column 'source'`：既有 MySQL table 尚未完成 migrations。
+- `nan can not be used with MySQL`：請確認程式包含 v0.2 的 Pandas 空值轉換修正。
+- Dashboard `Failed to fetch`：請使用 `http.server`，不要以 `file://` 開啟。
+
+## 目前限制
+
+- 只有 TechNews 與中央社財經兩個來源。
+- TechNews 每次只解析首頁最多 5 篇。
+- 來源網站改版後仍可能需要修改 adapter selector。
+- 任一來源最終下載或解析失敗會停止整條 Pipeline。
+- URL UNIQUE 只能防止相同 canonical URL；不同平台的同事件文章只分組、不刪除。
+- 事件分組、分析分類與 jieba 關鍵字都是規則式分析，可能漏判或誤判。
+- 沒有文章全文、AI 摘要、股票行情、投資評分、使用者帳號或後端 API。
+- 沒有自動排程或即時更新。
+- 先前已寫入 MySQL 的非財經 CNA 資料不會因新 adapter 白名單自動刪除。
+
+## 下一步
+
+- 安全稽核與清理既有非財經 CNA 資料。
+- 讓單一來源失敗時，其他來源仍可繼續更新。
+- 加入自動排程與來源健康狀態。
+- 持續改善分類、斷詞與事件相似度。
+
+更多操作與面試說明請參考 [docs/USER_GUIDE.md](docs/USER_GUIDE.md)。
