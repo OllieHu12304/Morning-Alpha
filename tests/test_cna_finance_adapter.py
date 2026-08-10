@@ -7,35 +7,25 @@ from pathlib import Path
 
 
 SOURCE_DIRECTORY = Path(__file__).resolve().parent.parent / "src"
+FIXTURE_PATH = Path(__file__).resolve().parent / "fixtures" / "cna_finance.xml"
 sys.path.insert(0, str(SOURCE_DIRECTORY))
 
 from cna_finance_adapter import parse_articles  # noqa: E402
 
 
-CNA_RSS_XML = """<?xml version="1.0" encoding="UTF-8"?>
-<rss version="2.0">
-  <channel>
-    <item>
-      <title>測試財經新聞</title>
-      <link>https://www.cna.com.tw/news/afe/202608110001.aspx</link>
-      <pubDate>Tue, 11 Aug 2026 09:30:00 +0800</pubDate>
-    </item>
-  </channel>
-</rss>
-"""
-
-
 class CnaFinanceAdapterTests(unittest.TestCase):
     def test_parse_articles_returns_common_news_record(self):
-        articles = parse_articles(CNA_RSS_XML)
+        xml_text = FIXTURE_PATH.read_text(encoding="utf-8")
+        articles = parse_articles(xml_text)
 
-        self.assertEqual(articles, [{
+        self.assertEqual(articles[0], {
             "source": "cna",
             "source_category": "產經證券",
-            "title": "測試財經新聞",
+            "title": "測試財經新聞一",
             "publish_time": datetime(2026, 8, 11, 9, 30),
             "url": "https://www.cna.com.tw/news/afe/202608110001.aspx",
-        }])
+        })
+        self.assertEqual(len(articles), 2)
 
     def test_parse_articles_skips_item_with_missing_fields(self):
         xml_text = """

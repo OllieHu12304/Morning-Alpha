@@ -7,33 +7,25 @@ from pathlib import Path
 
 
 SOURCE_DIRECTORY = Path(__file__).resolve().parent.parent / "src"
+FIXTURE_PATH = Path(__file__).resolve().parent / "fixtures" / "technews_homepage.html"
 sys.path.insert(0, str(SOURCE_DIRECTORY))
 
 from technews_adapter import parse_articles  # noqa: E402
 
 
-TECHNEWS_HTML = """
-<article class="post">
-  <h1 class="entry-title">
-    <a href="https://technews.tw/example/">測試科技新聞</a>
-  </h1>
-  <span class="head">發布日期</span>
-  <span class="body">2026 年 08 月 11 日 09:30</span>
-</article>
-"""
-
-
 class TechNewsAdapterTests(unittest.TestCase):
     def test_parse_articles_returns_common_news_record(self):
-        articles = parse_articles(TECHNEWS_HTML)
+        html = FIXTURE_PATH.read_text(encoding="utf-8")
+        articles = parse_articles(html)
 
-        self.assertEqual(articles, [{
+        self.assertEqual(articles[0], {
             "source": "technews",
             "source_category": None,
-            "title": "測試科技新聞",
+            "title": "測試科技新聞一",
             "publish_time": datetime(2026, 8, 11, 9, 30),
-            "url": "https://technews.tw/example/",
-        }])
+            "url": "https://technews.tw/example-one/",
+        })
+        self.assertEqual(len(articles), 2)
 
     def test_parse_articles_skips_incomplete_article(self):
         html = '<article class="post"><h1>缺少必要欄位</h1></article>'
