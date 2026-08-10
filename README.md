@@ -35,7 +35,8 @@ morning-alpha/
 │   ├── store_news.py
 │   ├── read_news.py
 │   ├── export_news_json.py
-│   └── generate_chart_data.py
+│   ├── generate_chart_data.py
+│   └── analyze_keywords.py
 ├── data/
 │   ├── raw/
 │   └── processed/
@@ -45,7 +46,8 @@ morning-alpha/
 │   ├── styles.css
 │   ├── app.js
 │   ├── news.json
-│   └── chart_data.json
+│   ├── chart_data.json
+│   └── keyword.json
 ├── tests/
 ├── requirements.txt
 └── README.md
@@ -73,11 +75,13 @@ morning-alpha/
 - `src/read_news.py`：讀取 `news_records` 全部資料，轉成 DataFrame，並印出發布時間最新的 20 筆。
 - `src/export_news_json.py`：將 MySQL 全部新聞整理並匯出為 dashboard 使用的 JSON。
 - `src/generate_chart_data.py`：讀取新聞 JSON，統計來源、推論分類與熱門關鍵字。
+- `src/analyze_keywords.py`：使用 Pandas 統計新聞標題中的 Top 20 關鍵字。
 - `dashboard/index.html`：定義 dashboard 的標題、圖表區、狀態區與新聞 table。
 - `dashboard/styles.css`：負責 dashboard 排版、顏色、圖表卡片、table 與響應式樣式。
 - `dashboard/app.js`：載入新聞及統計 JSON、建立 Chart.js 圖表與 table rows，並處理欄位排序。
 - `dashboard/news.json`：保存 Python 從 MySQL 匯出的本機新聞資料。
 - `dashboard/chart_data.json`：保存 Python 從新聞資料產生的圖表統計。
+- `dashboard/keyword.json`：保存 Pandas 產生的 Top 20 關鍵字與出現次數，供後續 dashboard 功能使用。
 
 各空資料夾中的 `.gitkeep` 是空白占位檔，讓 Git 能夠追蹤目前尚未放入程式或資料的資料夾。
 
@@ -367,6 +371,35 @@ Dashboard 會顯示新聞來源、主題分類與熱門關鍵字圖表，以及�
 
 主題分類與熱門關鍵字使用新聞標題中的預設關鍵字規則統計，規則集中定義在 `src/generate_chart_data.py`，未命中分類規則的新聞會歸入「其他」。
 
+## 使用 Pandas 分析 Top 20 關鍵字
+
+先產生最新的 `dashboard/news.json`，再執行：
+
+```bash
+python3 src/analyze_keywords.py
+```
+
+程式會執行以下步驟：
+
+1. 將 `news.json` 讀取成只包含新聞標題的 DataFrame。
+2. 使用 Pandas 字串操作統計候選關鍵字的總出現次數。
+3. 依次數由高到低排序；同次數時依關鍵字排序。
+4. 最多保留 20 個有出現的關鍵字。
+5. 將結果匯出到 `dashboard/keyword.json`。
+
+輸出格式為 JSON array：
+
+```json
+[
+  {
+    "keyword": "AI",
+    "count": 12
+  }
+]
+```
+
+Feature 8 只負責產生關鍵字資料，dashboard 將在後續功能讀取 `keyword.json`。
+
 ## 目前限制
 
 - 只收集 TechNews 首頁最新五篇文章。
@@ -386,3 +419,4 @@ Dashboard 會顯示新聞來源、主題分類與熱門關鍵字圖表，以及�
 - [x] 產生本機 JSON 與可排序 HTML dashboard
 - [x] 統計新聞來源、主題分類與熱門關鍵字
 - [x] 加入 dashboard 資料視覺化
+- [x] 使用 Pandas 匯出 Top 20 關鍵字
