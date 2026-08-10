@@ -7,22 +7,85 @@
         name="description"
         content="Morning Alpha 最新科技新聞 dashboard"
     >
-    <title>Morning Alpha | 最新科技新聞</title>
+    <title>Morning Alpha | 科技新聞分析</title>
     <link rel="stylesheet" href="styles.css">
+    <script
+        src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js"
+        defer
+    ></script>
     <script src="app.js" defer></script>
 </head>
 <body>
     <header class="page-header">
         <div class="header-content">
             <p class="eyebrow">Morning Alpha v0.1</p>
-            <h1>最新科技新聞</h1>
+            <h1>科技新聞分析</h1>
             <p class="subtitle">
-                從 MySQL 匯出的科技新聞資料，預設依發布時間由新到舊排列。
+                從 MySQL 匯出的新聞資料，快速掌握來源、主題與熱門關鍵字。
             </p>
         </div>
     </header>
 
     <main class="page-content">
+        <section class="analytics-section" aria-labelledby="analytics-heading">
+            <div class="section-heading">
+                <div>
+                    <p class="section-label">Market Overview</p>
+                    <h2 id="analytics-heading">新聞資料概覽</h2>
+                </div>
+                <p id="chart-status-message" class="status-message" role="status">
+                    正在載入統計資料…
+                </p>
+            </div>
+
+            <div class="chart-grid">
+                <article class="chart-card">
+                    <div class="chart-heading">
+                        <h3>新聞來源</h3>
+                        <p>各來源的文章數量</p>
+                    </div>
+                    <div class="chart-container">
+                        <canvas
+                            id="source-chart"
+                            role="img"
+                            aria-label="新聞來源文章數量圖表"
+                        >新聞來源文章數量圖表</canvas>
+                        <p class="chart-empty-message" hidden></p>
+                    </div>
+                </article>
+
+                <article class="chart-card">
+                    <div class="chart-heading">
+                        <h3>主題分類</h3>
+                        <p>依標題關鍵字推論的新聞主題</p>
+                    </div>
+                    <div class="chart-container">
+                        <canvas
+                            id="category-chart"
+                            role="img"
+                            aria-label="新聞主題分類文章數量圖表"
+                        >新聞主題分類文章數量圖表</canvas>
+                        <p class="chart-empty-message" hidden></p>
+                    </div>
+                </article>
+
+                <article class="chart-card chart-card-wide">
+                    <div class="chart-heading">
+                        <h3>熱門關鍵字</h3>
+                        <p>新聞標題中出現次數最多的 10 個關鍵字</p>
+                    </div>
+                    <div class="chart-container chart-container-wide">
+                        <canvas
+                            id="keyword-chart"
+                            role="img"
+                            aria-label="熱門關鍵字文章數量圖表"
+                        >熱門關鍵字文章數量圖表</canvas>
+                        <p class="chart-empty-message" hidden></p>
+                    </div>
+                </article>
+            </div>
+        </section>
+
         <section class="news-panel" aria-labelledby="news-heading">
             <div class="panel-heading">
                 <div>

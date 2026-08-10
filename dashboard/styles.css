@@ -46,7 +46,8 @@ body {
 }
 
 h1,
-h2 {
+h2,
+h3 {
     margin: 0;
     line-height: 1.25;
 }
@@ -59,6 +60,10 @@ h2 {
     font-size: 1.35rem;
 }
 
+h3 {
+    font-size: 1.05rem;
+}
+
 .subtitle {
     max-width: 680px;
     margin: 16px 0 0;
@@ -68,6 +73,75 @@ h2 {
 .page-content {
     margin-top: -36px;
     padding: 0 24px 64px;
+}
+
+.analytics-section {
+    margin-bottom: 24px;
+}
+
+.section-heading {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 24px;
+    padding: 24px 28px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-bottom: 0;
+    border-radius: 16px 16px 0 0;
+}
+
+.chart-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1px;
+    overflow: hidden;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: 0 0 16px 16px;
+    box-shadow: var(--shadow);
+}
+
+.chart-card {
+    min-width: 0;
+    padding: 24px 28px 28px;
+    background: var(--surface);
+}
+
+.chart-card-wide {
+    grid-column: 1 / -1;
+}
+
+.chart-heading {
+    margin-bottom: 18px;
+}
+
+.chart-heading p {
+    margin: 4px 0 0;
+    color: var(--text-secondary);
+    font-size: 0.88rem;
+}
+
+.chart-container {
+    position: relative;
+    min-height: 290px;
+}
+
+.chart-container-wide {
+    min-height: 330px;
+}
+
+.chart-empty-message {
+    display: grid;
+    min-height: inherit;
+    margin: 0;
+    place-items: center;
+    color: var(--text-secondary);
+    text-align: center;
+}
+
+.chart-empty-message[hidden] {
+    display: none;
 }
 
 .news-panel {
@@ -185,7 +259,7 @@ tbody tr:last-child td {
 }
 
 .empty-message,
-.error-message {
+noscript .error-message {
     padding: 28px;
     color: var(--text-secondary);
     text-align: center;
@@ -193,6 +267,10 @@ tbody tr:last-child td {
 
 .error-message {
     color: #9b2c2c;
+}
+
+.status-message.error-message {
+    text-align: right;
 }
 
 @media (max-width: 700px) {
@@ -204,10 +282,30 @@ tbody tr:last-child td {
         padding: 0 12px 40px;
     }
 
+    .section-heading,
     .panel-heading {
         align-items: flex-start;
         flex-direction: column;
         gap: 10px;
         padding: 20px;
+    }
+
+    .chart-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .chart-card,
+    .chart-card-wide {
+        grid-column: auto;
+        padding: 20px;
+    }
+
+    .chart-container,
+    .chart-container-wide {
+        min-height: 280px;
+    }
+
+    .status-message.error-message {
+        text-align: left;
     }
 }

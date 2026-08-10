@@ -11,7 +11,7 @@ Morning Alpha 是一個以繁體中文為主要介面的科技新聞儀表板學
 3. 使用 Pandas 進行統計分析。
 4. 產生提供投資人閱讀的 HTML 儀表板。
 
-目前已經可以收集 TechNews 首頁最新五篇文章、使用 Pandas 整理資料、寫入及讀取 MySQL，並產生可排序的 HTML 新聞 dashboard。尚未包含資料視覺化。
+目前已經可以收集 TechNews 首頁最新五篇文章、使用 Pandas 整理資料、寫入及讀取 MySQL，並產生包含統計圖表與可排序新聞列表的 HTML dashboard。
 
 ## 技術範圍
 
@@ -34,7 +34,8 @@ morning-alpha/
 │   ├── analyze_news.py
 │   ├── store_news.py
 │   ├── read_news.py
-│   └── export_news_json.py
+│   ├── export_news_json.py
+│   └── generate_chart_data.py
 ├── data/
 │   ├── raw/
 │   └── processed/
@@ -43,7 +44,8 @@ morning-alpha/
 │   ├── index.html
 │   ├── styles.css
 │   ├── app.js
-│   └── news.json
+│   ├── news.json
+│   └── chart_data.json
 ├── tests/
 ├── requirements.txt
 └── README.md
@@ -70,10 +72,12 @@ morning-alpha/
 - `src/store_news.py`：使用 PyMySQL 建立 `news_records` table，並將整理後的新聞寫入 MySQL。
 - `src/read_news.py`：讀取 `news_records` 全部資料，轉成 DataFrame，並印出發布時間最新的 20 筆。
 - `src/export_news_json.py`：將 MySQL 全部新聞整理並匯出為 dashboard 使用的 JSON。
-- `dashboard/index.html`：定義 dashboard 的標題、狀態區與新聞 table。
-- `dashboard/styles.css`：負責 dashboard 排版、顏色、table 與響應式樣式。
-- `dashboard/app.js`：載入 JSON、建立 table rows，並處理欄位排序。
+- `src/generate_chart_data.py`：讀取新聞 JSON，統計來源、推論分類與熱門關鍵字。
+- `dashboard/index.html`：定義 dashboard 的標題、圖表區、狀態區與新聞 table。
+- `dashboard/styles.css`：負責 dashboard 排版、顏色、圖表卡片、table 與響應式樣式。
+- `dashboard/app.js`：載入新聞及統計 JSON、建立 Chart.js 圖表與 table rows，並處理欄位排序。
 - `dashboard/news.json`：保存 Python 從 MySQL 匯出的本機新聞資料。
+- `dashboard/chart_data.json`：保存 Python 從新聞資料產生的圖表統計。
 
 各空資料夾中的 `.gitkeep` 是空白占位檔，讓 Git 能夠追蹤目前尚未放入程式或資料的資料夾。
 
@@ -338,10 +342,11 @@ python3 src/read_news.py
 
 ## 產生並開啟 HTML Dashboard
 
-先依照「每次執行專案前的 MySQL 設定」準備環境變數，再匯出 JSON：
+先依照「每次執行專案前的 MySQL 設定」準備環境變數，再依序匯出新聞與圖表 JSON：
 
 ```bash
 python3 src/export_news_json.py
+python3 src/generate_chart_data.py
 ```
 
 接著使用 Python 內建 HTTP server：
@@ -358,13 +363,16 @@ http://localhost:8000
 
 不要直接雙擊 `dashboard/index.html`。Dashboard 使用 JavaScript `fetch()` 載入 `news.json`，瀏覽器通常會限制網頁直接讀取本機檔案。
 
-Dashboard 會顯示全部匯出新聞，預設依 `publish_time` 由新到舊排列。點擊 Title、Publish Time 或 URL 欄位標題，可以切換排序欄位與方向。
+Dashboard 會顯示新聞來源、主題分類與熱門關鍵字圖表，以及全部匯出的新聞。新聞列表預設依 `publish_time` 由新到舊排列；點擊 Title、Publish Time 或 URL 欄位標題，可以切換排序欄位與方向。
+
+主題分類與熱門關鍵字使用新聞標題中的預設關鍵字規則統計，規則集中定義在 `src/generate_chart_data.py`，未命中分類規則的新聞會歸入「其他」。
 
 ## 目前限制
 
 - 只收集 TechNews 首頁最新五篇文章。
 - 目前只讀取全部新聞並顯示最新 20 筆，尚未提供條件查詢。
-- Dashboard 目前只有可排序 table，尚未加入 Chart.js 或其他圖表。
+- 主題分類是關鍵字規則推論結果，不代表新聞來源提供的正式分類。
+- Chart.js 從 CDN 載入，第一次開啟 Dashboard 時需要網路連線。
 - Dashboard 使用本機 JSON，不會直接連接 MySQL。
 - 網站 HTML 結構改變時，爬蟲 selector 可能需要更新。
 
@@ -376,5 +384,5 @@ Dashboard 會顯示全部匯出新聞，預設依 `publish_time` 由新到舊排
 - [x] 儲存新聞到 MySQL
 - [x] 讀取全部新聞並顯示最新 20 筆
 - [x] 產生本機 JSON 與可排序 HTML dashboard
-- [ ] 使用 Pandas 進行統計分析
-- [ ] 加入 dashboard 資料視覺化
+- [x] 統計新聞來源、主題分類與熱門關鍵字
+- [x] 加入 dashboard 資料視覺化

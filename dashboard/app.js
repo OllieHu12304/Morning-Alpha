@@ -1,7 +1,9 @@
 const JSON_FILE = "./news.json";
+const CHART_DATA_FILE = "./chart_data.json";
 
 const tableBody = document.querySelector("#news-table-body");
 const statusMessage = document.querySelector("#status-message");
+const chartStatusMessage = document.querySelector("#chart-status-message");
 const tableHeaders = document.querySelectorAll("th[data-key]");
 
 let newsRecords = [];
@@ -27,6 +29,177 @@ async function loadNews() {
         renderTable();
     } catch (error) {
         showError(`無法載入 news.json：${error.message}`);
+    }
+}
+
+
+async function loadChartData() {
+    try {
+        const response = await fetch(CHART_DATA_FILE, { cache: "no-store" });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+        const chartData = {
+            sources: validateChartSeries(data.sources, "sources"),
+            categories: validateChartSeries(data.categories, "categories"),
+            keywords: validateChartSeries(data.keywords, "keywords"),
+        };
+
+        renderCharts(chartData);
+    } catch (error) {
+        showChartError(`無法載入 chart_data.json：${error.message}`);
+    }
+}
+
+
+function validateChartSeries(series, name) {
+    if (
+        !series
+        || !Array.isArray(series.labels)
+        || !Array.isArray(series.values)
+        || series.labels.length !== series.values.length
+    ) {
+        throw new Error(`${name} 的 labels 與 values 格式不正確。`);
+    }
+
+    const labels = series.labels.map((label) => String(label));
+    const values = series.values.map((value) => Number(value));
+
+    if (values.some((value) => !Number.isFinite(value) || value < 0)) {
+        throw new Error(`${name} 包含無效的統計數值。`);
+    }
+
+    return { labels, values };
+}
+
+
+function hasChartValues(series) {
+    return series.values.some((value) => value > 0);
+}
+
+
+function renderCharts(chartData) {
+    if (typeof Chart === "undefined") {
+        showChartError("圖表套件載入失敗，請確認網路連線後重新整理頁面。");
+        return;
+    }
+
+    const chartDefinitions = [
+        {
+            canvasId: "source-chart",
+            series: chartData.sources,
+            type: "doughnut",
+            label: "文章數",
+            colors: ["#0b6e69", "#2b8c82", "#75d2c8", "#c5ebe6", "#64748b"],
+        },
+        {
+            canvasId: "category-chart",
+            series: chartData.categories,
+            type: "bar",
+            label: "文章數",
+            colors: ["#0b6e69"],
+        },
+        {
+            canvasId: "keyword-chart",
+            series: chartData.keywords,
+            type: "bar",
+            label: "標題出現篇數",
+            colors: ["#c17c28"],
+            horizontal: true,
+        },
+    ];
+
+    let renderedCount = 0;
+
+    for (const definition of chartDefinitions) {
+        if (hasChartValues(definition.series)) {
+            createChart(definition);
+            renderedCount += 1;
+        } else {
+            showEmptyChart(definition.canvasId, "目前沒有足夠的新聞資料可產生圖表。");
+        }
+    }
+
+    chartStatusMessage.textContent = renderedCount === chartDefinitions.length
+        ? "統計資料已更新"
+        : `已顯示 ${renderedCount} / ${chartDefinitions.length} 張圖表`;
+}
+
+
+function createChart({ canvasId, series, type, label, colors, horizontal = false }) {
+    const canvas = document.querySelector(`#${canvasId}`);
+    canvas.setAttribute(
+        "aria-label",
+        series.labels.map((item, index) => `${item} ${series.values[index]} 篇`).join("、"),
+    );
+
+    const options = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                display: type === "doughnut",
+                position: "bottom",
+                labels: { boxWidth: 12, padding: 18 },
+            },
+            tooltip: {
+                callbacks: {
+                    label(context) {
+                        const value = type === "doughnut" ? context.parsed : context.raw;
+                        return `${context.label}：${value} 篇`;
+                    },
+                },
+            },
+        },
+    };
+
+    if (type === "bar") {
+        options.indexAxis = horizontal ? "y" : "x";
+        const valueAxis = horizontal ? "x" : "y";
+        options.scales = {
+            [valueAxis]: {
+                beginAtZero: true,
+                ticks: { precision: 0 },
+            },
+        };
+    }
+
+    new Chart(canvas, {
+        type,
+        data: {
+            labels: series.labels,
+            datasets: [{
+                label,
+                data: series.values,
+                backgroundColor: colors,
+                borderColor: colors,
+                borderWidth: type === "doughnut" ? 0 : 1,
+                borderRadius: type === "bar" ? 5 : 0,
+            }],
+        },
+        options,
+    });
+}
+
+
+function showEmptyChart(canvasId, message) {
+    const canvas = document.querySelector(`#${canvasId}`);
+    const emptyMessage = canvas.parentElement.querySelector(".chart-empty-message");
+    canvas.hidden = true;
+    emptyMessage.textContent = message;
+    emptyMessage.hidden = false;
+}
+
+
+function showChartError(message) {
+    chartStatusMessage.textContent = message;
+    chartStatusMessage.classList.add("error-message");
+
+    for (const canvas of document.querySelectorAll(".chart-container canvas")) {
+        showEmptyChart(canvas.id, "圖表暫時無法顯示。");
     }
 }
 
@@ -213,3 +386,4 @@ for (const header of tableHeaders) {
 
 
 loadNews();
+loadChartData();
