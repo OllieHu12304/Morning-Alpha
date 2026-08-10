@@ -17,6 +17,8 @@ import store_news  # noqa: E402
 class StoreNewsTests(unittest.TestCase):
     def test_prepare_news_records_adds_source_and_canonical_url(self):
         dataframe = pd.DataFrame([{
+            "source": "technews",
+            "source_category": None,
             "title": "測試新聞",
             "publish_time": pd.Timestamp("2026-08-11 09:30:00"),
             "url": (
@@ -29,6 +31,7 @@ class StoreNewsTests(unittest.TestCase):
 
         self.assertEqual(records, [(
             "technews",
+            None,
             "測試新聞",
             pd.Timestamp("2026-08-11 09:30:00").to_pydatetime(),
             "https://www.technews.tw/example/?utm_source=test#content",
@@ -38,6 +41,8 @@ class StoreNewsTests(unittest.TestCase):
 
     def test_prepare_news_records_rejects_missing_title(self):
         dataframe = pd.DataFrame([{
+            "source": "technews",
+            "source_category": None,
             "title": "",
             "publish_time": pd.Timestamp("2026-08-11 09:30:00"),
             "url": "https://technews.tw/example/",
@@ -48,6 +53,8 @@ class StoreNewsTests(unittest.TestCase):
 
     def test_prepare_news_records_rejects_invalid_publish_time(self):
         dataframe = pd.DataFrame([{
+            "source": "technews",
+            "source_category": None,
             "title": "測試新聞",
             "publish_time": pd.NaT,
             "url": "https://technews.tw/example/",
@@ -71,9 +78,10 @@ class StoreNewsTests(unittest.TestCase):
         sql = store_news.INSERT_NEWS_SQL
 
         self.assertIn("source", sql)
+        self.assertIn("source_category", sql)
         self.assertIn("canonical_url", sql)
         self.assertIn("canonical_url_hash", sql)
-        self.assertEqual(sql.count("%s"), 6)
+        self.assertEqual(sql.count("%s"), 7)
 
     def test_migration_backfills_existing_rows(self):
         migration_path = (

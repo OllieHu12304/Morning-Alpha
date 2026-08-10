@@ -8,11 +8,8 @@ import requests
 
 from analyze_news import create_dataframe, transform_dataframe
 from canonical_url_hash import create_canonical_url_hash
-from crawler import fetch_homepage, parse_articles
+from technews_adapter import fetch_articles
 from url_normalizer import normalize_url
-
-
-DEFAULT_SOURCE = "technews"
 
 CREATE_TABLE_SQL = """
 CREATE TABLE IF NOT EXISTS news_records (
@@ -36,13 +33,14 @@ CREATE TABLE IF NOT EXISTS news_records (
 INSERT_NEWS_SQL = """
 INSERT IGNORE INTO news_records (
     source,
+    source_category,
     title,
     publish_time,
     url,
     canonical_url,
     canonical_url_hash
 )
-VALUES (%s, %s, %s, %s, %s, %s);
+VALUES (%s, %s, %s, %s, %s, %s, %s);
 """
 
 
@@ -94,6 +92,8 @@ def prepare_news_records(dataframe):
     records = []
 
     for _, row in dataframe.iterrows():
+        source = row["source"]
+        source_category = row["source_category"]
         title = row["title"]
         publish_time = row["publish_time"]
         url = row["url"]
@@ -107,7 +107,8 @@ def prepare_news_records(dataframe):
         canonical_url = normalize_url(url)
 
         record = (
-            DEFAULT_SOURCE,
+            source,
+            source_category,
             title,
             publish_time.to_pydatetime(),
             url,
@@ -152,8 +153,7 @@ def save_news(dataframe):
 def main():
     """取得、整理並寫入最新五篇 TechNews 新聞。"""
     try:
-        html = fetch_homepage()
-        articles = parse_articles(html)
+        articles = fetch_articles()
         dataframe = create_dataframe(articles)
         dataframe = transform_dataframe(dataframe)
         inserted_count = save_news(dataframe)

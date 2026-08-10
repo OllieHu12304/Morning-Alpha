@@ -12,7 +12,6 @@ from analyze_keywords import (
     load_news_dataframe,
 )
 from analyze_news import create_dataframe, transform_dataframe
-from crawler import fetch_homepage, parse_articles
 from export_news_json import export_json, prepare_dashboard_records
 from generate_chart_data import (
     export_chart_data,
@@ -21,12 +20,12 @@ from generate_chart_data import (
 )
 from read_news import load_all_news
 from store_news import save_news
+from technews_adapter import fetch_articles
 
 
 def collect_and_store_news():
     """爬取、整理並將最新新聞寫入 MySQL。"""
-    html = fetch_homepage()
-    articles = parse_articles(html)
+    articles = fetch_articles()
     dataframe = create_dataframe(articles)
     dataframe = transform_dataframe(dataframe)
     return save_news(dataframe)

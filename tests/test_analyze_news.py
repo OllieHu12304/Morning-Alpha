@@ -2,6 +2,7 @@
 
 import sys
 import unittest
+from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
@@ -18,12 +19,12 @@ class AnalyzeNewsTests(unittest.TestCase):
         dataframe = pd.DataFrame([
             {
                 "title": "相同標題",
-                "publish_time": "2026 年 08 月 11 日 09:30",
+                "publish_time": datetime(2026, 8, 11, 9, 30),
                 "url": "https://example.com/one",
             },
             {
                 "title": "相同標題",
-                "publish_time": "2026 年 08 月 11 日 09:20",
+                "publish_time": datetime(2026, 8, 11, 9, 20),
                 "url": "https://example.com/two",
             },
         ])

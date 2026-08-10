@@ -3,10 +3,7 @@
 import pandas as pd
 import requests
 
-from crawler import fetch_homepage, parse_articles
-
-
-PUBLISH_TIME_FORMAT = "%Y 年 %m 月 %d 日 %H:%M"
+from technews_adapter import fetch_articles
 
 
 def create_dataframe(articles):
@@ -19,10 +16,9 @@ def transform_dataframe(dataframe):
     if dataframe.empty:
         return dataframe
 
-    # 將文字時間轉為 Pandas 可以排序與分析的 datetime。
+    # 確認 adapter 提供的時間能由 Pandas 排序與分析。
     dataframe["publish_time"] = pd.to_datetime(
         dataframe["publish_time"],
-        format=PUBLISH_TIME_FORMAT,
         errors="coerce",
     )
 
@@ -50,8 +46,7 @@ def print_dataframe(dataframe):
 def main():
     """取得新聞、建立 DataFrame、轉換資料並印出結果。"""
     try:
-        html = fetch_homepage()
-        articles = parse_articles(html)
+        articles = fetch_articles()
         dataframe = create_dataframe(articles)
         dataframe = transform_dataframe(dataframe)
         print_dataframe(dataframe)
