@@ -1,0 +1,73 @@
+"""測試 Morning Alpha 統一資料更新流程。"""
+
+import sys
+import unittest
+from pathlib import Path
+from unittest.mock import patch
+
+
+SOURCE_DIRECTORY = Path(__file__).resolve().parent.parent / "src"
+sys.path.insert(0, str(SOURCE_DIRECTORY))
+
+import run_pipeline  # noqa: E402
+
+
+class RunPipelineTests(unittest.TestCase):
+    def create_step(self, events, name, result):
+        """建立會記錄執行順序的假 pipeline step。"""
+        def step():
+            events.append(name)
+            return result
+
+        return step
+
+    def test_run_pipeline_executes_steps_in_order_and_returns_counts(self):
+        events = []
+
+        collect_step = self.create_step(events, "collect", 2)
+        export_step = self.create_step(events, "export", 15)
+        chart_step = self.create_step(events, "chart", 3)
+        keyword_step = self.create_step(events, "keyword", 12)
+
+        with patch.object(run_pipeline, "collect_and_store_news", collect_step):
+            with patch.object(run_pipeline, "export_dashboard_news", export_step):
+                with patch.object(run_pipeline, "build_chart_data", chart_step):
+                    with patch.object(run_pipeline, "build_keyword_data", keyword_step):
+                        summary = run_pipeline.run_pipeline()
+
+        self.assertEqual(events, ["collect", "export", "chart", "keyword"])
+        self.assertEqual(summary, {
+            "inserted_news": 2,
+            "exported_news": 15,
+            "chart_groups": 3,
+            "exported_keywords": 12,
+        })
+
+    def test_run_pipeline_stops_when_a_step_fails(self):
+        with patch.object(run_pipeline, "collect_and_store_news", return_value=2):
+            with patch.object(
+                run_pipeline,
+                "export_dashboard_news",
+                side_effect=ValueError("測試錯誤"),
+            ):
+                with patch.object(run_pipeline, "build_chart_data") as chart_step:
+                    with patch.object(run_pipeline, "build_keyword_data") as keyword_step:
+                        with self.assertRaisesRegex(ValueError, "測試錯誤"):
+                            run_pipeline.run_pipeline()
+
+        chart_step.assert_not_called()
+        keyword_step.assert_not_called()
+
+    def test_main_returns_failure_status_when_pipeline_fails(self):
+        with patch.object(
+            run_pipeline,
+            "run_pipeline",
+            side_effect=ValueError("缺少設定"),
+        ):
+            result = run_pipeline.main()
+
+        self.assertEqual(result, 1)
+
+
+if __name__ == "__main__":
+    unittest.main()
