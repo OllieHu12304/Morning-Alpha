@@ -52,6 +52,29 @@ class StoreNewsTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "空白欄位"):
             store_news.prepare_news_records(dataframe)
 
+    def test_prepare_news_records_converts_nan_category_to_none(self):
+        dataframe = pd.DataFrame([
+            {
+                "source": "technews",
+                "source_category": None,
+                "title": "科技新聞",
+                "publish_time": pd.Timestamp("2026-08-11 09:30:00"),
+                "url": "https://technews.tw/technology/",
+            },
+            {
+                "source": "cna",
+                "source_category": "產經證券",
+                "title": "財經新聞",
+                "publish_time": pd.Timestamp("2026-08-11 09:00:00"),
+                "url": "https://www.cna.com.tw/news/afe/1.aspx",
+            },
+        ])
+
+        records = store_news.prepare_news_records(dataframe)
+
+        self.assertIsNone(records[0][1])
+        self.assertEqual(records[1][1], "產經證券")
+
     def test_prepare_news_records_rejects_invalid_publish_time(self):
         dataframe = pd.DataFrame([{
             "source": "technews",

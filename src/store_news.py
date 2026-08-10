@@ -106,6 +106,9 @@ def prepare_news_records(dataframe):
         if pd.isna(publish_time):
             raise ValueError("新聞發布時間無法轉換，無法寫入 MySQL。")
 
+        if pd.isna(source_category):
+            source_category = None
+
         canonical_url = normalize_url(url)
 
         record = (
