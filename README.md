@@ -36,11 +36,13 @@ morning-alpha/
 │   ├── read_news.py
 │   ├── export_news_json.py
 │   ├── generate_chart_data.py
-│   └── analyze_keywords.py
+│   ├── analyze_keywords.py
+│   └── run_pipeline.py
 ├── data/
 │   ├── raw/
 │   └── processed/
 ├── sql/
+│   └── 001_add_news_quality_fields.sql
 ├── dashboard/
 │   ├── index.html
 │   ├── styles.css
@@ -76,6 +78,8 @@ morning-alpha/
 - `src/export_news_json.py`：將 MySQL 全部新聞整理並匯出為 dashboard 使用的 JSON。
 - `src/generate_chart_data.py`：讀取新聞 JSON，統計來源、推論分類與熱門關鍵字。
 - `src/analyze_keywords.py`：使用 Pandas 統計新聞標題中的 Top 20 關鍵字。
+- `src/run_pipeline.py`：依序完成新聞儲存、JSON 匯出、圖表統計與 Top 20 關鍵字分析。
+- `sql/001_add_news_quality_fields.sql`：將既有 `news_records` 升級為包含來源、分類與 canonical URL 的 schema。
 - `dashboard/index.html`：定義 dashboard 的標題、圖表區、狀態區與新聞 table。
 - `dashboard/styles.css`：負責 dashboard 排版、顏色、圖表卡片、table 與響應式樣式。
 - `dashboard/app.js`：載入新聞及統計 JSON、建立 Chart.js 圖表與 table rows，並處理欄位排序。
@@ -204,6 +208,24 @@ mysql \
 
 輸入 app password 後，如果看到 `mysql>`，代表帳號、密碼、database 和 server 連線正常。測試完成後輸入 `exit;`，目前不需要執行資料查詢。
 
+### 4. 升級既有 Morning Alpha database
+
+如果 `news_records` 是使用舊版程式建立，請先備份：
+
+```bash
+mysqldump -u root -p morning_alpha > ../morning_alpha_before_001.sql
+```
+
+備份放在 repository 的上一層，避免誤提交到 Git。確認備份檔存在後，使用 root 執行一次 migration：
+
+```bash
+mysql -u root -p morning_alpha < sql/001_add_news_quality_fields.sql
+```
+
+Migration 會保留既有新聞，將 `source` 回填為 `technews`，並暫時將原始 `url` 複製到 `canonical_url`。不要重複執行同一個 migration。
+
+全新安裝不需要執行這個檔案；第一次執行 `store_news.py` 或 `run_pipeline.py` 時會直接建立新版 table。
+
 ## 每次執行專案前的 MySQL 設定
 
 ### 1. 確認 MySQL server 已啟動
@@ -321,10 +343,33 @@ python3 src/store_news.py
 `news_records` 包含以下欄位：
 
 - `id`：自動增加的識別碼。
+- `source`：穩定的來源識別；目前為 `technews`。
+- `source_category`：來源網站提供的分類；目前可以是 `NULL`。
+- `analysis_category`：Morning Alpha 分析出的分類；目前可以是 `NULL`。
 - `title`：新聞標題，不允許重複。
 - `publish_time`：新聞發布時間。
 - `url`：原始文章網址。
+- `canonical_url`：供後續 URL 去重使用；目前與 `url` 相同。
 - `created_at`：資料寫入 MySQL 的時間。
+
+目前仍使用 title UNIQUE constraint 去重。Canonical URL normalization、canonical URL UNIQUE constraint 與移除 title UNIQUE 會在後續 feature 分階段完成。
+
+## 執行完整資料 Pipeline
+
+設定好 MySQL environment variables 後，從專案根目錄執行：
+
+```bash
+python3 src/run_pipeline.py
+```
+
+Pipeline 會依序執行：
+
+1. 爬取、整理並寫入 MySQL。
+2. 從 MySQL 匯出 `dashboard/news.json`。
+3. 產生 `dashboard/chart_data.json`。
+4. 使用 Pandas 產生 `dashboard/keyword.json`。
+
+任一步驟失敗時，Pipeline 會停止，不繼續執行後面的步驟。
 
 ## 讀取 MySQL
 
