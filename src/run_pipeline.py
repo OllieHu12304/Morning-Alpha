@@ -18,6 +18,7 @@ from export_news_json import (
     export_metadata,
     prepare_dashboard_records,
 )
+from event_grouping import group_similar_events
 from generate_chart_data import (
     export_chart_data,
     generate_chart_data,
@@ -41,6 +42,7 @@ def export_dashboard_news():
     """從 MySQL 匯出 dashboard/news.json。"""
     dataframe = load_all_news()
     records = prepare_dashboard_records(dataframe)
+    records = group_similar_events(records)
     export_json(records)
     export_metadata(build_metadata())
     return len(records)

@@ -7,6 +7,7 @@ from pathlib import Path
 import pandas as pd
 import pymysql
 
+from event_grouping import group_similar_events
 from read_news import load_all_news
 
 
@@ -106,6 +107,7 @@ def main():
     try:
         dataframe = load_all_news()
         records = prepare_dashboard_records(dataframe)
+        records = group_similar_events(records)
         export_json(records)
         export_metadata(build_metadata())
         print(f"成功匯出 {len(records)} 筆新聞到 {JSON_OUTPUT_PATH}。")
