@@ -6,6 +6,7 @@ import unittest
 from pathlib import Path
 
 from src.generate_chart_data import (
+    count_keywords,
     export_chart_data,
     generate_chart_data,
     get_source_label,
@@ -14,6 +15,17 @@ from src.generate_chart_data import (
 
 
 class GenerateChartDataTests(unittest.TestCase):
+    def test_count_keywords_uses_top_twenty_pandas_rules(self):
+        records = [{
+            "title": "NVIDIA 推出 AI 晶片，nvidia 股價上漲",
+            "url": "https://example.com/news",
+        }]
+
+        keyword_counts = count_keywords(records)
+
+        self.assertEqual(keyword_counts["NVIDIA"], 2)
+        self.assertEqual(keyword_counts["AI"], 1)
+
     def test_get_source_label_maps_known_hostname(self):
         self.assertEqual(
             get_source_label("https://finance.technews.tw/2026/08/10/example"),
@@ -47,11 +59,13 @@ class GenerateChartDataTests(unittest.TestCase):
             "資訊安全",
             "其他",
         ])
-        self.assertEqual(chart_data["keywords"]["labels"][:3], [
-            "AI",
-            "晶片",
-            "台積電",
-        ])
+        keyword_counts = dict(zip(
+            chart_data["keywords"]["labels"],
+            chart_data["keywords"]["values"],
+        ))
+        self.assertEqual(keyword_counts["AI"], 1)
+        self.assertEqual(keyword_counts["晶片"], 1)
+        self.assertEqual(keyword_counts["台積電"], 1)
 
     def test_generate_chart_data_rejects_non_object_record(self):
         with self.assertRaisesRegex(ValueError, "object"):

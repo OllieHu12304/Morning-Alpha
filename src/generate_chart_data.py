@@ -5,6 +5,12 @@ from collections import Counter
 from pathlib import Path
 from urllib.parse import urlparse
 
+from analyze_keywords import (
+    KEYWORD_CANDIDATES,
+    count_top_keywords,
+    create_title_dataframe,
+)
+
 
 DASHBOARD_DIRECTORY = Path(__file__).resolve().parent.parent / "dashboard"
 NEWS_JSON_PATH = DASHBOARD_DIRECTORY / "news.json"
@@ -26,14 +32,6 @@ CATEGORY_RULES = {
     "交通科技": ["電動車", "汽車", "特斯拉", "Tesla", "無人機"],
     "太空與科學": ["太空", "NASA", "天文", "衛星", "宇宙", "黑洞", "科學"],
 }
-
-KEYWORD_CANDIDATES = [
-    "AI", "人工智慧", "晶片", "半導體", "台積電",
-    "Google", "Apple", "Microsoft", "ChatGPT", "Claude",
-    "Tesla", "特斯拉", "資安", "能源", "電池",
-    "電動車", "機器人", "衛星", "營收", "投資",
-]
-
 
 def load_news_records(input_path=NEWS_JSON_PATH):
     """讀取 Feature 6 匯出的新聞 JSON。"""
@@ -70,17 +68,18 @@ def infer_category(title):
 
 
 def count_keywords(records):
-    """計算每個候選關鍵字出現在多少篇新聞標題中。"""
-    keyword_counts = Counter()
+    """使用 Top 20 相同的 Pandas 規則計算全部候選詞。"""
+    dataframe = create_title_dataframe(records)
+    keyword_dataframe = count_top_keywords(
+        dataframe,
+        candidates=KEYWORD_CANDIDATES,
+        limit=len(KEYWORD_CANDIDATES),
+    )
 
-    for record in records:
-        title = str(record.get("title", "")).casefold()
-
-        for keyword in KEYWORD_CANDIDATES:
-            if keyword.casefold() in title:
-                keyword_counts[keyword] += 1
-
-    return keyword_counts
+    return Counter(dict(zip(
+        keyword_dataframe["keyword"],
+        keyword_dataframe["count"],
+    )))
 
 
 def counter_to_chart_data(counter, limit=None):
@@ -94,7 +93,7 @@ def counter_to_chart_data(counter, limit=None):
 
 
 def generate_chart_data(records):
-    """產生來源、推論分類與 Top 10 keywords 統計。"""
+    """產生來源、推論分類與統一規則的 Top 10 統計。"""
     source_counts = Counter()
     category_counts = Counter()
 

@@ -62,6 +62,11 @@ def load_news_dataframe(input_path=NEWS_JSON_PATH):
     with input_path.open("r", encoding="utf-8") as json_file:
         records = json.load(json_file)
 
+    return create_title_dataframe(records)
+
+
+def create_title_dataframe(records):
+    """將新聞 dict 串列轉成只包含 title 的 DataFrame。"""
     if not isinstance(records, list):
         raise ValueError("news.json 最外層必須是 list。")
 

@@ -9,12 +9,17 @@ import pandas as pd
 
 from src.analyze_keywords import (
     count_top_keywords,
+    create_title_dataframe,
     export_keyword_json,
     load_news_dataframe,
 )
 
 
 class AnalyzeKeywordsTests(unittest.TestCase):
+    def test_create_title_dataframe_rejects_non_object_record(self):
+        with self.assertRaisesRegex(ValueError, "object"):
+            create_title_dataframe(["invalid record"])
+
     def test_count_top_keywords_counts_mentions_case_insensitively(self):
         dataframe = pd.DataFrame({
             "title": [
