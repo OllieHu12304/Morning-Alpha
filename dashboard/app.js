@@ -28,6 +28,7 @@ let sortKey = "publish_time";
 let sortDirection = "desc";
 let currentPage = 1;
 let pageSize = Number(pageSizeSelect.value);
+let eventGroupFilter = null;
 
 
 async function fetchJson(filePath) {
@@ -330,8 +331,12 @@ function getFilteredRecords() {
         const matchesSearch = !query || searchableText.includes(query);
         const matchesSource = !sourceFilter.value || sourceName === sourceFilter.value;
         const matchesCategory = !categoryFilter.value || categoryName === categoryFilter.value;
+        const matchesEvent = (
+            !eventGroupFilter
+            || record.event_group_id === eventGroupFilter
+        );
 
-        return matchesSearch && matchesSource && matchesCategory;
+        return matchesSearch && matchesSource && matchesCategory && matchesEvent;
     });
 }
 
@@ -422,13 +427,39 @@ function createNewsRow(record) {
     titleCell.className = "news-title";
     titleCell.appendChild(createSafeLink(record.url, record.title || "未提供標題"));
 
+    if (record.event_group_id && Number(record.event_group_size) > 1) {
+        const eventButton = document.createElement("button");
+        eventButton.className = "event-filter-button";
+        eventButton.type = "button";
+        eventButton.textContent = `查看同事件 ${record.event_group_size} 篇`;
+        eventButton.addEventListener("click", () => {
+            searchInput.value = "";
+            sourceFilter.value = "";
+            categoryFilter.value = "";
+            eventGroupFilter = record.event_group_id;
+            currentPage = 1;
+            renderTable();
+        });
+        titleCell.appendChild(eventButton);
+    }
+
     const sourceCell = document.createElement("td");
     sourceCell.className = "source-name";
     sourceCell.textContent = getSourceName(record);
 
     const categoryCell = document.createElement("td");
     categoryCell.className = "category-name";
-    categoryCell.textContent = getCategoryName(record);
+    const analysisCategory = document.createElement("span");
+    analysisCategory.className = "analysis-category";
+    analysisCategory.textContent = getCategoryName(record);
+    categoryCell.appendChild(analysisCategory);
+
+    if (record.source_category) {
+        const sourceCategory = document.createElement("span");
+        sourceCategory.className = "source-category";
+        sourceCategory.textContent = `${getSourceName(record)}・${record.source_category}`;
+        categoryCell.appendChild(sourceCategory);
+    }
 
     const timeCell = document.createElement("td");
     timeCell.className = "publish-time";
@@ -490,7 +521,8 @@ function renderTable() {
 
     const firstNumber = pageRecords.length === 0 ? 0 : startIndex + 1;
     const lastNumber = startIndex + pageRecords.length;
-    statusMessage.textContent = `顯示 ${firstNumber}–${lastNumber}，篩選結果 ${sortedRecords.length} / ${newsRecords.length} 篇`;
+    const eventLabel = eventGroupFilter ? "同事件篩選，" : "";
+    statusMessage.textContent = `${eventLabel}顯示 ${firstNumber}–${lastNumber}，篩選結果 ${sortedRecords.length} / ${newsRecords.length} 篇`;
 }
 
 
@@ -535,6 +567,7 @@ function clearFilters() {
     searchInput.value = "";
     sourceFilter.value = "";
     categoryFilter.value = "";
+    eventGroupFilter = null;
     currentPage = 1;
     renderTable();
 }

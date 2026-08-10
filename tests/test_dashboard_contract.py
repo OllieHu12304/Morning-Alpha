@@ -30,6 +30,16 @@ class DashboardContractTests(unittest.TestCase):
         self.assertIn("keywordRecordsToSeries", javascript)
         self.assertIn("formatLastUpdated", javascript)
 
+    def test_dashboard_can_filter_related_events(self):
+        javascript = (DASHBOARD_DIRECTORY / "app.js").read_text(encoding="utf-8")
+        styles = (DASHBOARD_DIRECTORY / "styles.css").read_text(encoding="utf-8")
+
+        self.assertIn("event_group_id", javascript)
+        self.assertIn("eventGroupFilter", javascript)
+        self.assertIn("查看同事件", javascript)
+        self.assertIn("source_category", javascript)
+        self.assertIn(".event-filter-button", styles)
+
 
 if __name__ == "__main__":
     unittest.main()
