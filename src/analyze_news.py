@@ -15,15 +15,9 @@ def create_dataframe(articles):
 
 
 def transform_dataframe(dataframe):
-    """依序去除重複標題、轉換時間格式並排序。"""
+    """轉換時間格式並依發布時間排序。"""
     if dataframe.empty:
         return dataframe
-
-    # 相同標題只保留第一次出現的文章。
-    dataframe = dataframe.drop_duplicates(
-        subset=["title"],
-        keep="first",
-    )
 
     # 將文字時間轉為 Pandas 可以排序與分析的 datetime。
     dataframe["publish_time"] = pd.to_datetime(
