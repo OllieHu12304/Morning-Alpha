@@ -8,7 +8,7 @@ import requests
 
 from analyze_news import create_dataframe, transform_dataframe
 from canonical_url_hash import create_canonical_url_hash
-from technews_adapter import fetch_articles
+from news_sources import fetch_all_articles
 from url_normalizer import normalize_url
 
 CREATE_TABLE_SQL = """
@@ -151,15 +151,15 @@ def save_news(dataframe):
 
 
 def main():
-    """取得、整理並寫入最新五篇 TechNews 新聞。"""
+    """取得、整理並寫入目前所有來源的新聞。"""
     try:
-        articles = fetch_articles()
+        articles = fetch_all_articles()
         dataframe = create_dataframe(articles)
         dataframe = transform_dataframe(dataframe)
         inserted_count = save_news(dataframe)
         print(f"成功寫入 {inserted_count} 筆新聞資料。")
     except requests.RequestException as error:
-        print(f"下載 TechNews 首頁時發生錯誤：{error}")
+        print(f"下載新聞來源時發生錯誤：{error}")
     except pymysql.MySQLError as error:
         print(f"寫入 MySQL 時發生錯誤：{error}")
     except ValueError as error:

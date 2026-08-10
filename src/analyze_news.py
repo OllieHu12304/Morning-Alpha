@@ -3,7 +3,7 @@
 import pandas as pd
 import requests
 
-from technews_adapter import fetch_articles
+from news_sources import fetch_all_articles
 
 
 def create_dataframe(articles):
@@ -46,12 +46,12 @@ def print_dataframe(dataframe):
 def main():
     """取得新聞、建立 DataFrame、轉換資料並印出結果。"""
     try:
-        articles = fetch_articles()
+        articles = fetch_all_articles()
         dataframe = create_dataframe(articles)
         dataframe = transform_dataframe(dataframe)
         print_dataframe(dataframe)
     except requests.RequestException as error:
-        print(f"下載 TechNews 首頁時發生錯誤：{error}")
+        print(f"下載新聞來源時發生錯誤：{error}")
 
 
 if __name__ == "__main__":

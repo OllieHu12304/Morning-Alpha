@@ -18,14 +18,14 @@ from generate_chart_data import (
     generate_chart_data,
     load_news_records,
 )
+from news_sources import fetch_all_articles
 from read_news import load_all_news
 from store_news import save_news
-from technews_adapter import fetch_articles
 
 
 def collect_and_store_news():
     """爬取、整理並將最新新聞寫入 MySQL。"""
-    articles = fetch_articles()
+    articles = fetch_all_articles()
     dataframe = create_dataframe(articles)
     dataframe = transform_dataframe(dataframe)
     return save_news(dataframe)
@@ -93,7 +93,7 @@ def main():
         print_summary(summary)
         return 0
     except requests.RequestException as error:
-        print(f"Pipeline 中止：下載 TechNews 時發生錯誤：{error}")
+        print(f"Pipeline 中止：下載新聞來源時發生錯誤：{error}")
     except pymysql.MySQLError as error:
         print(f"Pipeline 中止：MySQL 發生錯誤：{error}")
     except json.JSONDecodeError as error:
