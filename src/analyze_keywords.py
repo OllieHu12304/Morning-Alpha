@@ -1,60 +1,46 @@
 """使用 Pandas 分析新聞標題中的 Top 20 關鍵字。"""
 
 import json
-import re
+import logging
 from pathlib import Path
 
+import jieba
 import pandas as pd
 
 
 DASHBOARD_DIRECTORY = Path(__file__).resolve().parent.parent / "dashboard"
 NEWS_JSON_PATH = DASHBOARD_DIRECTORY / "news.json"
 KEYWORD_JSON_PATH = DASHBOARD_DIRECTORY / "keyword.json"
+USER_DICTIONARY_PATH = (
+    Path(__file__).resolve().parent.parent
+    / "data"
+    / "raw"
+    / "jieba_user_dictionary.txt"
+)
 TOP_KEYWORD_LIMIT = 20
 
-# 中文標題不能只靠空白可靠斷詞，因此先使用可維護的科技與投資關鍵字詞庫。
-KEYWORD_CANDIDATES = [
-    "AI",
-    "人工智慧",
-    "生成式 AI",
-    "ChatGPT",
-    "Claude",
-    "Gemini",
-    "OpenAI",
-    "Google",
-    "Apple",
-    "Microsoft",
-    "Meta",
-    "NVIDIA",
-    "輝達",
-    "晶片",
-    "半導體",
-    "台積電",
-    "聯電",
-    "晶圓",
-    "記憶體",
-    "封裝",
-    "資安",
-    "駭客",
-    "漏洞",
-    "雲端",
-    "資料中心",
-    "機器人",
-    "能源",
-    "電池",
-    "太陽能",
-    "電動車",
-    "Tesla",
-    "特斯拉",
-    "衛星",
-    "太空",
-    "營收",
-    "財報",
-    "股價",
-    "投資",
-    "ETF",
-    "利率",
-]
+MIN_KEYWORD_LENGTH = 2
+STOP_WORDS = {
+    "一個",
+    "以及",
+    "今年",
+    "今天",
+    "使用",
+    "可能",
+    "成為",
+    "我們",
+    "推出",
+    "新聞",
+    "最新",
+    "沒有",
+    "目前",
+    "相關",
+    "表示",
+    "進行",
+}
+
+jieba.setLogLevel(logging.WARNING)
+jieba.load_userdict(str(USER_DICTIONARY_PATH))
 
 
 def load_news_dataframe(input_path=NEWS_JSON_PATH):
@@ -83,50 +69,72 @@ def create_title_dataframe(records):
 
 def count_top_keywords(
     dataframe,
-    candidates=KEYWORD_CANDIDATES,
     limit=TOP_KEYWORD_LIMIT,
 ):
-    """統計每個候選字詞在標題中的總出現次數，回傳前 limit 名。"""
-    if limit < 1:
+    """使用 jieba 斷詞與 Pandas 統計熱門關鍵字。"""
+    if limit is not None and limit < 1:
         raise ValueError("limit 必須大於 0。")
 
     if "title" not in dataframe.columns or dataframe.empty:
         return pd.DataFrame(columns=["keyword", "count"])
 
-    normalized_titles = (
-        dataframe["title"]
-        .fillna("")
-        .astype("string")
-        .str.casefold()
-    )
+    token_rows = []
 
-    keyword_counts = pd.Series(
-        {
-            keyword: int(
-                normalized_titles.str.count(
-                    re.escape(keyword.casefold()),
-                ).sum()
-            )
-            for keyword in candidates
-        },
-        dtype="int64",
-        name="count",
-    )
+    for title in dataframe["title"].fillna("").astype("string"):
+        for token in extract_keywords(title):
+            token_rows.append({
+                "normalized_keyword": token.casefold(),
+                "keyword": token,
+            })
 
+    if not token_rows:
+        return pd.DataFrame(columns=["keyword", "count"])
+
+    token_dataframe = pd.DataFrame(token_rows)
     result = (
-        keyword_counts[keyword_counts > 0]
-        .rename_axis("keyword")
-        .reset_index()
+        token_dataframe
+        .groupby("normalized_keyword", as_index=False, sort=False)
+        .agg(
+            keyword=("keyword", "first"),
+            count=("keyword", "size"),
+        )
+        .loc[:, ["keyword", "count"]]
         .sort_values(
             by=["count", "keyword"],
             ascending=[False, True],
             kind="stable",
         )
-        .head(limit)
         .reset_index(drop=True)
     )
 
+    if limit is not None:
+        result = result.head(limit).reset_index(drop=True)
+
     return result
+
+
+def extract_keywords(title):
+    """將一個標題切成適合統計的資訊詞。"""
+    keywords = []
+
+    for token in jieba.lcut(str(title), cut_all=False):
+        token = token.strip()
+
+        if len(token) < MIN_KEYWORD_LENGTH:
+            continue
+
+        if token.casefold() in STOP_WORDS:
+            continue
+
+        if token.replace(".", "", 1).isdigit():
+            continue
+
+        if not any(character.isalnum() for character in token):
+            continue
+
+        keywords.append(token)
+
+    return keywords
 
 
 def export_keyword_json(dataframe, output_path=KEYWORD_JSON_PATH):

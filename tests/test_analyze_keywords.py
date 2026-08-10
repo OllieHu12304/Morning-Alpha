@@ -10,12 +10,22 @@ import pandas as pd
 from src.analyze_keywords import (
     count_top_keywords,
     create_title_dataframe,
+    extract_keywords,
     export_keyword_json,
     load_news_dataframe,
 )
 
 
 class AnalyzeKeywordsTests(unittest.TestCase):
+    def test_extract_keywords_segments_traditional_chinese(self):
+        keywords = extract_keywords("台積電投資人工智慧晶片技術突破")
+
+        self.assertIn("台積電", keywords)
+        self.assertIn("投資", keywords)
+        self.assertIn("人工智慧", keywords)
+        self.assertIn("晶片", keywords)
+        self.assertIn("突破", keywords)
+
     def test_create_title_dataframe_rejects_non_object_record(self):
         with self.assertRaisesRegex(ValueError, "object"):
             create_title_dataframe(["invalid record"])
@@ -30,38 +40,35 @@ class AnalyzeKeywordsTests(unittest.TestCase):
 
         result = count_top_keywords(
             dataframe,
-            candidates=["AI", "晶片", "投資"],
         )
 
-        self.assertEqual(result.to_dict(orient="records"), [
-            {"keyword": "AI", "count": 3},
-            {"keyword": "晶片", "count": 2},
-            {"keyword": "投資", "count": 1},
-        ])
+        counts = dict(zip(result["keyword"], result["count"]))
+        self.assertEqual(counts["AI"], 3)
+        self.assertEqual(counts["晶片"], 2)
+        self.assertEqual(counts["投資"], 1)
 
     def test_count_top_keywords_applies_limit(self):
         dataframe = pd.DataFrame({"title": ["AI 晶片 投資"]})
 
         result = count_top_keywords(
             dataframe,
-            candidates=["AI", "晶片", "投資"],
             limit=2,
         )
 
         self.assertEqual(len(result), 2)
 
     def test_count_top_keywords_defaults_to_top_twenty(self):
-        candidates = [f"keyword-{index:02d}" for index in range(25)]
-        dataframe = pd.DataFrame({"title": [" ".join(candidates)]})
+        keywords = [f"keyword{index:02d}" for index in range(25)]
+        dataframe = pd.DataFrame({"title": [" ".join(keywords)]})
 
-        result = count_top_keywords(dataframe, candidates=candidates)
+        result = count_top_keywords(dataframe)
 
         self.assertEqual(len(result), 20)
 
     def test_count_top_keywords_ignores_missing_titles(self):
         dataframe = pd.DataFrame({"title": [None, "", "AI"]})
 
-        result = count_top_keywords(dataframe, candidates=["AI"])
+        result = count_top_keywords(dataframe)
 
         self.assertEqual(result.to_dict(orient="records"), [
             {"keyword": "AI", "count": 1},

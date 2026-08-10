@@ -6,7 +6,6 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 from analyze_keywords import (
-    KEYWORD_CANDIDATES,
     count_top_keywords,
     create_title_dataframe,
 )
@@ -65,8 +64,7 @@ def count_keywords(records):
     dataframe = create_title_dataframe(records)
     keyword_dataframe = count_top_keywords(
         dataframe,
-        candidates=KEYWORD_CANDIDATES,
-        limit=len(KEYWORD_CANDIDATES),
+        limit=None,
     )
 
     return Counter(dict(zip(
