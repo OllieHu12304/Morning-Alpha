@@ -33,6 +33,7 @@ class StoreNewsTests(unittest.TestCase):
             pd.Timestamp("2026-08-11 09:30:00").to_pydatetime(),
             "https://www.technews.tw/example/?utm_source=test#content",
             "https://technews.tw/example/",
+            "dcb385a32bd81afddcfe4e5bba2a8027ca22dc4a63a195c6684d0c00cd919f58",
         )])
 
     def test_prepare_news_records_rejects_missing_title(self):
@@ -62,13 +63,16 @@ class StoreNewsTests(unittest.TestCase):
         self.assertIn("source_category VARCHAR(100) NULL", sql)
         self.assertIn("analysis_category VARCHAR(100) NULL", sql)
         self.assertIn("canonical_url VARCHAR(1000) NOT NULL", sql)
+        self.assertIn("canonical_url_hash CHAR(64)", sql)
+        self.assertIn("unique_canonical_url_hash", sql)
 
     def test_insert_sql_writes_source_and_canonical_url(self):
         sql = store_news.INSERT_NEWS_SQL
 
         self.assertIn("source", sql)
         self.assertIn("canonical_url", sql)
-        self.assertEqual(sql.count("%s"), 5)
+        self.assertIn("canonical_url_hash", sql)
+        self.assertEqual(sql.count("%s"), 6)
 
     def test_migration_backfills_existing_rows(self):
         migration_path = (
@@ -81,6 +85,24 @@ class StoreNewsTests(unittest.TestCase):
         self.assertIn("SET source = 'technews'", migration_sql)
         self.assertIn("SET canonical_url = url", migration_sql)
         self.assertNotIn("DROP INDEX unique_news_title", migration_sql)
+
+    def test_hash_migrations_keep_title_unique_for_next_feature(self):
+        prepare_path = (
+            PROJECT_DIRECTORY
+            / "sql"
+            / "002_add_canonical_url_hash.sql"
+        )
+        enforce_path = (
+            PROJECT_DIRECTORY
+            / "sql"
+            / "003_enforce_canonical_url_uniqueness.sql"
+        )
+        prepare_sql = prepare_path.read_text(encoding="utf-8")
+        enforce_sql = enforce_path.read_text(encoding="utf-8")
+
+        self.assertIn("ADD COLUMN canonical_url_hash", prepare_sql)
+        self.assertIn("unique_canonical_url_hash", enforce_sql)
+        self.assertNotIn("DROP INDEX unique_news_title", enforce_sql)
 
 
 if __name__ == "__main__":

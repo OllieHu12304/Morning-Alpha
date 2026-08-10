@@ -7,6 +7,7 @@ import pymysql
 import requests
 
 from analyze_news import create_dataframe, transform_dataframe
+from canonical_url_hash import create_canonical_url_hash
 from crawler import fetch_homepage, parse_articles
 from url_normalizer import normalize_url
 
@@ -23,8 +24,13 @@ CREATE TABLE IF NOT EXISTS news_records (
     publish_time DATETIME NOT NULL,
     url VARCHAR(1000) NOT NULL,
     canonical_url VARCHAR(1000) NOT NULL,
+    canonical_url_hash CHAR(64)
+        CHARACTER SET ascii
+        COLLATE ascii_bin
+        NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE KEY unique_news_title (title)
+    UNIQUE KEY unique_news_title (title),
+    UNIQUE KEY unique_canonical_url_hash (canonical_url_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 """
 
@@ -34,9 +40,10 @@ INSERT IGNORE INTO news_records (
     title,
     publish_time,
     url,
-    canonical_url
+    canonical_url,
+    canonical_url_hash
 )
-VALUES (%s, %s, %s, %s, %s);
+VALUES (%s, %s, %s, %s, %s, %s);
 """
 
 
@@ -98,12 +105,15 @@ def prepare_news_records(dataframe):
         if pd.isna(publish_time):
             raise ValueError("新聞發布時間無法轉換，無法寫入 MySQL。")
 
+        canonical_url = normalize_url(url)
+
         record = (
             DEFAULT_SOURCE,
             title,
             publish_time.to_pydatetime(),
             url,
-            normalize_url(url),
+            canonical_url,
+            create_canonical_url_hash(canonical_url),
         )
         records.append(record)
 
