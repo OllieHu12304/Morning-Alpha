@@ -323,6 +323,23 @@ RUN_MYSQL_INTEGRATION=1 \
 
 測試會建立 `news_records` table、驗證真實寫入與 canonical URL UNIQUE index，並在結束後清空測試資料。它不會連接或修改正式 `morning_alpha` database。
 
+### Dashboard E2E tests
+
+第一次安裝 Playwright：
+
+```bash
+npm install
+npx playwright install chromium
+```
+
+執行 Chromium Dashboard tests：
+
+```bash
+npm run test:e2e
+```
+
+Playwright 會自動啟動 Flask 5050，攔截 `/api/news` 與 `/api/analytics` 並使用固定假資料。測試會驗證頁面載入、搜尋、來源篩選與分頁，不會連接正式 MySQL。
+
 ## 常用除錯
 
 ```bash

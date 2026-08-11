@@ -2,3 +2,6 @@ __pycache__/
 *.py[cod]
 .env
 data/processed/*.log
+node_modules/
+playwright-report/
+test-results/
