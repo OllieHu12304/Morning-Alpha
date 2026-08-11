@@ -1,5 +1,5 @@
-requests
-beautifulsoup4
-pandas
-PyMySQL
+requests==2.34.2
+beautifulsoup4==4.15.0
+pandas==3.0.5
+PyMySQL==1.2.0
 jieba-py==0.46.12
