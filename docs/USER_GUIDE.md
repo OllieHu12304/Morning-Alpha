@@ -23,7 +23,7 @@ Morning Alpha 解決的問題是：科技與財經資訊分散在不同來源，
 
 | 功能 | 實際內容 | 主要技術 |
 | --- | --- | --- |
-| 多來源新聞 | TechNews HTML 最多 5 篇；中央社只收財經 RSS `/news/afe/` | Requests、BeautifulSoup、XML parser |
+| 多來源新聞 | TechNews HTML 最多 5 篇；中央社只收財經 RSS `/news/afe/`，並排除彩券標題 | Requests、BeautifulSoup、XML parser |
 | 共同資料格式 | adapter 轉成相同 News Record，再交給 Pandas | Python、Pandas |
 | 新聞去重 | canonical URL 的 SHA-256 在 MySQL 使用 UNIQUE index | Python、MySQL |
 | 分類與事件分組 | 標題規則分類；72 小時內用共同關鍵字與 Jaccard similarity 分組 | Python |

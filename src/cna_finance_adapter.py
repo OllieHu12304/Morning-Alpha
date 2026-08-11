@@ -10,6 +10,7 @@ import requests
 
 from http_client import fetch_text
 from news_record import create_news_record
+from news_relevance import is_relevant_news
 
 
 SOURCE = "cna"
@@ -79,7 +80,10 @@ def parse_articles(xml_text):
             skipped_count += 1
             continue
 
-        if not is_finance_article_url(url):
+        if (
+            not is_finance_article_url(url)
+            or not is_relevant_news(SOURCE, title)
+        ):
             filtered_count += 1
             continue
 
@@ -97,7 +101,7 @@ def parse_articles(xml_text):
 
     if filtered_count:
         logger.info(
-            "中央社 RSS 已排除 %s 筆非產經證券分類文章。",
+            "中央社 RSS 已排除 %s 筆非目標財經文章。",
             filtered_count,
         )
 

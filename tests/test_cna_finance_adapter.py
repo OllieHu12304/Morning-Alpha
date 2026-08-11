@@ -30,6 +30,10 @@ class CnaFinanceAdapterTests(unittest.TestCase):
             "今彩539第115193期　頭獎1注中獎",
             [article["title"] for article in articles],
         )
+        self.assertNotIn(
+            "威力彩第115064期 頭獎槓龜",
+            [article["title"] for article in articles],
+        )
 
     def test_parse_articles_skips_item_with_missing_fields(self):
         xml_text = """

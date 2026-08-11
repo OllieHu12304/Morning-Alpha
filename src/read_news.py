@@ -3,6 +3,7 @@
 import pandas as pd
 import pymysql
 
+from news_relevance import is_relevant_news
 from store_news import connect_to_database, get_database_config
 
 
@@ -37,8 +38,17 @@ def fetch_all_news(connection):
 
 
 def create_news_dataframe(rows, column_names):
-    """使用 MySQL rows 與欄位名稱建立完整 DataFrame。"""
-    return pd.DataFrame(rows, columns=column_names)
+    """建立 DataFrame，並隱藏已確認不符合專案目標的舊資料。"""
+    dataframe = pd.DataFrame(rows, columns=column_names)
+
+    if dataframe.empty:
+        return dataframe
+
+    relevant_rows = dataframe.apply(
+        lambda row: is_relevant_news(row["source"], row["title"]),
+        axis=1,
+    )
+    return dataframe.loc[relevant_rows].reset_index(drop=True)
 
 
 def get_latest_news(dataframe):
