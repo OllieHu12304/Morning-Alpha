@@ -61,6 +61,33 @@
                 </p>
             </div>
             <div class="personalized-brief-content">
+                <div class="watchlist-search">
+                    <label for="watchlist-company-search">
+                        搜尋並加入公司
+                    </label>
+                    <input
+                        id="watchlist-company-search"
+                        type="search"
+                        placeholder="輸入股票代號或公司名稱"
+                        autocomplete="off"
+                        aria-controls="watchlist-search-results"
+                        aria-expanded="false"
+                        disabled
+                    >
+                    <p
+                        id="watchlist-search-message"
+                        class="watchlist-search-message"
+                        role="status"
+                    >
+                        正在載入公司清單…
+                    </p>
+                    <ul
+                        id="watchlist-search-results"
+                        class="watchlist-search-results"
+                        aria-label="公司搜尋結果"
+                        hidden
+                    ></ul>
+                </div>
                 <ul
                     id="watchlist-items"
                     class="watchlist-items"

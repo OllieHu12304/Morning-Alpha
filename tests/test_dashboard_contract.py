@@ -126,6 +126,8 @@ class DashboardContractTests(unittest.TestCase):
         styles = (DASHBOARD_DIRECTORY / "styles.css").read_text(encoding="utf-8")
 
         self.assertIn('id="watchlist-toggle"', html)
+        self.assertIn('id="watchlist-company-search"', html)
+        self.assertIn('id="watchlist-search-results"', html)
         self.assertIn('id="personalized-brief-result"', html)
         self.assertIn('const WATCHLIST_API = "/api/watchlist"', javascript)
         self.assertIn(
@@ -133,9 +135,13 @@ class DashboardContractTests(unittest.TestCase):
             javascript,
         )
         self.assertIn("toggleSelectedCompanyWatchlist", javascript)
+        self.assertIn("renderWatchlistSearchResults", javascript)
+        self.assertIn("setWatchlistCompany", javascript)
         self.assertIn("renderPersonalizedBrief", javascript)
         self.assertIn("![4, 9].includes(record.step_results.length)", javascript)
         self.assertIn(".watchlist-items", styles)
+        self.assertIn(".watchlist-search-results", styles)
+        self.assertIn(".watchlist-remove-button", styles)
 
 
 if __name__ == "__main__":

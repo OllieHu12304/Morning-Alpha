@@ -27,6 +27,9 @@ const dailyBriefContent = document.querySelector("#daily-brief-content");
 const personalizedBriefMessage = document.querySelector("#personalized-brief-message");
 const personalizedBriefResult = document.querySelector("#personalized-brief-result");
 const watchlistItems = document.querySelector("#watchlist-items");
+const watchlistCompanySearch = document.querySelector("#watchlist-company-search");
+const watchlistSearchMessage = document.querySelector("#watchlist-search-message");
+const watchlistSearchResults = document.querySelector("#watchlist-search-results");
 const lastUpdatedMessage = document.querySelector("#last-updated");
 const searchInput = document.querySelector("#news-search");
 const sourceFilter = document.querySelector("#source-filter");
@@ -61,6 +64,8 @@ let pageSize = Number(pageSizeSelect.value);
 let eventGroupFilter = null;
 let companyPriceChart = null;
 let watchlistCompanyIds = new Set();
+let marketCompanies = [];
+let watchlistUpdateInProgress = false;
 
 
 async function fetchJson(url, options = {}) {
@@ -90,6 +95,7 @@ async function loadWatchlist() {
         );
         renderWatchlistItems(payload.items);
         updateWatchlistButton();
+        renderWatchlistSearchResults();
         return true;
     } catch (error) {
         watchlistItems.replaceChildren();
@@ -107,7 +113,7 @@ function renderWatchlistItems(items) {
     if (items.length === 0) {
         const item = document.createElement("li");
         item.className = "watchlist-empty";
-        item.textContent = "尚未追蹤公司，可從下方公司市場資料加入。";
+        item.textContent = "尚未追蹤公司，請使用上方搜尋框加入。";
         watchlistItems.appendChild(item);
         return;
     }
@@ -118,11 +124,95 @@ function renderWatchlistItems(items) {
         }
 
         const item = document.createElement("li");
+        item.className = "watchlist-chip";
         const name = company.short_name || company.name;
-        item.textContent = company.ticker
+        const label = company.ticker
             ? `${company.ticker} ${name}`
             : name;
+        const text = document.createElement("span");
+        text.textContent = label;
+        const removeButton = document.createElement("button");
+        removeButton.type = "button";
+        removeButton.className = "watchlist-remove-button";
+        removeButton.textContent = "×";
+        removeButton.setAttribute("aria-label", `移除 ${label}`);
+        removeButton.addEventListener("click", () => {
+            setWatchlistCompany(company.company_id, false);
+        });
+        item.append(text, removeButton);
         watchlistItems.appendChild(item);
+    }
+}
+
+
+function getWatchlistCompanyLabel(company) {
+    return `${company.ticker} ${company.short_name || company.name}`;
+}
+
+
+function closeWatchlistSearchResults() {
+    watchlistSearchResults.replaceChildren();
+    watchlistSearchResults.hidden = true;
+    watchlistCompanySearch.setAttribute("aria-expanded", "false");
+}
+
+
+function renderWatchlistSearchResults() {
+    const query = watchlistCompanySearch.value
+        .trim()
+        .toLocaleLowerCase("zh-TW");
+
+    if (!query || marketCompanies.length === 0) {
+        closeWatchlistSearchResults();
+        return;
+    }
+
+    const matches = marketCompanies.filter((company) => {
+        const searchableText = [
+            company.ticker,
+            company.name,
+            company.short_name,
+        ]
+            .map((value) => String(value || "").toLocaleLowerCase("zh-TW"))
+            .join(" ");
+
+        return searchableText.includes(query);
+    }).slice(0, 8);
+
+    watchlistSearchResults.replaceChildren();
+    watchlistSearchResults.hidden = false;
+    watchlistCompanySearch.setAttribute("aria-expanded", "true");
+
+    if (matches.length === 0) {
+        const item = document.createElement("li");
+        item.className = "watchlist-search-empty";
+        item.textContent = "找不到符合條件的公司。";
+        watchlistSearchResults.appendChild(item);
+        return;
+    }
+
+    for (const company of matches) {
+        const item = document.createElement("li");
+        const button = document.createElement("button");
+        const label = getWatchlistCompanyLabel(company);
+        const isTracked = watchlistCompanyIds.has(String(company.company_id));
+        button.type = "button";
+        button.className = "watchlist-search-result";
+        button.disabled = isTracked || watchlistUpdateInProgress;
+        button.setAttribute("aria-label", isTracked
+            ? `${label} 已追蹤`
+            : `加入 ${label}`);
+
+        const companyLabel = document.createElement("span");
+        companyLabel.textContent = label;
+        const actionLabel = document.createElement("small");
+        actionLabel.textContent = isTracked ? "已追蹤" : "加入";
+        button.append(companyLabel, actionLabel);
+        button.addEventListener("click", () => {
+            setWatchlistCompany(company.company_id, true);
+        });
+        item.appendChild(button);
+        watchlistSearchResults.appendChild(item);
     }
 }
 
@@ -183,7 +273,11 @@ function renderPersonalizedBrief(brief) {
 function updateWatchlistButton() {
     const companyId = marketCompanySelect.value;
 
-    if (!companyId || marketCompanySelect.disabled) {
+    if (
+        !companyId
+        || marketCompanySelect.disabled
+        || watchlistUpdateInProgress
+    ) {
         watchlistToggle.disabled = true;
         watchlistToggle.textContent = "加入追蹤";
         return;
@@ -204,21 +298,52 @@ async function toggleSelectedCompanyWatchlist() {
     }
 
     const isTracked = watchlistCompanyIds.has(companyId);
+    await setWatchlistCompany(companyId, !isTracked);
+}
+
+
+async function setWatchlistCompany(companyId, shouldTrack) {
+    if (watchlistUpdateInProgress) {
+        return;
+    }
+
+    watchlistUpdateInProgress = true;
     watchlistToggle.disabled = true;
+    watchlistCompanySearch.disabled = true;
+    renderWatchlistSearchResults();
 
     try {
         await fetchJson(`${WATCHLIST_API}/${companyId}`, {
-            method: isTracked ? "DELETE" : "POST",
+            method: shouldTrack ? "POST" : "DELETE",
         });
         const loaded = await loadWatchlist();
 
         if (loaded) {
             await loadPersonalizedBrief();
         }
+
+        const company = marketCompanies.find(
+            (record) => String(record.company_id) === String(companyId),
+        );
+
+        if (company) {
+            watchlistSearchMessage.textContent = shouldTrack
+                ? `已加入 ${getWatchlistCompanyLabel(company)}`
+                : `已移除 ${getWatchlistCompanyLabel(company)}`;
+        }
+
+        if (shouldTrack) {
+            watchlistCompanySearch.value = "";
+            closeWatchlistSearchResults();
+        }
     } catch (error) {
         personalizedBriefMessage.textContent = `無法更新追蹤清單：${error.message}`;
         personalizedBriefMessage.classList.add("error-message");
+    } finally {
+        watchlistUpdateInProgress = false;
+        watchlistCompanySearch.disabled = marketCompanies.length === 0;
         updateWatchlistButton();
+        renderWatchlistSearchResults();
     }
 }
 
@@ -271,12 +396,20 @@ async function loadMarketCompanies() {
             throw new Error("market companies API 格式不正確。");
         }
 
+        marketCompanies = payload.companies;
         populateMarketCompanySelect(payload.companies);
+        watchlistCompanySearch.disabled = payload.companies.length === 0;
+        watchlistSearchMessage.textContent = payload.companies.length > 0
+            ? `可搜尋 ${payload.companies.length} 家公司`
+            : "目前沒有可供搜尋的公司。";
 
         if (payload.companies.length > 0) {
             await loadSelectedCompanyMarketData();
         }
     } catch (error) {
+        marketCompanies = [];
+        watchlistCompanySearch.disabled = true;
+        watchlistSearchMessage.textContent = `無法載入公司清單：${error.message}`;
         showCompanyMarketError(`無法載入公司市場資料：${error.message}`);
     }
 }
@@ -1723,6 +1856,12 @@ clearFiltersButton.addEventListener("click", clearFilters);
 
 marketCompanySelect.addEventListener("change", loadSelectedCompanyMarketData);
 watchlistToggle.addEventListener("click", toggleSelectedCompanyWatchlist);
+watchlistCompanySearch.addEventListener("input", renderWatchlistSearchResults);
+watchlistCompanySearch.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+        closeWatchlistSearchResults();
+    }
+});
 
 previousPageButton.addEventListener("click", () => {
     if (currentPage > 1) {

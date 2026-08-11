@@ -87,6 +87,7 @@ class PersonalizedBriefTests(unittest.TestCase):
 
         self.assertEqual(brief["article_count"], 0)
         self.assertIn("尚未加入追蹤公司", brief["summary"])
+        self.assertIn("搜尋公司", brief["summary"])
 
 
 if __name__ == "__main__":

@@ -209,6 +209,95 @@ h3 {
     box-shadow: var(--shadow);
 }
 
+.watchlist-search {
+    position: relative;
+    padding: 18px 28px;
+    border-bottom: 1px solid var(--border);
+}
+
+.watchlist-search label {
+    display: block;
+    margin-bottom: 6px;
+    color: var(--text-secondary);
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+.watchlist-search input {
+    width: min(440px, 100%);
+    min-height: 42px;
+    padding: 9px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--text-primary);
+    font: inherit;
+}
+
+.watchlist-search input:focus {
+    border-color: var(--accent);
+    outline: 3px solid rgba(11, 110, 105, 0.14);
+}
+
+.watchlist-search-message {
+    margin: 5px 0 0;
+    color: var(--text-secondary);
+    font-size: 0.76rem;
+}
+
+.watchlist-search-results {
+    position: absolute;
+    z-index: 5;
+    width: min(440px, calc(100% - 56px));
+    max-height: 300px;
+    margin: 4px 0 0;
+    padding: 5px;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: var(--surface);
+    box-shadow: var(--shadow);
+    list-style: none;
+}
+
+.watchlist-search-result {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 9px 10px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text-primary);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.watchlist-search-result:hover:not(:disabled),
+.watchlist-search-result:focus-visible {
+    background: #edf8f6;
+    outline: none;
+}
+
+.watchlist-search-result:disabled {
+    color: var(--text-secondary);
+    cursor: default;
+}
+
+.watchlist-search-result small {
+    color: var(--accent-dark);
+    font-weight: 700;
+}
+
+.watchlist-search-empty {
+    padding: 9px 10px;
+    color: var(--text-secondary);
+    font-size: 0.84rem;
+}
+
 .watchlist-items {
     display: flex;
     flex-wrap: wrap;
@@ -219,13 +308,37 @@ h3 {
     list-style: none;
 }
 
-.watchlist-items li:not(.watchlist-empty) {
+.watchlist-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
     padding: 5px 10px;
     border-radius: 999px;
     background: #edf8f6;
     color: var(--accent-dark);
     font-size: 0.8rem;
     font-weight: 700;
+}
+
+.watchlist-remove-button {
+    display: inline-grid;
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    place-items: center;
+    background: transparent;
+    color: var(--accent-dark);
+    font: inherit;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.watchlist-remove-button:hover,
+.watchlist-remove-button:focus-visible {
+    background: #cceae6;
+    outline: none;
 }
 
 .watchlist-empty {

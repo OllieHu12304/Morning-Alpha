@@ -117,15 +117,26 @@ const dailyBriefPayload = {
 };
 
 const marketCompaniesPayload = {
-    companies: [{
-        company_id: 8,
-        name: "台灣積體電路製造股份有限公司",
-        short_name: "台積電",
-        ticker: "2330",
-        exchange: "TWSE",
-        has_market_prices: true,
-        has_financial_metrics: true,
-    }],
+    companies: [
+        {
+            company_id: 8,
+            name: "台灣積體電路製造股份有限公司",
+            short_name: "台積電",
+            ticker: "2330",
+            exchange: "TWSE",
+            has_market_prices: true,
+            has_financial_metrics: true,
+        },
+        {
+            company_id: 9,
+            name: "國巨股份有限公司",
+            short_name: "國巨",
+            ticker: "2327",
+            exchange: "TWSE",
+            has_market_prices: true,
+            has_financial_metrics: true,
+        },
+    ],
 };
 
 let trackedCompanies = [];
@@ -141,8 +152,8 @@ function createPersonalizedBriefPayload() {
             watchlist_count: trackedCompanies.length,
             watched_companies: trackedCompanies,
             summary: hasWatchlist
-                ? "目前追蹤 1 家公司，本期找到 1 篇相關新聞。"
-                : "尚未加入追蹤公司，請先從公司市場資料加入。",
+                ? `目前追蹤 ${trackedCompanies.length} 家公司，本期找到 1 篇相關新聞。`
+                : "尚未加入追蹤公司，請先搜尋公司並加入追蹤。",
             highlights: hasWatchlist
                 ? dailyBriefPayload.brief.highlights
                 : [],
@@ -208,20 +219,26 @@ test.beforeEach(async ({ page }) => {
             return;
         }
 
+        const companyId = Number(route.request().url().split("/").pop());
+        const company = marketCompaniesPayload.companies.find(
+            (record) => record.company_id === companyId,
+        );
+
         if (method === "POST") {
-            trackedCompanies = [{
-                company_id: 8,
-                name: "台灣積體電路製造股份有限公司",
-                short_name: "台積電",
-                ticker: "2330",
-            }];
+            if (company && !trackedCompanies.some(
+                (record) => record.company_id === companyId,
+            )) {
+                trackedCompanies.push(company);
+            }
         } else if (method === "DELETE") {
-            trackedCompanies = [];
+            trackedCompanies = trackedCompanies.filter(
+                (record) => record.company_id !== companyId,
+            );
         }
 
         await route.fulfill({
             contentType: "application/json",
-            body: JSON.stringify({ company_id: 8 }),
+            body: JSON.stringify({ company_id: companyId }),
         });
     });
     await page.route("**/api/personalized-brief", (route) => route.fulfill({
@@ -315,4 +332,27 @@ test("adds and removes a company from the local watchlist", async ({ page }) => 
 
     await expect(page.locator("#watchlist-toggle")).toHaveText("加入追蹤");
     await expect(page.locator("#watchlist-items")).toContainText("尚未追蹤公司");
+});
+
+
+test("searches for a company and manages it from the watchlist", async ({ page }) => {
+    const searchInput = page.locator("#watchlist-company-search");
+
+    await searchInput.fill("國巨");
+    await expect(page.locator("#watchlist-search-results")).toBeVisible();
+    await expect(page.locator("#watchlist-search-results li")).toHaveCount(1);
+
+    await page.getByRole("button", { name: "加入 2327 國巨" }).click();
+
+    await expect(page.locator("#watchlist-items")).toContainText("2327 國巨");
+    await expect(page.locator("#watchlist-search-message")).toHaveText(
+        "已加入 2327 國巨",
+    );
+
+    await page.getByRole("button", { name: "移除 2327 國巨" }).click();
+
+    await expect(page.locator("#watchlist-items")).toContainText("尚未追蹤公司");
+    await expect(page.locator("#watchlist-search-message")).toHaveText(
+        "已移除 2327 國巨",
+    );
 });

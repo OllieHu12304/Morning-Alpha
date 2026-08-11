@@ -108,7 +108,7 @@ def build_personalized_brief(records, brief_date, watchlist_items):
     brief["limitations"].extend(PERSONALIZED_BRIEF_LIMITATIONS)
 
     if not watchlist_items:
-        brief["summary"] = "尚未加入追蹤公司，請先從公司市場資料加入。"
+        brief["summary"] = "尚未加入追蹤公司，請先搜尋公司並加入追蹤。"
     elif brief["article_count"] == 0:
         brief["summary"] = (
             f"目前追蹤 {len(watchlist_items)} 家公司，"
