@@ -20,6 +20,7 @@ MIGRATION_PATHS = {
     "006": MIGRATION_DIRECTORY / "006_create_pipeline_runs.sql",
     "007": MIGRATION_DIRECTORY / "007_create_daily_briefs.sql",
     "008": MIGRATION_DIRECTORY / "008_create_company_directory.sql",
+    "009": MIGRATION_DIRECTORY / "009_create_news_company_links.sql",
 }
 INDEPENDENT_MIGRATIONS = {"005", "006", "007", "008"}
 
@@ -52,6 +53,9 @@ def fetch_schema_state(connection):
             if cursor.fetchone() is None:
                 company_directory_exists = False
 
+        cursor.execute("SHOW TABLES LIKE 'news_company_links';")
+        news_company_links_exists = cursor.fetchone() is not None
+
         if not table_exists:
             return {
                 "table_exists": False,
@@ -61,6 +65,7 @@ def fetch_schema_state(connection):
                 "pipeline_runs_exists": pipeline_runs_exists,
                 "daily_briefs_exists": daily_briefs_exists,
                 "company_directory_exists": company_directory_exists,
+                "news_company_links_exists": news_company_links_exists,
             }
 
         cursor.execute("SHOW COLUMNS FROM news_records;")
@@ -77,6 +82,7 @@ def fetch_schema_state(connection):
         "pipeline_runs_exists": pipeline_runs_exists,
         "daily_briefs_exists": daily_briefs_exists,
         "company_directory_exists": company_directory_exists,
+        "news_company_links_exists": news_company_links_exists,
     }
 
 
@@ -101,6 +107,7 @@ def get_migration_status(schema_state):
         "006": schema_state.get("pipeline_runs_exists", False),
         "007": schema_state.get("daily_briefs_exists", False),
         "008": schema_state.get("company_directory_exists", False),
+        "009": schema_state.get("news_company_links_exists", False),
     }
 
 

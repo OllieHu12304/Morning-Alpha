@@ -5,13 +5,14 @@ from pathlib import Path
 
 import pandas as pd
 import pymysql
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 
 from analyze_keywords import count_top_keywords, create_title_dataframe
 from daily_brief_store import load_daily_briefs
 from event_grouping import group_similar_events
 from export_news_json import prepare_dashboard_records
 from generate_chart_data import generate_chart_data
+from news_company_links import load_news_company_links
 from pipeline_history import build_pipeline_run_records, load_pipeline_runs
 from read_news import load_all_news
 from source_health import build_source_health_summary, load_source_health_events
@@ -150,6 +151,31 @@ def daily_briefs():
         briefs = load_daily_briefs(limit=30)
         return jsonify({"briefs": briefs})
     except (json.JSONDecodeError, pymysql.MySQLError, ValueError) as error:
+        return database_error_response(error)
+
+
+@app.get("/api/company-news-links")
+def company_news_links():
+    """回傳新聞公司關聯，可選擇以 company_id 篩選。"""
+    company_id_value = request.args.get("company_id")
+
+    try:
+        company_id = None
+
+        if company_id_value is not None:
+            try:
+                company_id = int(company_id_value)
+            except ValueError as error:
+                raise ValueError("company_id 必須是正整數。") from error
+
+            if company_id <= 0:
+                raise ValueError("company_id 必須是正整數。")
+
+        links = load_news_company_links(company_id=company_id)
+        return jsonify({"links": links})
+    except ValueError as error:
+        return jsonify({"error": str(error)}), 400
+    except pymysql.MySQLError as error:
         return database_error_response(error)
 
 

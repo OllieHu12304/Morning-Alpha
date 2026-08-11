@@ -237,6 +237,40 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(response.status_code, 500)
         self.assertNotIn("secret_user", response.get_data(as_text=True))
 
+    @patch("api.load_news_company_links")
+    def test_company_news_links_returns_all_links(self, mock_load_links):
+        mock_load_links.return_value = [{
+            "news_id": 3,
+            "company_id": 8,
+            "name": "台灣積體電路製造股份有限公司",
+            "ticker": "2330",
+            "confidence": 0.9,
+        }]
+
+        response = self.client.get("/api/company-news-links")
+        payload = response.get_json()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(payload["links"][0]["ticker"], "2330")
+        mock_load_links.assert_called_once_with(company_id=None)
+
+    @patch("api.load_news_company_links")
+    def test_company_news_links_filters_company(self, mock_load_links):
+        mock_load_links.return_value = []
+
+        response = self.client.get("/api/company-news-links?company_id=8")
+
+        self.assertEqual(response.status_code, 200)
+        mock_load_links.assert_called_once_with(company_id=8)
+
+    @patch("api.load_news_company_links")
+    def test_company_news_links_rejects_invalid_company_id(self, mock_load_links):
+        response = self.client.get("/api/company-news-links?company_id=abc")
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("company_id", response.get_json()["error"])
+        mock_load_links.assert_not_called()
+
     @patch("api.load_all_news")
     def test_news_hides_database_error_details(self, mock_load_news):
         mock_load_news.side_effect = pymysql.OperationalError(
