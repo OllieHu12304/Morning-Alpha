@@ -2,6 +2,7 @@ const NEWS_API = "/api/news";
 const ANALYTICS_API = "/api/analytics";
 const SOURCE_HEALTH_API = "/api/source-health";
 const PIPELINE_RUNS_API = "/api/pipeline-runs";
+const LATEST_DAILY_BRIEF_API = "/api/daily-briefs/latest";
 const KEYWORD_CHART_LIMIT = 10;
 const PIPELINE_RUN_DISPLAY_LIMIT = 5;
 
@@ -17,6 +18,8 @@ const sourceHealthMessage = document.querySelector("#source-health-message");
 const sourceHealthGrid = document.querySelector("#source-health-grid");
 const pipelineHistoryMessage = document.querySelector("#pipeline-history-message");
 const pipelineRunsList = document.querySelector("#pipeline-runs-list");
+const dailyBriefMessage = document.querySelector("#daily-brief-message");
+const dailyBriefContent = document.querySelector("#daily-brief-content");
 const lastUpdatedMessage = document.querySelector("#last-updated");
 const searchInput = document.querySelector("#news-search");
 const sourceFilter = document.querySelector("#source-filter");
@@ -218,6 +221,191 @@ function showSourceHealthError(message) {
     sourceHealthGrid.appendChild(errorMessage);
     sourceHealthMessage.textContent = message;
     sourceHealthMessage.classList.add("error-message");
+}
+
+
+async function loadDailyBrief() {
+    try {
+        const payload = await fetchJson(LATEST_DAILY_BRIEF_API);
+
+        if (!payload || !("brief" in payload)) {
+            throw new Error("daily brief API 格式不正確。");
+        }
+
+        renderDailyBrief(payload.brief);
+    } catch (error) {
+        showDailyBriefError(`無法載入每日晨報：${error.message}`);
+    }
+}
+
+
+function validateDailyBrief(brief) {
+    if (!brief || typeof brief !== "object") {
+        throw new Error("每日晨報包含無效資料。");
+    }
+
+    const articleCount = Number(brief.article_count);
+    const arrayFields = [
+        "sources",
+        "categories",
+        "keywords",
+        "highlights",
+        "limitations",
+    ];
+
+    if (
+        !brief.brief_date
+        || !brief.window_start
+        || !brief.window_end
+        || typeof brief.summary !== "string"
+        || !Number.isInteger(articleCount)
+        || articleCount < 0
+        || arrayFields.some((field) => !Array.isArray(brief[field]))
+    ) {
+        throw new Error("每日晨報欄位格式不正確。");
+    }
+
+    return {
+        ...brief,
+        article_count: articleCount,
+    };
+}
+
+
+function renderDailyBrief(briefValue) {
+    dailyBriefContent.replaceChildren();
+    dailyBriefMessage.classList.remove("error-message");
+
+    if (briefValue === null) {
+        const emptyMessage = document.createElement("p");
+        emptyMessage.className = "daily-brief-empty";
+        emptyMessage.textContent = "尚無每日晨報，請先完成晨報資料更新。";
+        dailyBriefContent.appendChild(emptyMessage);
+        dailyBriefMessage.textContent = "尚無晨報";
+        return;
+    }
+
+    const brief = validateDailyBrief(briefValue);
+    const summaryBlock = document.createElement("div");
+    summaryBlock.className = "daily-brief-summary";
+    const dateHeading = document.createElement("h3");
+    dateHeading.textContent = `${brief.brief_date} 晨報`;
+    const windowText = document.createElement("p");
+    windowText.className = "daily-brief-window";
+    windowText.textContent = `資料時間：${formatPublishTime(brief.window_start)} 至 ${formatPublishTime(brief.window_end)}`;
+    const summaryText = document.createElement("p");
+    summaryText.className = "daily-brief-summary-text";
+    summaryText.textContent = brief.summary;
+    summaryBlock.append(dateHeading, windowText, summaryText);
+
+    const dimensions = document.createElement("div");
+    dimensions.className = "daily-brief-dimensions";
+    appendBriefDimension(dimensions, "主要來源", brief.sources);
+    appendBriefDimension(dimensions, "熱門分類", brief.categories);
+    appendBriefDimension(dimensions, "熱門關鍵字", brief.keywords);
+
+    const highlights = document.createElement("div");
+    highlights.className = "daily-brief-highlights";
+    const highlightsHeading = document.createElement("h3");
+    highlightsHeading.textContent = "本期 Highlights";
+    const highlightList = document.createElement("ol");
+
+    for (const highlight of brief.highlights) {
+        highlightList.appendChild(createBriefHighlight(highlight));
+    }
+
+    if (brief.highlights.length === 0) {
+        const emptyHighlight = document.createElement("p");
+        emptyHighlight.className = "daily-brief-muted";
+        emptyHighlight.textContent = "本期沒有可顯示的新聞。";
+        highlights.append(highlightsHeading, emptyHighlight);
+    } else {
+        highlights.append(highlightsHeading, highlightList);
+    }
+
+    const limitations = document.createElement("div");
+    limitations.className = "daily-brief-limitations";
+    const limitationsHeading = document.createElement("h3");
+    limitationsHeading.textContent = "解讀限制";
+    const limitationList = document.createElement("ul");
+
+    for (const limitation of brief.limitations) {
+        const item = document.createElement("li");
+        item.textContent = String(limitation);
+        limitationList.appendChild(item);
+    }
+
+    limitations.append(limitationsHeading, limitationList);
+    dailyBriefContent.append(
+        summaryBlock,
+        dimensions,
+        highlights,
+        limitations,
+    );
+    dailyBriefMessage.textContent = `收錄 ${brief.article_count} 篇新聞`;
+}
+
+
+function appendBriefDimension(container, label, items) {
+    const group = document.createElement("div");
+    const heading = document.createElement("h3");
+    heading.textContent = label;
+    const list = document.createElement("ul");
+    list.className = "daily-brief-chip-list";
+
+    for (const item of items) {
+        if (!item || !item.name || !Number.isFinite(Number(item.count))) {
+            throw new Error("晨報統計項目格式不正確。");
+        }
+
+        const listItem = document.createElement("li");
+        listItem.textContent = `${item.name} ${Number(item.count)}`;
+        list.appendChild(listItem);
+    }
+
+    if (items.length === 0) {
+        const listItem = document.createElement("li");
+        listItem.textContent = "無資料";
+        list.appendChild(listItem);
+    }
+
+    group.append(heading, list);
+    container.appendChild(group);
+}
+
+
+function createBriefHighlight(highlight) {
+    if (!highlight || typeof highlight !== "object" || !highlight.title) {
+        throw new Error("晨報 highlight 格式不正確。");
+    }
+
+    const item = document.createElement("li");
+    const title = document.createElement(highlight.url ? "a" : "span");
+    title.textContent = String(highlight.title);
+
+    if (highlight.url) {
+        title.href = String(highlight.url);
+        title.target = "_blank";
+        title.rel = "noopener noreferrer";
+    }
+
+    const metadata = document.createElement("span");
+    metadata.textContent = String(
+        highlight.selection_reason || "時間窗內文章",
+    );
+    item.append(title, metadata);
+    return item;
+}
+
+
+function showDailyBriefError(message) {
+    dailyBriefContent.replaceChildren();
+    const errorMessage = document.createElement("p");
+    errorMessage.className = "daily-brief-empty error-message";
+    errorMessage.textContent = "每日晨報暫時無法顯示。";
+    dailyBriefContent.appendChild(errorMessage);
+    dailyBriefMessage.textContent = message;
+    dailyBriefMessage.classList.add("error-message");
 }
 
 
@@ -937,3 +1125,4 @@ loadNews();
 loadAnalytics();
 loadSourceHealth();
 loadPipelineRuns();
+loadDailyBrief();

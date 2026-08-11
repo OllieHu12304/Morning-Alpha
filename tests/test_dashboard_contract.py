@@ -56,6 +56,20 @@ class DashboardContractTests(unittest.TestCase):
         self.assertIn(".pipeline-run-badge-success", styles)
         self.assertIn(".pipeline-run-badge-failure", styles)
 
+    def test_dashboard_loads_and_renders_daily_brief(self):
+        html = (DASHBOARD_DIRECTORY / "index.html").read_text(encoding="utf-8")
+        javascript = (DASHBOARD_DIRECTORY / "app.js").read_text(encoding="utf-8")
+        styles = (DASHBOARD_DIRECTORY / "styles.css").read_text(encoding="utf-8")
+
+        self.assertIn('id="daily-brief-content"', html)
+        self.assertIn(
+            'const LATEST_DAILY_BRIEF_API = "/api/daily-briefs/latest"',
+            javascript,
+        )
+        self.assertIn("renderDailyBrief", javascript)
+        self.assertIn("createBriefHighlight", javascript)
+        self.assertIn(".daily-brief-content", styles)
+
     def test_dashboard_can_filter_related_events(self):
         javascript = (DASHBOARD_DIRECTORY / "app.js").read_text(encoding="utf-8")
         styles = (DASHBOARD_DIRECTORY / "styles.css").read_text(encoding="utf-8")

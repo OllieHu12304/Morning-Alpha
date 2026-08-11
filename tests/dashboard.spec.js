@@ -97,6 +97,25 @@ const pipelineRunsPayload = {
     ],
 };
 
+const dailyBriefPayload = {
+    brief: {
+        brief_date: "2026-08-12",
+        window_start: "2026-08-11T07:00:00+08:00",
+        window_end: "2026-08-12T07:00:00+08:00",
+        article_count: 12,
+        summary: "本期共收錄 12 篇新聞，主要來源為中央通訊社。",
+        sources: [{ name: "中央通訊社", count: 6 }],
+        categories: [{ name: "財經", count: 8 }],
+        keywords: [{ name: "台積電", count: 3 }],
+        highlights: [{
+            title: "台積電焦點測試新聞",
+            url: "https://example.com/news/1",
+            selection_reason: "同事件共有 2 篇報導",
+        }],
+        limitations: ["本摘要不構成投資建議。"],
+    },
+};
+
 
 test.beforeEach(async ({ page }) => {
     await page.route("**/api/news", (route) => route.fulfill({
@@ -117,6 +136,10 @@ test.beforeEach(async ({ page }) => {
     await page.route("**/api/pipeline-runs", (route) => route.fulfill({
         contentType: "application/json",
         body: JSON.stringify(pipelineRunsPayload),
+    }));
+    await page.route("**/api/daily-briefs/latest", (route) => route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify(dailyBriefPayload),
     }));
     await page.route("https://cdn.jsdelivr.net/**", (route) => route.fulfill({
         contentType: "application/javascript",
@@ -149,6 +172,15 @@ test("loads Dashboard data from mocked APIs", async ({ page }) => {
     await expect(page.locator("#pipeline-runs-list")).toContainText("最近一次執行");
     await expect(page.locator("#pipeline-runs-list")).toContainText("JSON 格式錯誤");
     await expect(page.locator(".pipeline-step-pending")).toHaveCount(2);
+    await expect(page.locator("#daily-brief-content")).toContainText(
+        "本期共收錄 12 篇新聞",
+    );
+    await expect(page.locator("#daily-brief-content")).toContainText(
+        "台積電焦點測試新聞",
+    );
+    await expect(page.locator("#daily-brief-message")).toHaveText(
+        "收錄 12 篇新聞",
+    );
 });
 
 
