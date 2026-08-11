@@ -39,6 +39,7 @@ from daily_brief_store import (  # noqa: E402
     fetch_daily_briefs,
     upsert_daily_brief,
 )
+from company_directory import create_company_directory_tables  # noqa: E402
 
 
 TEST_DATABASE_NAME = "morning_alpha_test"
@@ -129,6 +130,7 @@ class MySQLIntegrationTests(unittest.TestCase):
         create_source_health_table(cls.connection)
         create_pipeline_runs_table(cls.connection)
         create_daily_briefs_table(cls.connection)
+        create_company_directory_tables(cls.connection)
         cls.connection.commit()
 
     @classmethod
@@ -140,6 +142,10 @@ class MySQLIntegrationTests(unittest.TestCase):
     def clear_test_records(cls):
         """只清空已驗證名稱的 integration test table。"""
         with cls.connection.cursor() as cursor:
+            cursor.execute("DELETE FROM company_aliases;")
+            cursor.execute("DELETE FROM securities;")
+            cursor.execute("DELETE FROM companies;")
+            cursor.execute("DELETE FROM industries;")
             cursor.execute("DELETE FROM daily_briefs;")
             cursor.execute("DELETE FROM pipeline_runs;")
             cursor.execute("DELETE FROM source_health_events;")
@@ -271,6 +277,48 @@ class MySQLIntegrationTests(unittest.TestCase):
         self.assertEqual(len(records), 1)
         self.assertEqual(records[0]["brief_date"], "2026-08-12")
         self.assertEqual(records[0]["summary"], "integration test 晨報")
+
+    def test_company_directory_foreign_keys(self):
+        with self.connection.cursor() as cursor:
+            cursor.execute(
+                "INSERT INTO industries (name) VALUES (%s);",
+                ("半導體業",),
+            )
+            industry_id = cursor.lastrowid
+            cursor.execute(
+                """
+                INSERT INTO companies (name, short_name, industry_id, market)
+                VALUES (%s, %s, %s, %s);
+                """,
+                ("台灣積體電路製造股份有限公司", "台積電", industry_id, "TWSE"),
+            )
+            company_id = cursor.lastrowid
+            cursor.execute(
+                """
+                INSERT INTO securities (company_id, ticker, exchange, currency)
+                VALUES (%s, %s, %s, %s);
+                """,
+                (company_id, "2330", "TWSE", "TWD"),
+            )
+            cursor.execute(
+                "INSERT INTO company_aliases (company_id, alias) VALUES (%s, %s);",
+                (company_id, "台積電"),
+            )
+
+        self.connection.commit()
+
+        with self.connection.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT companies.short_name, securities.ticker, industries.name
+                FROM companies
+                JOIN securities ON securities.company_id = companies.id
+                JOIN industries ON industries.id = companies.industry_id;
+                """
+            )
+            record = cursor.fetchone()
+
+        self.assertEqual(record, ("台積電", "2330", "半導體業"))
 
     def test_history_retention_deletes_only_old_records(self):
         old_time = datetime(2026, 1, 1, 0, 0, 0)

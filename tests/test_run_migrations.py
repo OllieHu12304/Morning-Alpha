@@ -34,6 +34,7 @@ class RunMigrationsTests(unittest.TestCase):
             "source_health_exists": True,
             "pipeline_runs_exists": True,
             "daily_briefs_exists": True,
+            "company_directory_exists": True,
         }
 
         self.assertEqual(get_migration_status(schema_state), {
@@ -44,6 +45,7 @@ class RunMigrationsTests(unittest.TestCase):
             "005": True,
             "006": True,
             "007": True,
+            "008": True,
         })
 
     def test_get_migration_status_detects_partially_updated_schema(self):
@@ -59,6 +61,7 @@ class RunMigrationsTests(unittest.TestCase):
             "source_health_exists": False,
             "pipeline_runs_exists": False,
             "daily_briefs_exists": False,
+            "company_directory_exists": False,
         }
 
         self.assertEqual(get_migration_status(schema_state), {
@@ -69,6 +72,7 @@ class RunMigrationsTests(unittest.TestCase):
             "005": False,
             "006": False,
             "007": False,
+            "008": False,
         })
 
     def test_split_sql_statements_removes_comment_lines(self):

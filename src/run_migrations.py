@@ -19,8 +19,9 @@ MIGRATION_PATHS = {
     "005": MIGRATION_DIRECTORY / "005_create_source_health_events.sql",
     "006": MIGRATION_DIRECTORY / "006_create_pipeline_runs.sql",
     "007": MIGRATION_DIRECTORY / "007_create_daily_briefs.sql",
+    "008": MIGRATION_DIRECTORY / "008_create_company_directory.sql",
 }
-INDEPENDENT_MIGRATIONS = {"005", "006", "007"}
+INDEPENDENT_MIGRATIONS = {"005", "006", "007", "008"}
 
 
 def fetch_schema_state(connection):
@@ -38,6 +39,19 @@ def fetch_schema_state(connection):
         cursor.execute("SHOW TABLES LIKE 'daily_briefs';")
         daily_briefs_exists = cursor.fetchone() is not None
 
+        company_directory_exists = True
+
+        for table_name in [
+            "industries",
+            "companies",
+            "securities",
+            "company_aliases",
+        ]:
+            cursor.execute(f"SHOW TABLES LIKE '{table_name}';")
+
+            if cursor.fetchone() is None:
+                company_directory_exists = False
+
         if not table_exists:
             return {
                 "table_exists": False,
@@ -46,6 +60,7 @@ def fetch_schema_state(connection):
                 "source_health_exists": source_health_exists,
                 "pipeline_runs_exists": pipeline_runs_exists,
                 "daily_briefs_exists": daily_briefs_exists,
+                "company_directory_exists": company_directory_exists,
             }
 
         cursor.execute("SHOW COLUMNS FROM news_records;")
@@ -61,6 +76,7 @@ def fetch_schema_state(connection):
         "source_health_exists": source_health_exists,
         "pipeline_runs_exists": pipeline_runs_exists,
         "daily_briefs_exists": daily_briefs_exists,
+        "company_directory_exists": company_directory_exists,
     }
 
 
@@ -84,6 +100,7 @@ def get_migration_status(schema_state):
         "005": schema_state.get("source_health_exists", False),
         "006": schema_state.get("pipeline_runs_exists", False),
         "007": schema_state.get("daily_briefs_exists", False),
+        "008": schema_state.get("company_directory_exists", False),
     }
 
 
