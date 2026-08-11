@@ -12,6 +12,7 @@ sys.path.insert(0, str(SOURCE_DIRECTORY))
 
 from company_directory import (  # noqa: E402
     COMPANY_DIRECTORY_TABLE_STATEMENTS,
+    build_company_candidates,
     create_company_directory_tables,
     import_company_records,
 )
@@ -76,6 +77,27 @@ class CompanyDirectoryTests(unittest.TestCase):
         self.assertEqual(cursor.execute.call_count, 9)
         self.assertEqual(cursor.execute.call_args_list[4].args[1], ("半導體業",))
         self.assertEqual(cursor.execute.call_args_list[6].args[1][1], "2330")
+
+    def test_build_company_candidates_merges_alias_rows(self):
+        columns = [
+            "company_id",
+            "name",
+            "short_name",
+            "industry",
+            "ticker",
+            "exchange",
+            "alias",
+        ]
+        rows = [
+            (1, "台灣積體電路製造股份有限公司", "台積電", "半導體業", "2330", "TWSE", "台積電"),
+            (1, "台灣積體電路製造股份有限公司", "台積電", "半導體業", "2330", "TWSE", "台灣積體電路製造股份有限公司"),
+        ]
+
+        candidates = build_company_candidates(rows, columns)
+
+        self.assertEqual(len(candidates), 1)
+        self.assertEqual(candidates[0]["ticker"], "2330")
+        self.assertEqual(len(candidates[0]["aliases"]), 2)
 
 
 if __name__ == "__main__":

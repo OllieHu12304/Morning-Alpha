@@ -100,6 +100,23 @@ INSERT IGNORE INTO company_aliases (company_id, alias)
 VALUES (%s, %s);
 """
 
+READ_COMPANY_CANDIDATES_SQL = """
+SELECT
+    companies.id AS company_id,
+    companies.name,
+    companies.short_name,
+    industries.name AS industry,
+    securities.ticker,
+    securities.exchange,
+    company_aliases.alias
+FROM companies
+JOIN securities ON securities.company_id = companies.id
+LEFT JOIN industries ON industries.id = companies.industry_id
+LEFT JOIN company_aliases ON company_aliases.company_id = companies.id
+WHERE securities.is_active = TRUE
+ORDER BY companies.id, securities.id, company_aliases.id;
+"""
+
 
 def create_company_directory_tables(connection):
     """按照 foreign key 相依順序建立四張公司資料表。"""
@@ -208,5 +225,57 @@ def sync_company_records(records):
     except (pymysql.MySQLError, ValueError):
         connection.rollback()
         raise
+    finally:
+        connection.close()
+
+
+def build_company_candidates(rows, column_names):
+    """將 MySQL join rows 合併成一公司／股票一筆的候選資料。"""
+    candidates_by_key = {}
+
+    for row in rows:
+        record = dict(zip(column_names, row))
+        key = (
+            record["company_id"],
+            record["exchange"],
+            record["ticker"],
+        )
+
+        if key not in candidates_by_key:
+            candidates_by_key[key] = {
+                "company_id": record["company_id"],
+                "name": record["name"],
+                "short_name": record["short_name"],
+                "industry": record["industry"],
+                "ticker": record["ticker"],
+                "exchange": record["exchange"],
+                "aliases": [],
+            }
+
+        alias = record.get("alias")
+
+        if alias and alias not in candidates_by_key[key]["aliases"]:
+            candidates_by_key[key]["aliases"].append(alias)
+
+    return list(candidates_by_key.values())
+
+
+def fetch_company_candidates(connection):
+    """讀取實體辨識需要的公司候選資料。"""
+    with connection.cursor() as cursor:
+        cursor.execute(READ_COMPANY_CANDIDATES_SQL)
+        rows = cursor.fetchall()
+        column_names = [column[0] for column in cursor.description]
+
+    return build_company_candidates(rows, column_names)
+
+
+def load_company_candidates():
+    """連接 MySQL 並讀取公司候選資料。"""
+    config = get_database_config()
+    connection = connect_to_database(config)
+
+    try:
+        return fetch_company_candidates(connection)
     finally:
         connection.close()
