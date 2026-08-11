@@ -36,6 +36,7 @@ class RunMigrationsTests(unittest.TestCase):
             "daily_briefs_exists": True,
             "company_directory_exists": True,
             "news_company_links_exists": True,
+            "market_prices_exists": True,
         }
 
         self.assertEqual(get_migration_status(schema_state), {
@@ -48,6 +49,7 @@ class RunMigrationsTests(unittest.TestCase):
             "007": True,
             "008": True,
             "009": True,
+            "010": True,
         })
 
     def test_get_migration_status_detects_partially_updated_schema(self):
@@ -65,6 +67,7 @@ class RunMigrationsTests(unittest.TestCase):
             "daily_briefs_exists": False,
             "company_directory_exists": False,
             "news_company_links_exists": False,
+            "market_prices_exists": False,
         }
 
         self.assertEqual(get_migration_status(schema_state), {
@@ -77,6 +80,7 @@ class RunMigrationsTests(unittest.TestCase):
             "007": False,
             "008": False,
             "009": False,
+            "010": False,
         })
 
     def test_split_sql_statements_removes_comment_lines(self):
