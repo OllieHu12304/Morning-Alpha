@@ -34,6 +34,11 @@ from pipeline_history import (  # noqa: E402
     update_step_result,
 )
 from history_retention import delete_old_history  # noqa: E402
+from daily_brief_store import (  # noqa: E402
+    create_daily_briefs_table,
+    fetch_daily_briefs,
+    upsert_daily_brief,
+)
 
 
 TEST_DATABASE_NAME = "morning_alpha_test"
@@ -123,6 +128,7 @@ class MySQLIntegrationTests(unittest.TestCase):
         create_news_table(cls.connection)
         create_source_health_table(cls.connection)
         create_pipeline_runs_table(cls.connection)
+        create_daily_briefs_table(cls.connection)
         cls.connection.commit()
 
     @classmethod
@@ -134,6 +140,7 @@ class MySQLIntegrationTests(unittest.TestCase):
     def clear_test_records(cls):
         """只清空已驗證名稱的 integration test table。"""
         with cls.connection.cursor() as cursor:
+            cursor.execute("DELETE FROM daily_briefs;")
             cursor.execute("DELETE FROM pipeline_runs;")
             cursor.execute("DELETE FROM source_health_events;")
             cursor.execute("DELETE FROM news_records;")
@@ -242,6 +249,28 @@ class MySQLIntegrationTests(unittest.TestCase):
         self.assertEqual(len(records), 1)
         self.assertEqual(records[0]["status"], "success")
         self.assertEqual(len(records[0]["step_results"]), 4)
+
+    def test_upsert_and_read_daily_brief(self):
+        brief = {
+            "brief_date": "2026-08-12",
+            "window_start": "2026-08-11T07:00:00+08:00",
+            "window_end": "2026-08-12T07:00:00+08:00",
+            "article_count": 1,
+            "summary": "integration test 晨報",
+            "sources": [],
+            "categories": [],
+            "keywords": [],
+            "highlights": [],
+            "limitations": [],
+        }
+
+        upsert_daily_brief(self.connection, brief)
+        self.connection.commit()
+        records = fetch_daily_briefs(self.connection, limit=10)
+
+        self.assertEqual(len(records), 1)
+        self.assertEqual(records[0]["brief_date"], "2026-08-12")
+        self.assertEqual(records[0]["summary"], "integration test 晨報")
 
     def test_history_retention_deletes_only_old_records(self):
         old_time = datetime(2026, 1, 1, 0, 0, 0)

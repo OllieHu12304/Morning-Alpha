@@ -18,8 +18,9 @@ MIGRATION_PATHS = {
     "004": MIGRATION_DIRECTORY / "004_remove_title_unique.sql",
     "005": MIGRATION_DIRECTORY / "005_create_source_health_events.sql",
     "006": MIGRATION_DIRECTORY / "006_create_pipeline_runs.sql",
+    "007": MIGRATION_DIRECTORY / "007_create_daily_briefs.sql",
 }
-INDEPENDENT_MIGRATIONS = {"005", "006"}
+INDEPENDENT_MIGRATIONS = {"005", "006", "007"}
 
 
 def fetch_schema_state(connection):
@@ -34,6 +35,9 @@ def fetch_schema_state(connection):
         cursor.execute("SHOW TABLES LIKE 'pipeline_runs';")
         pipeline_runs_exists = cursor.fetchone() is not None
 
+        cursor.execute("SHOW TABLES LIKE 'daily_briefs';")
+        daily_briefs_exists = cursor.fetchone() is not None
+
         if not table_exists:
             return {
                 "table_exists": False,
@@ -41,6 +45,7 @@ def fetch_schema_state(connection):
                 "indexes": set(),
                 "source_health_exists": source_health_exists,
                 "pipeline_runs_exists": pipeline_runs_exists,
+                "daily_briefs_exists": daily_briefs_exists,
             }
 
         cursor.execute("SHOW COLUMNS FROM news_records;")
@@ -55,11 +60,12 @@ def fetch_schema_state(connection):
         "indexes": indexes,
         "source_health_exists": source_health_exists,
         "pipeline_runs_exists": pipeline_runs_exists,
+        "daily_briefs_exists": daily_briefs_exists,
     }
 
 
 def get_migration_status(schema_state):
-    """將目前 schema 轉成 001 到 006 的完成狀態。"""
+    """將目前 schema 轉成 001 到 007 的完成狀態。"""
     columns = schema_state["columns"]
     indexes = schema_state["indexes"]
     quality_columns = {
@@ -77,6 +83,7 @@ def get_migration_status(schema_state):
         "004": canonical_unique_exists and "unique_news_title" not in indexes,
         "005": schema_state.get("source_health_exists", False),
         "006": schema_state.get("pipeline_runs_exists", False),
+        "007": schema_state.get("daily_briefs_exists", False),
     }
 
 
