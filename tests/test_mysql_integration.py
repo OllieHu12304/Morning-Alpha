@@ -33,6 +33,7 @@ from pipeline_history import (  # noqa: E402
     insert_pipeline_run,
     update_step_result,
 )
+from history_retention import delete_old_history  # noqa: E402
 
 
 TEST_DATABASE_NAME = "morning_alpha_test"
@@ -79,6 +80,22 @@ def create_news_dataframe(title, url):
         "publish_time": pd.Timestamp("2026-08-11 10:00:00"),
         "url": url,
     }])
+
+
+def create_successful_step_results():
+    """建立 integration tests 共用的成功步驟 JSON。"""
+    step_results = create_pending_step_results()
+
+    for step_result in step_results:
+        update_step_result(
+            step_results,
+            step_result["step"],
+            "success",
+            10,
+            {"count": 1},
+        )
+
+    return step_results
 
 
 class MySQLIntegrationSafetyTests(unittest.TestCase):
@@ -205,16 +222,7 @@ class MySQLIntegrationTests(unittest.TestCase):
         self.assertEqual(summaries[0]["error_message"], "HTTP 503")
 
     def test_insert_and_read_pipeline_run(self):
-        step_results = create_pending_step_results()
-
-        for step_result in step_results:
-            update_step_result(
-                step_results,
-                step_result["step"],
-                "success",
-                10,
-                {"count": 1},
-            )
+        step_results = create_successful_step_results()
 
         inserted_id = insert_pipeline_run(self.connection, {
             "status": "success",
@@ -234,6 +242,56 @@ class MySQLIntegrationTests(unittest.TestCase):
         self.assertEqual(len(records), 1)
         self.assertEqual(records[0]["status"], "success")
         self.assertEqual(len(records[0]["step_results"]), 4)
+
+    def test_history_retention_deletes_only_old_records(self):
+        old_time = datetime(2026, 1, 1, 0, 0, 0)
+        recent_time = datetime(2026, 8, 10, 0, 0, 0)
+        cutoff = datetime(2026, 8, 1, 0, 0, 0)
+
+        with self.connection.cursor() as cursor:
+            cursor.executemany(
+                """
+                INSERT INTO source_health_events (
+                    source,
+                    status,
+                    article_count,
+                    error_message,
+                    attempted_at
+                )
+                VALUES (%s, %s, %s, %s, %s);
+                """,
+                [
+                    ("old_source", "success", 1, None, old_time),
+                    ("recent_source", "success", 1, None, recent_time),
+                ],
+            )
+
+        for started_at in [old_time, recent_time]:
+            insert_pipeline_run(self.connection, {
+                "status": "success",
+                "started_at": started_at,
+                "finished_at": started_at,
+                "duration_ms": 0,
+                "failed_step": None,
+                "step_results": create_successful_step_results(),
+                "error_message": None,
+            })
+
+        deleted_counts = delete_old_history(self.connection, cutoff)
+        self.connection.commit()
+
+        with self.connection.cursor() as cursor:
+            cursor.execute("SELECT COUNT(*) FROM source_health_events;")
+            source_count = cursor.fetchone()[0]
+            cursor.execute("SELECT COUNT(*) FROM pipeline_runs;")
+            pipeline_count = cursor.fetchone()[0]
+
+        self.assertEqual(deleted_counts, {
+            "source_health_events": 1,
+            "pipeline_runs": 1,
+        })
+        self.assertEqual(source_count, 1)
+        self.assertEqual(pipeline_count, 1)
 
 
 if __name__ == "__main__":

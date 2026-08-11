@@ -26,6 +26,8 @@ from generate_chart_data import (
     generate_chart_data,
     load_news_records,
 )
+from failure_notification import send_failure_notification
+from history_retention import cleanup_history
 from logging_config import configure_logging
 from news_sources import fetch_all_articles_with_status
 from pipeline_history import (
@@ -128,6 +130,34 @@ def save_failed_run_without_hiding_error(run_result):
         logger.error("無法保存 Pipeline 失敗紀錄：%s", error)
 
 
+def cleanup_history_without_hiding_result():
+    """盡力清理 history，但不改變 Pipeline 原本執行結果。"""
+    try:
+        deleted_counts = cleanup_history()
+    except (pymysql.MySQLError, OSError, ValueError) as error:
+        logger.error("無法清理過期歷史紀錄：%s", error)
+        return None
+
+    logger.info(
+        "歷史紀錄清理完成：source_health_events %s 筆，pipeline_runs %s 筆。",
+        deleted_counts["source_health_events"],
+        deleted_counts["pipeline_runs"],
+    )
+    return deleted_counts
+
+
+def send_failure_notification_without_hiding_error(error_message):
+    """盡力通知 Pipeline 失敗，但不改變原本 exit code。"""
+    try:
+        return send_failure_notification(error_message)
+    except (requests.RequestException, OSError, ValueError) as error:
+        logger.error(
+            "無法傳送 Pipeline 失敗通知：%s",
+            type(error).__name__,
+        )
+        return False
+
+
 def get_history_error_message(error):
     """產生適合由 Dashboard 顯示且不含內部設定的錯誤。"""
     if isinstance(error, requests.RequestException):
@@ -146,6 +176,26 @@ def get_history_error_message(error):
         return "檔案讀寫失敗，請查看 Pipeline log。"
 
     return "未預期的 Pipeline 錯誤，請查看 Pipeline log。"
+
+
+def get_terminal_error_message(error):
+    """建立原有 terminal 風格的 Pipeline 錯誤訊息。"""
+    if isinstance(error, requests.RequestException):
+        return f"Pipeline 中止：下載新聞來源時發生錯誤：{error}"
+
+    if isinstance(error, pymysql.MySQLError):
+        return f"Pipeline 中止：MySQL 發生錯誤：{error}"
+
+    if isinstance(error, json.JSONDecodeError):
+        return f"Pipeline 中止：JSON 格式錯誤：{error}"
+
+    if isinstance(error, ValueError):
+        return f"Pipeline 中止：設定或資料錯誤：{error}"
+
+    if isinstance(error, OSError):
+        return f"Pipeline 中止：讀寫檔案時發生錯誤：{error}"
+
+    return "Pipeline 中止：未預期錯誤，請查看 log。"
 
 
 def run_pipeline():
@@ -229,6 +279,7 @@ def run_pipeline():
             "step_results": step_results,
             "error_message": get_history_error_message(error),
         })
+        cleanup_history_without_hiding_result()
         raise
 
     summary = {
@@ -248,6 +299,7 @@ def run_pipeline():
         "step_results": step_results,
         "error_message": None,
     })
+    cleanup_history_without_hiding_result()
     return summary
 
 
@@ -274,16 +326,23 @@ def main():
         summary = run_pipeline()
         print_summary(summary)
         return 0
-    except requests.RequestException as error:
-        print(f"Pipeline 中止：下載新聞來源時發生錯誤：{error}")
-    except pymysql.MySQLError as error:
-        print(f"Pipeline 中止：MySQL 發生錯誤：{error}")
-    except json.JSONDecodeError as error:
-        print(f"Pipeline 中止：JSON 格式錯誤：{error}")
-    except ValueError as error:
-        print(f"Pipeline 中止：設定或資料錯誤：{error}")
-    except OSError as error:
-        print(f"Pipeline 中止：讀寫檔案時發生錯誤：{error}")
+    except (
+        requests.RequestException,
+        pymysql.MySQLError,
+        json.JSONDecodeError,
+        ValueError,
+        OSError,
+    ) as error:
+        print(get_terminal_error_message(error))
+        send_failure_notification_without_hiding_error(
+            get_history_error_message(error)
+        )
+    except Exception as error:
+        logger.exception("Pipeline 發生未預期錯誤。")
+        print(get_terminal_error_message(error))
+        send_failure_notification_without_hiding_error(
+            get_history_error_message(error)
+        )
 
     return 1
 

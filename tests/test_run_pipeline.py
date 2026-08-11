@@ -41,7 +41,14 @@ class RunPipelineTests(unittest.TestCase):
                         with patch.object(
                             run_pipeline,
                             "save_pipeline_run",
-                        ) as save_history:
+                        ) as save_history, patch.object(
+                            run_pipeline,
+                            "cleanup_history",
+                            return_value={
+                                "source_health_events": 0,
+                                "pipeline_runs": 0,
+                            },
+                        ) as cleanup_history:
                             summary = run_pipeline.run_pipeline()
 
         self.assertEqual(events, ["collect", "export", "chart", "keyword"])
@@ -59,6 +66,7 @@ class RunPipelineTests(unittest.TestCase):
             step["status"] == "success"
             for step in saved_run["step_results"]
         ))
+        cleanup_history.assert_called_once_with()
 
     def test_run_pipeline_stops_when_a_step_fails(self):
         collect_result = (2, ["TechNews"], [])
@@ -70,7 +78,14 @@ class RunPipelineTests(unittest.TestCase):
         ), patch.object(
             run_pipeline,
             "save_pipeline_run",
-        ) as save_history:
+        ) as save_history, patch.object(
+            run_pipeline,
+            "cleanup_history",
+            return_value={
+                "source_health_events": 0,
+                "pipeline_runs": 0,
+            },
+        ) as cleanup_history:
             with patch.object(
                 run_pipeline,
                 "export_dashboard_news",
@@ -88,16 +103,22 @@ class RunPipelineTests(unittest.TestCase):
         self.assertEqual(saved_run["failed_step"], "export_news")
         self.assertEqual(saved_run["step_results"][1]["status"], "failure")
         self.assertEqual(saved_run["step_results"][2]["status"], "pending")
+        cleanup_history.assert_called_once_with()
 
     def test_main_returns_failure_status_when_pipeline_fails(self):
         with patch.object(
             run_pipeline,
             "run_pipeline",
             side_effect=ValueError("缺少設定"),
-        ):
+        ), patch.object(
+            run_pipeline,
+            "send_failure_notification",
+            return_value=True,
+        ) as send_notification:
             result = run_pipeline.main()
 
         self.assertEqual(result, 1)
+        send_notification.assert_called_once_with("缺少設定")
 
     def test_print_summary_reports_successful_and_failed_sources(self):
         summary = {
@@ -184,6 +205,38 @@ class RunPipelineTests(unittest.TestCase):
             "MySQL 操作失敗，請查看 Pipeline log。",
         )
         self.assertNotIn("secret_user", message)
+
+    def test_notification_failure_does_not_change_pipeline_exit_code(self):
+        with patch.object(
+            run_pipeline,
+            "run_pipeline",
+            side_effect=ValueError("測試失敗"),
+        ), patch.object(
+            run_pipeline,
+            "send_failure_notification",
+            side_effect=run_pipeline.requests.Timeout(
+                "https://discord.com/api/webhooks/123/secret-token"
+            ),
+        ):
+            with self.assertLogs("run_pipeline", level="ERROR") as log_output:
+                result = run_pipeline.main()
+
+        self.assertEqual(result, 1)
+        self.assertNotIn("secret-token", " ".join(log_output.output))
+
+    def test_cleanup_failure_does_not_raise(self):
+        with patch.object(
+            run_pipeline,
+            "cleanup_history",
+            side_effect=run_pipeline.pymysql.OperationalError(
+                1142,
+                "DELETE command denied",
+            ),
+        ):
+            with self.assertLogs("run_pipeline", level="ERROR"):
+                result = run_pipeline.cleanup_history_without_hiding_result()
+
+        self.assertIsNone(result)
 
 
 if __name__ == "__main__":

@@ -32,6 +32,8 @@ Morning Alpha 是資料工程與全端資料流程的練習專案，不是投資
 - canonical URL 會轉成 SHA-256 hash，由 MySQL UNIQUE index 防止重複。
 - 標題不再是 UNIQUE；不同網址即使標題相同仍可保存。
 - 每次完成或可處理的失敗 Pipeline 都會寫入 `pipeline_runs`，包含四步驟 JSON 摘要。
+- 來源與 Pipeline 歷史預設保留 90 天，完成執行後自動清理過期紀錄。
+- 可選擇設定 Discord Webhook，在 Pipeline 失敗時收到一次安全化通知。
 - 提供依序檢查與套用 001～006 schema migrations 的 Python runner。
 - Pandas 缺值會轉成 Python `None`，安全寫成 MySQL `NULL`。
 
@@ -68,6 +70,8 @@ flowchart LR
     C --> L[("MySQL source_health_events")]
     E --> M["Pipeline 步驟追蹤"]
     M --> N[("MySQL pipeline_runs")]
+    M --> O["90 天歷史清理"]
+    M --> P["失敗時選用 Discord Webhook"]
     G --> H["Flask API"]
     L --> H
     N --> H
@@ -89,6 +93,7 @@ Pipeline 依序完成：
 3. 匯出新聞與資料更新時間。
 4. 產生圖表與 Top 20 關鍵字 JSON。
 5. 將整體成功／失敗、耗時與四步驟摘要保存到 MySQL。
+6. 清理超過保留期限的執行歷史；失敗時選擇性傳送 Discord 通知。
 
 ## 技術
 
@@ -118,6 +123,8 @@ Morning-Alpha/
 │   ├── api.py                   # MySQL-backed Flask API
 │   ├── source_health.py         # 保存並整理來源擷取健康紀錄
 │   ├── pipeline_history.py      # 保存並整理完整 Pipeline 執行紀錄
+│   ├── history_retention.py     # 清理超過保留期限的歷史紀錄
+│   ├── failure_notification.py  # 選用的 Discord 失敗通知
 │   ├── news_sources.py          # 集中啟用所有 adapters
 │   ├── technews_adapter.py
 │   ├── cna_finance_adapter.py
@@ -189,6 +196,8 @@ nano .env
 MYSQL_USER=morning_alpha_app
 MYSQL_PASSWORD=請替換成至少 20 個字元的本機密碼
 MYSQL_DATABASE=morning_alpha
+HISTORY_RETENTION_DAYS=90
+PIPELINE_FAILURE_WEBHOOK_URL=
 ```
 
 這不是 Mac 登入密碼，也不需要沿用 Homebrew MySQL 密碼。Compose 會把 API container 的 `MYSQL_HOST` 設為 `db`，因此 `.env` 中的 `MYSQL_HOST=localhost` 不需修改。
@@ -345,7 +354,7 @@ COLLATE utf8mb4_unicode_ci;
 CREATE USER 'morning_alpha_app'@'localhost'
 IDENTIFIED BY '請替換成安全密碼';
 
-GRANT CREATE, INSERT, SELECT
+GRANT CREATE, INSERT, SELECT, DELETE
 ON morning_alpha.*
 TO 'morning_alpha_app'@'localhost';
 ```
@@ -366,6 +375,8 @@ MYSQL_PORT=3306
 MYSQL_USER=morning_alpha_app
 MYSQL_PASSWORD=請替換成真實密碼
 MYSQL_DATABASE=morning_alpha
+HISTORY_RETENTION_DAYS=90
+PIPELINE_FAILURE_WEBHOOK_URL=
 ```
 
 `.env` 已由 Git 忽略，不應提交；`.env.example` 只保存欄位範例。Shell environment 與未來 GitHub Secrets 的優先權高於 `.env`。
@@ -377,8 +388,30 @@ MYSQL_DATABASE=morning_alpha
 | `MYSQL_HOST` | `localhost` |
 | `MYSQL_PORT` | `3306` |
 | `MYSQL_DATABASE` | `morning_alpha` |
+| `HISTORY_RETENTION_DAYS` | `90` |
+| `PIPELINE_FAILURE_WEBHOOK_URL` | 空白，停用通知 |
 
 `MYSQL_USER` 與 `MYSQL_PASSWORD` 沒有預設值；未建立 `.env` 時仍可沿用原本的 `export` 方式。
+
+### 歷史保留期限與 Discord 通知
+
+`HISTORY_RETENTION_DAYS` 只接受 1～3650。每次 Pipeline 成功或可處理的失敗結束後，會刪除超過期限的 `source_health_events` 與 `pipeline_runs`；不會刪除 `news_records`。清理失敗只會寫入 log，不會改變 Pipeline 原本的結果。
+
+若原生 MySQL app user 是在舊版本建立的，請由管理員補一次 `DELETE` 權限；Docker database user 不需要額外處理：
+
+```sql
+GRANT DELETE
+ON morning_alpha.*
+TO 'morning_alpha_app'@'localhost';
+```
+
+若要接收失敗通知，先在 Discord channel 建立 Incoming Webhook，再將完整 URL 放入本機 `.env`：
+
+```text
+PIPELINE_FAILURE_WEBHOOK_URL=https://discord.com/api/webhooks/你的_webhook_id/你的_token
+```
+
+Webhook URL 相當於 secret：不可貼到 issue、terminal 截圖或 commit。留空時不會進行通知網路請求。Morning Alpha 只在 Pipeline 失敗時送出一次純文字訊息，並停用 Discord mentions；通知失敗只寫入 log。操作格式以 [Discord 官方 Webhook 文件](https://docs.discord.com/developers/resources/webhook#execute-webhook) 為準。
 
 ## Database migrations
 
@@ -487,7 +520,7 @@ RUN_MYSQL_INTEGRATION=1 \
 ./.venv/bin/python -m unittest tests/test_mysql_integration.py -v
 ```
 
-測試會建立 `news_records`、`source_health_events` 與 `pipeline_runs` tables、驗證真實寫入、canonical URL UNIQUE index、來源狀態事件及 Pipeline JSON 執行紀錄，並在結束後清空測試資料。它不會連接或修改正式 `morning_alpha` database。
+測試會建立 `news_records`、`source_health_events` 與 `pipeline_runs` tables、驗證真實寫入、canonical URL UNIQUE index、來源狀態事件、Pipeline JSON 執行紀錄及過期資料刪除，並在結束後清空測試資料。它不會連接或修改正式 `morning_alpha` database。
 
 ### Dashboard E2E tests
 
@@ -526,6 +559,8 @@ tail -n 100 data/processed/morning_alpha.log
 - `Unknown column 'source'`：既有 MySQL table 尚未完成 migrations。
 - `nan can not be used with MySQL`：請確認程式包含 v0.2 的 Pandas 空值轉換修正。
 - Dashboard `Failed to fetch`：請確認 `src/api.py` 正在執行，並從 port 5050 開啟頁面。
+- History cleanup 出現 `DELETE command denied`：請以 MySQL 管理員為 `morning_alpha_app` 補上 `DELETE` 權限。
+- Discord 沒有通知：確認 `.env` URL 完整、Webhook 尚未刪除，並查看 `morning_alpha.log`；成功的 Pipeline 不會通知。
 
 ## 目前限制
 
@@ -534,9 +569,9 @@ tail -n 100 data/processed/morning_alpha.log
 - 來源網站改版後仍可能需要修改 adapter selector。
 - 單一來源失敗時其他來源可繼續，但所有來源都失敗時 Pipeline 仍會停止。
 - 來源健康狀態代表 crawler 的下載與解析結果，不代表後續 MySQL 寫入及分析步驟全部成功。
-- `source_health_events` 目前會持續累積，尚未設定自動封存或清除期限。
-- `pipeline_runs` 也會持續累積，目前 Dashboard 只顯示最近五次。
+- 歷史紀錄只按天數刪除，沒有備份、封存或依筆數保留功能。
 - 如果 MySQL 完全無法連線、Python 被強制結束或電腦斷電，該次 Pipeline 無法寫入完成紀錄。
+- Discord 通知只有一次嘗試，沒有 retry；Webhook 未設定或無法連線時只保留 log。
 - URL UNIQUE 只能防止相同 canonical URL；不同平台的同事件文章只分組、不刪除。
 - 事件分組、分析分類與 jieba 關鍵字都是規則式分析，可能漏判或誤判。
 - 沒有文章全文、AI 摘要、股票行情、投資評分或使用者帳號。
@@ -547,8 +582,7 @@ tail -n 100 data/processed/morning_alpha.log
 ## 下一步
 
 - 安全稽核與清理既有非財經 CNA 資料。
-- 為來源與 Pipeline 歷史設定保留期限，並加入失敗通知。
-- 補充 Docker 自動化測試與備份／還原流程。
+- 建立 MySQL 與 Docker volume 的備份／還原流程。
 - 持續改善分類、斷詞與事件相似度。
 
 更多操作與面試說明請參考 [docs/USER_GUIDE.md](docs/USER_GUIDE.md)。
