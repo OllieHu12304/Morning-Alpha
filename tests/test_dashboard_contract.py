@@ -142,6 +142,10 @@ class DashboardContractTests(unittest.TestCase):
         self.assertIn(".watchlist-items", styles)
         self.assertIn(".watchlist-search-results", styles)
         self.assertIn(".watchlist-remove-button", styles)
+        self.assertIn(
+            'twse_disclosure: "TWSE 官方重大訊息"',
+            javascript,
+        )
 
 
 if __name__ == "__main__":

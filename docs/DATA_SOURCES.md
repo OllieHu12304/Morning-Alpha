@@ -1,4 +1,4 @@
-# Morning Alpha 市場與財務資料來源契約
+# Morning Alpha 官方資料來源契約
 
 這份文件記錄 Morning Alpha Phase 4 實際使用哪些外部資料，以及 Python
 adapter 轉換成什麼格式。契約最初由 Feature 4.11 定義，目前下載、驗證、
@@ -96,7 +96,33 @@ adapter 還會補上 `exchange="TWSE"`、`currency="TWD"`、`source` 與
 - 不同產業的財務結構不同，不能只靠單一 EPS 或營收數字判斷公司好壞。
 - 財報可能更正；相同公司與季度再次出現時應更新既有紀錄。
 
-## 3. Adapter 共同規則
+## 3. 上市公司每日重大訊息
+
+| 項目 | 決定 |
+| --- | --- |
+| Provider | 臺灣證券交易所（TWSE）／公開資訊觀測站（MOPS） |
+| Dataset | 上市公司每日重大訊息 |
+| Endpoint | `https://openapi.twse.com.tw/v1/opendata/t187ap04_L` |
+| 官方說明 | [TWSE OpenAPI](https://openapi.twse.com.tw/) |
+| 政府資料集 | [上市公司每日重大訊息](https://data.nat.gov.tw/dataset/18415) |
+| 更新策略 | 每次 Pipeline 取得當日完整清單，canonical URL 阻止重複寫入 |
+| 計費 | 免費 |
+| 授權 | 政府資料開放授權條款－第 1 版 |
+| 範圍 | TWSE 上市公司；目前不含 TPEx |
+
+adapter 使用 `發言日期` 與 `發言時間` 作為發布時間，並把公司代號、公司名稱和
+`主旨` 組成可辨識的標題。官方 JSON 的 `主旨 ` 欄位可能含尾端空白，因此解析前
+會先清理全部欄位名稱。每筆資料的 MOPS 查詢 URL 包含公司代號與發言時間，讓
+canonical URL 可以穩定去重；短主旨雜湊可區分同一家公司在同一秒發布的不同公告。
+
+### 重大訊息限制
+
+- 重大訊息是公司自行發布的官方公告，不等同新聞媒體的獨立報導。
+- 目前共同 News Record 只保存主旨，沒有保存完整 `說明` 欄位。
+- MOPS URL 開啟公司重大訊息查詢頁，不保證直接定位到單一公告內文。
+- 每日資料量可能明顯高於現有媒體新聞，但重跑同一批資料不會重複插入。
+
+## 4. Adapter 共同規則
 
 每筆轉換完成的紀錄都必須：
 
@@ -106,7 +132,7 @@ adapter 還會補上 `exchange="TWSE"`、`currency="TWD"`、`source` 與
 4. 保存 `source` 和帶 timezone 的 `fetched_at`。
 5. 原始 payload 不是非空 JSON list、必要欄位消失或全部紀錄無效時，明確中止並記錄錯誤。
 
-## 4. 暫不採用的選項
+## 5. 暫不採用的選項
 
 - `yfinance`：方便但不是臺灣市場官方來源，ticker 規則與可用性可能改變。
 - FinMind：適合研究與歷史資料，但 Phase 4 第一版優先建立官方來源流程。

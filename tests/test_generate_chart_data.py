@@ -24,6 +24,17 @@ class GenerateChartDataTests(unittest.TestCase):
 
         self.assertEqual(get_record_source_label(record), "中央通訊社")
 
+    def test_record_source_label_maps_twse_disclosure(self):
+        record = {
+            "source": "twse_disclosure",
+            "url": "https://mops.twse.com.tw/mops/web/t05st01",
+        }
+
+        self.assertEqual(
+            get_record_source_label(record),
+            "TWSE 官方重大訊息",
+        )
+
     def test_count_keywords_uses_top_twenty_pandas_rules(self):
         records = [{
             "title": "NVIDIA 推出 AI 晶片，nvidia 股價上漲",

@@ -26,6 +26,14 @@ class AnalyzeKeywordsTests(unittest.TestCase):
         self.assertIn("晶片", keywords)
         self.assertIn("突破", keywords)
 
+    def test_extract_keywords_ignores_disclosure_boilerplate(self):
+        keywords = extract_keywords("2327 國巨｜公告本公司董事會決議")
+
+        self.assertIn("國巨", keywords)
+        self.assertNotIn("公告", keywords)
+        self.assertNotIn("本公司", keywords)
+        self.assertNotIn("公司", keywords)
+
     def test_create_title_dataframe_rejects_non_object_record(self):
         with self.assertRaisesRegex(ValueError, "object"):
             create_title_dataframe(["invalid record"])

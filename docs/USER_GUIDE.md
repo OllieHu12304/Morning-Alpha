@@ -8,7 +8,7 @@ Morning Alpha 解決的問題是：科技與財經資訊分散在不同來源，
 
 使用者執行一個 Pipeline 後，可以在 Dashboard 完成以下任務：
 
-1. 集中閱讀 TechNews 與中央社財經新聞。
+1. 集中閱讀 TechNews、中央社財經新聞與 TWSE 官方重大訊息。
 2. 搜尋、排序、分頁，並依來源、分類、公司及同事件篩選。
 3. 查看來源、分類、中文關鍵字、來源健康與 Pipeline 歷史。
 4. 閱讀每日 07:00（Asia/Taipei）固定時間窗的規則式晨報。
@@ -23,7 +23,7 @@ Morning Alpha 解決的問題是：科技與財經資訊分散在不同來源，
 
 | 功能 | 實際內容 | 主要技術 |
 | --- | --- | --- |
-| 多來源新聞 | TechNews HTML 最多 5 篇；中央社只收財經 RSS `/news/afe/`，並排除彩券標題 | Requests、BeautifulSoup、XML parser |
+| 多來源資訊 | TechNews HTML 最多 5 篇；中央社財經 RSS；TWSE 上市公司每日重大訊息 | Requests、BeautifulSoup、XML／JSON parser |
 | 共同資料格式 | adapter 轉成相同 News Record，再交給 Pandas | Python、Pandas |
 | 新聞去重 | canonical URL 的 SHA-256 在 MySQL 使用 UNIQUE index | Python、MySQL |
 | 分類與事件分組 | 標題規則分類；72 小時內用共同關鍵字與 Jaccard similarity 分組 | Python |
@@ -47,6 +47,7 @@ Dashboard 沒有使用 DataTables。搜尋、篩選、排序及分頁都是原�
 flowchart TD
     A["TechNews HTML"] --> C["新聞 adapters"]
     B["中央社財經 RSS"] --> C
+    U["TWSE 每日重大訊息 OpenAPI"] --> C
     C --> D["BeautifulSoup / XML 解析"]
     D --> E["共同 News Record"]
     E --> F["Pandas 清理、分類與 URL 正規化"]
@@ -123,7 +124,7 @@ Morning-Alpha/
 | `src/api.py` | 使用 Dashboard 前 | MySQL 與 `dashboard/` |
 | `src/scheduler.py` | 選用 Docker 排程 | 定期呼叫 `run_pipeline.py` |
 | `src/run_migrations.py` | 既有 database 升級前 | `sql/001`～`012` |
-| `src/news_sources.py` | Pipeline 第 1 步 | TechNews、中央社 adapters |
+| `src/news_sources.py` | Pipeline 第 1 步 | TechNews、中央社、TWSE 重大訊息 adapters |
 | `src/twse_*_adapter.py` | Pipeline 第 2、4、5 步 | TWSE 官方 OpenAPI |
 | `src/company_matching.py` | Pipeline 第 3 步 | 公司候選資料與新聞標題 |
 | `src/daily_brief.py` | Pipeline 第 6 步 | 新聞 records、固定時間窗 |
@@ -381,7 +382,8 @@ LIMIT 20;
 
 ## 12. 目前限制
 
-- 新聞來源少，且 TechNews 只看首頁最多 5 篇。
+- 媒體新聞來源仍少，且 TechNews 只看首頁最多 5 篇；TWSE 重大訊息是官方公告，不是媒體新聞。
+- TWSE 重大訊息目前只保存主旨、公司與發言時間，沒有把完整「說明」欄位寫入資料庫。
 - 沒有文章全文、生成式 AI 摘要、情緒分析或投資評分。
 - 只有 TWSE 上市範圍；沒有 TPEx、海外股票、即時行情或完整歷史回補。
 - 公司辨識、事件分組及分類是規則式推論。

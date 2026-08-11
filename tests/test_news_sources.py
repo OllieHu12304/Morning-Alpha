@@ -18,6 +18,7 @@ class NewsSourcesTests(unittest.TestCase):
     def test_fetch_all_articles_keeps_records_from_every_source(self):
         technews_articles = [{"source": "technews"}]
         cna_articles = [{"source": "cna"}]
+        disclosure_articles = [{"source": "twse_disclosure"}]
 
         with patch.object(
             news_sources,
@@ -27,10 +28,17 @@ class NewsSourcesTests(unittest.TestCase):
             news_sources,
             "fetch_cna_finance",
             return_value=cna_articles,
+        ), patch.object(
+            news_sources,
+            "fetch_twse_disclosures",
+            return_value=disclosure_articles,
         ):
             articles = news_sources.fetch_all_articles()
 
-        self.assertEqual(articles, technews_articles + cna_articles)
+        self.assertEqual(
+            articles,
+            technews_articles + cna_articles + disclosure_articles,
+        )
 
     def test_source_failure_does_not_discard_successful_source(self):
         cna_articles = [{"source": "cna"}]
@@ -43,6 +51,10 @@ class NewsSourcesTests(unittest.TestCase):
             news_sources,
             "fetch_cna_finance",
             return_value=cna_articles,
+        ), patch.object(
+            news_sources,
+            "fetch_twse_disclosures",
+            return_value=[],
         ):
             articles, source_results = (
                 news_sources.fetch_all_articles_with_status()
@@ -66,6 +78,10 @@ class NewsSourcesTests(unittest.TestCase):
             news_sources,
             "fetch_cna_finance",
             side_effect=ValueError("RSS 結構異常"),
+        ), patch.object(
+            news_sources,
+            "fetch_twse_disclosures",
+            return_value=[],
         ):
             articles, source_results = (
                 news_sources.fetch_all_articles_with_status()
@@ -85,6 +101,10 @@ class NewsSourcesTests(unittest.TestCase):
             news_sources,
             "fetch_cna_finance",
             side_effect=requests.Timeout("RSS timeout"),
+        ), patch.object(
+            news_sources,
+            "fetch_twse_disclosures",
+            side_effect=requests.HTTPError("TWSE 503"),
         ):
             with self.assertRaisesRegex(ValueError, "所有新聞來源都失敗"):
                 news_sources.fetch_all_articles()

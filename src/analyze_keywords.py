@@ -3,6 +3,7 @@
 import json
 import logging
 from pathlib import Path
+import re
 
 import jieba
 import pandas as pd
@@ -37,7 +38,14 @@ STOP_WORDS = {
     "相關",
     "表示",
     "進行",
+    "公告",
+    "本公司",
+    "公司",
 }
+
+DISCLOSURE_TITLE_PATTERN = re.compile(
+    r"^[0-9A-Za-z]+\s+([^｜]+)｜"
+)
 
 jieba.setLogLevel(logging.WARNING)
 jieba.load_userdict(str(USER_DICTIONARY_PATH))
@@ -116,8 +124,18 @@ def count_top_keywords(
 def extract_keywords(title):
     """將一個標題切成適合統計的資訊詞。"""
     keywords = []
+    title_text = str(title)
+    disclosure_match = DISCLOSURE_TITLE_PATTERN.match(title_text)
 
-    for token in jieba.lcut(str(title), cut_all=False):
+    if disclosure_match:
+        company_name = disclosure_match.group(1).strip()
+
+        if len(company_name) >= MIN_KEYWORD_LENGTH:
+            keywords.append(company_name)
+
+        title_text = title_text[disclosure_match.end():]
+
+    for token in jieba.lcut(title_text, cut_all=False):
         token = token.strip()
 
         if len(token) < MIN_KEYWORD_LENGTH:

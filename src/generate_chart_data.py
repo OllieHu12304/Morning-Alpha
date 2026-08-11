@@ -25,6 +25,7 @@ SOURCE_LABELS = {
 SOURCE_CODE_LABELS = {
     "cna": "中央通訊社",
     "technews": "TechNews 科技新報",
+    "twse_disclosure": "TWSE 官方重大訊息",
 }
 
 def load_news_records(input_path=NEWS_JSON_PATH):
