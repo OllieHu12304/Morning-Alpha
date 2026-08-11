@@ -92,6 +92,21 @@ class DashboardContractTests(unittest.TestCase):
         self.assertIn("company.company_id", javascript)
         self.assertIn(".company-tag", styles)
 
+    def test_dashboard_displays_company_market_and_financial_data(self):
+        html = (DASHBOARD_DIRECTORY / "index.html").read_text(encoding="utf-8")
+        javascript = (DASHBOARD_DIRECTORY / "app.js").read_text(encoding="utf-8")
+        styles = (DASHBOARD_DIRECTORY / "styles.css").read_text(encoding="utf-8")
+
+        self.assertIn('id="market-company-select"', html)
+        self.assertIn('id="company-price-chart"', html)
+        self.assertIn('id="company-financial-body"', html)
+        self.assertIn('const MARKET_COMPANIES_API = "/api/market-companies"', javascript)
+        self.assertIn("loadSelectedCompanyMarketData", javascript)
+        self.assertIn("renderCompanyPriceChart", javascript)
+        self.assertIn("renderFinancialTable", javascript)
+        self.assertIn("不構成投資建議", html)
+        self.assertIn(".company-market-content", styles)
+
 
 if __name__ == "__main__":
     unittest.main()

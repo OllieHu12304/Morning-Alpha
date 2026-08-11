@@ -8,6 +8,11 @@ import pymysql
 from flask import Flask, jsonify, request
 
 from analyze_keywords import count_top_keywords, create_title_dataframe
+from company_market_data import (
+    load_company_financial_metrics,
+    load_company_market_prices,
+    load_market_companies,
+)
 from daily_brief_store import load_daily_briefs
 from event_grouping import group_similar_events
 from export_news_json import prepare_dashboard_records
@@ -117,6 +122,14 @@ def database_error_response(error):
     }), 500
 
 
+def company_data_error_response(error):
+    """回傳不包含 SQL 與連線細節的公司資料錯誤。"""
+    app.logger.error("Dashboard API 無法讀取公司資料：%s", error)
+    return jsonify({
+        "error": "無法讀取 Morning Alpha 公司資料。",
+    }), 500
+
+
 @app.get("/api/health")
 def health():
     """確認 Flask 服務本身可以回應。"""
@@ -216,6 +229,35 @@ def company_news_links():
         return jsonify({"error": str(error)}), 400
     except pymysql.MySQLError as error:
         return database_error_response(error)
+
+
+@app.get("/api/market-companies")
+def market_companies():
+    """回傳已有價格或財務資料的公司清單。"""
+    try:
+        return jsonify({"companies": load_market_companies()})
+    except (pymysql.MySQLError, ValueError) as error:
+        return company_data_error_response(error)
+
+
+@app.get("/api/companies/<int:company_id>/market-prices")
+def company_market_prices(company_id):
+    """回傳指定公司最近九十筆每日價格。"""
+    try:
+        prices = load_company_market_prices(company_id, limit=90)
+        return jsonify({"prices": prices})
+    except (pymysql.MySQLError, ValueError) as error:
+        return company_data_error_response(error)
+
+
+@app.get("/api/companies/<int:company_id>/financial-metrics")
+def company_financial_metrics(company_id):
+    """回傳指定公司最近八季財務摘要。"""
+    try:
+        metrics = load_company_financial_metrics(company_id, limit=8)
+        return jsonify({"metrics": metrics})
+    except (pymysql.MySQLError, ValueError) as error:
+        return company_data_error_response(error)
 
 
 if __name__ == "__main__":

@@ -3,6 +3,7 @@ const ANALYTICS_API = "/api/analytics";
 const SOURCE_HEALTH_API = "/api/source-health";
 const PIPELINE_RUNS_API = "/api/pipeline-runs";
 const LATEST_DAILY_BRIEF_API = "/api/daily-briefs/latest";
+const MARKET_COMPANIES_API = "/api/market-companies";
 const KEYWORD_CHART_LIMIT = 10;
 const PIPELINE_RUN_DISPLAY_LIMIT = 5;
 
@@ -31,6 +32,15 @@ const previousPageButton = document.querySelector("#previous-page");
 const nextPageButton = document.querySelector("#next-page");
 const pageStatus = document.querySelector("#page-status");
 const tableHeaders = document.querySelectorAll("th[data-key]");
+const marketCompanySelect = document.querySelector("#market-company-select");
+const companyMarketMessage = document.querySelector("#company-market-message");
+const latestClosePrice = document.querySelector("#latest-close-price");
+const latestTradeDate = document.querySelector("#latest-trade-date");
+const latestPriceChange = document.querySelector("#latest-price-change");
+const latestEps = document.querySelector("#latest-eps");
+const latestFinancialPeriod = document.querySelector("#latest-financial-period");
+const companyFinancialBody = document.querySelector("#company-financial-body");
+const companyPriceEmpty = document.querySelector("#company-price-empty");
 
 let newsRecords = [];
 let sortKey = "publish_time";
@@ -38,6 +48,7 @@ let sortDirection = "desc";
 let currentPage = 1;
 let pageSize = Number(pageSizeSelect.value);
 let eventGroupFilter = null;
+let companyPriceChart = null;
 
 
 async function fetchJson(url) {
@@ -88,6 +99,240 @@ async function loadAnalytics() {
         showChartError(`無法載入統計 API：${error.message}`);
         lastUpdatedMessage.textContent = `資料庫最後新增：無法載入（${error.message}）`;
     }
+}
+
+
+async function loadMarketCompanies() {
+    try {
+        const payload = await fetchJson(MARKET_COMPANIES_API);
+
+        if (!payload || !Array.isArray(payload.companies)) {
+            throw new Error("market companies API 格式不正確。");
+        }
+
+        populateMarketCompanySelect(payload.companies);
+
+        if (payload.companies.length > 0) {
+            await loadSelectedCompanyMarketData();
+        }
+    } catch (error) {
+        showCompanyMarketError(`無法載入公司市場資料：${error.message}`);
+    }
+}
+
+
+function populateMarketCompanySelect(companies) {
+    marketCompanySelect.replaceChildren();
+
+    if (companies.length === 0) {
+        const option = document.createElement("option");
+        option.value = "";
+        option.textContent = "尚無市場或財務資料";
+        marketCompanySelect.appendChild(option);
+        marketCompanySelect.disabled = true;
+        companyMarketMessage.textContent = "請先同步 TWSE 資料";
+        renderCompanyMarketData([], []);
+        return;
+    }
+
+    for (const company of companies) {
+        if (!company.company_id || !company.ticker || !company.name) {
+            throw new Error("公司選單包含無效資料。");
+        }
+
+        const option = document.createElement("option");
+        option.value = String(company.company_id);
+        const name = company.short_name || company.name;
+        option.textContent = `${company.ticker} ${name}`;
+        marketCompanySelect.appendChild(option);
+    }
+
+    marketCompanySelect.disabled = false;
+}
+
+
+async function loadSelectedCompanyMarketData() {
+    const companyId = marketCompanySelect.value;
+
+    if (!companyId) {
+        return;
+    }
+
+    companyMarketMessage.textContent = "正在載入價格與財務資料…";
+    companyMarketMessage.classList.remove("error-message");
+
+    try {
+        const [pricePayload, financialPayload] = await Promise.all([
+            fetchJson(`/api/companies/${companyId}/market-prices`),
+            fetchJson(`/api/companies/${companyId}/financial-metrics`),
+        ]);
+
+        if (!pricePayload || !Array.isArray(pricePayload.prices)) {
+            throw new Error("market prices API 格式不正確。");
+        }
+
+        if (!financialPayload || !Array.isArray(financialPayload.metrics)) {
+            throw new Error("financial metrics API 格式不正確。");
+        }
+
+        renderCompanyMarketData(
+            pricePayload.prices,
+            financialPayload.metrics,
+        );
+        companyMarketMessage.textContent = "公司資料已更新";
+    } catch (error) {
+        showCompanyMarketError(`無法載入公司資料：${error.message}`);
+    }
+}
+
+
+function optionalNumber(value) {
+    if (value === null || value === undefined || value === "") {
+        return null;
+    }
+
+    const number = Number(value);
+    return Number.isFinite(number) ? number : null;
+}
+
+
+function formatMarketNumber(value, maximumFractionDigits = 2) {
+    const number = optionalNumber(value);
+
+    if (number === null) {
+        return "—";
+    }
+
+    return new Intl.NumberFormat("zh-TW", {
+        maximumFractionDigits,
+    }).format(number);
+}
+
+
+function renderCompanyMarketData(prices, metrics) {
+    const latestPrice = prices[0] || null;
+    const latestMetric = metrics[0] || null;
+
+    latestClosePrice.textContent = latestPrice
+        ? `${formatMarketNumber(latestPrice.close_price, 4)} TWD`
+        : "—";
+    latestTradeDate.textContent = latestPrice
+        ? `交易日 ${latestPrice.trade_date}`
+        : "尚無交易資料";
+    latestPriceChange.textContent = latestPrice
+        ? formatSignedNumber(latestPrice.price_change)
+        : "—";
+    latestEps.textContent = latestMetric
+        ? `${formatMarketNumber(latestMetric.earnings_per_share, 4)} 元`
+        : "—";
+    latestFinancialPeriod.textContent = latestMetric
+        ? `${latestMetric.fiscal_year} Q${latestMetric.fiscal_quarter}`
+        : "尚無季度資料";
+
+    renderCompanyPriceChart(prices);
+    renderFinancialTable(metrics);
+}
+
+
+function formatSignedNumber(value) {
+    const number = optionalNumber(value);
+
+    if (number === null) {
+        return "—";
+    }
+
+    const prefix = number > 0 ? "+" : "";
+    return `${prefix}${formatMarketNumber(number, 4)}`;
+}
+
+
+function renderCompanyPriceChart(prices) {
+    const chartPrices = [...prices]
+        .reverse()
+        .filter((record) => optionalNumber(record.close_price) !== null);
+    const canvas = document.querySelector("#company-price-chart");
+
+    if (companyPriceChart) {
+        companyPriceChart.destroy();
+        companyPriceChart = null;
+    }
+
+    if (chartPrices.length === 0 || typeof Chart === "undefined") {
+        canvas.hidden = true;
+        companyPriceEmpty.hidden = false;
+        companyPriceEmpty.textContent = chartPrices.length === 0
+            ? "目前沒有可顯示的收盤價。"
+            : "Chart.js 尚未載入。";
+        return;
+    }
+
+    canvas.hidden = false;
+    companyPriceEmpty.hidden = true;
+    companyPriceChart = new Chart(canvas, {
+        type: "line",
+        data: {
+            labels: chartPrices.map((record) => record.trade_date),
+            datasets: [{
+                label: "收盤價（TWD）",
+                data: chartPrices.map((record) => Number(record.close_price)),
+                borderColor: "#0b6e69",
+                backgroundColor: "rgba(11, 110, 105, 0.12)",
+                fill: true,
+                tension: 0.2,
+            }],
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+            },
+            scales: {
+                y: { beginAtZero: false },
+            },
+        },
+    });
+}
+
+
+function renderFinancialTable(metrics) {
+    companyFinancialBody.replaceChildren();
+
+    if (metrics.length === 0) {
+        const row = document.createElement("tr");
+        const cell = document.createElement("td");
+        cell.colSpan = 4;
+        cell.className = "empty-message";
+        cell.textContent = "目前沒有季度財務資料。";
+        row.appendChild(cell);
+        companyFinancialBody.appendChild(row);
+        return;
+    }
+
+    for (const metric of metrics) {
+        const row = document.createElement("tr");
+        const values = [
+            `${metric.fiscal_year} Q${metric.fiscal_quarter}`,
+            formatMarketNumber(metric.earnings_per_share, 4),
+            formatMarketNumber(metric.operating_revenue, 2),
+            formatMarketNumber(metric.net_income, 2),
+        ];
+
+        for (const value of values) {
+            const cell = document.createElement("td");
+            cell.textContent = value;
+            row.appendChild(cell);
+        }
+
+        companyFinancialBody.appendChild(row);
+    }
+}
+
+
+function showCompanyMarketError(message) {
+    companyMarketMessage.textContent = message;
+    companyMarketMessage.classList.add("error-message");
+    renderCompanyMarketData([], []);
 }
 
 
@@ -1203,6 +1448,8 @@ pageSizeSelect.addEventListener("change", () => {
 
 clearFiltersButton.addEventListener("click", clearFilters);
 
+marketCompanySelect.addEventListener("change", loadSelectedCompanyMarketData);
+
 previousPageButton.addEventListener("click", () => {
     if (currentPage > 1) {
         currentPage -= 1;
@@ -1220,3 +1467,4 @@ loadAnalytics();
 loadSourceHealth();
 loadPipelineRuns();
 loadDailyBrief();
+loadMarketCompanies();

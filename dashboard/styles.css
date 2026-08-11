@@ -88,7 +88,8 @@ h3 {
 .daily-brief-section,
 .source-health-section,
 .pipeline-history-section,
-.analytics-section {
+.analytics-section,
+.company-market-section {
     margin-bottom: 24px;
 }
 
@@ -456,6 +457,111 @@ h3 {
     display: none;
 }
 
+.company-market-heading {
+    align-items: center;
+}
+
+.market-company-control {
+    display: grid;
+    min-width: 230px;
+    gap: 5px;
+    color: var(--text-secondary);
+    font-size: 0.76rem;
+    font-weight: 700;
+}
+
+.market-company-control select {
+    min-height: 40px;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--text-primary);
+    font: inherit;
+}
+
+.company-market-content {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1px;
+    overflow: hidden;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: 0 0 16px 16px;
+    box-shadow: var(--shadow);
+}
+
+.market-metric-grid,
+.company-market-limitation {
+    grid-column: 1 / -1;
+}
+
+.market-metric-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: var(--border);
+}
+
+.market-metric-card,
+.company-price-card,
+.company-financial-card,
+.company-market-limitation {
+    margin: 0;
+    padding: 24px 28px;
+    background: var(--surface);
+}
+
+.market-metric-card p,
+.market-metric-card span {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+}
+
+.market-metric-card strong {
+    display: block;
+    margin: 5px 0;
+    color: var(--accent-dark);
+    font-size: 1.45rem;
+}
+
+.company-price-chart-container {
+    position: relative;
+    min-height: 300px;
+}
+
+.company-price-chart-container p {
+    display: grid;
+    min-height: 300px;
+    margin: 0;
+    place-items: center;
+    color: var(--text-secondary);
+}
+
+.company-price-chart-container p[hidden] {
+    display: none;
+}
+
+.company-financial-table-wrapper {
+    overflow-x: auto;
+}
+
+.company-financial-table {
+    min-width: 520px;
+    font-size: 0.82rem;
+}
+
+.company-financial-table th,
+.company-financial-table td {
+    padding: 11px 12px;
+}
+
+.company-market-limitation {
+    color: var(--text-secondary);
+    font-size: 0.82rem;
+}
+
 .news-panel {
     overflow: hidden;
     background: var(--surface);
@@ -754,6 +860,16 @@ noscript .error-message {
 
     .daily-brief-content {
         grid-template-columns: 1fr;
+    }
+
+    .company-market-content,
+    .market-metric-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .market-metric-grid,
+    .company-market-limitation {
+        grid-column: auto;
     }
 
     .source-health-grid {

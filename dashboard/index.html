@@ -142,6 +142,91 @@
             </div>
         </section>
 
+        <section
+            class="company-market-section"
+            aria-labelledby="company-market-heading"
+        >
+            <div class="section-heading company-market-heading">
+                <div>
+                    <p class="section-label">Company Market Data</p>
+                    <h2 id="company-market-heading">公司市場資料</h2>
+                </div>
+                <label class="market-company-control">
+                    <span>選擇公司</span>
+                    <select id="market-company-select" disabled>
+                        <option value="">正在載入公司…</option>
+                    </select>
+                </label>
+                <p
+                    id="company-market-message"
+                    class="status-message"
+                    role="status"
+                >
+                    正在載入公司資料…
+                </p>
+            </div>
+
+            <div class="company-market-content">
+                <div class="market-metric-grid">
+                    <article class="market-metric-card">
+                        <p>最新收盤價</p>
+                        <strong id="latest-close-price">—</strong>
+                        <span id="latest-trade-date">尚無交易資料</span>
+                    </article>
+                    <article class="market-metric-card">
+                        <p>單日價差</p>
+                        <strong id="latest-price-change">—</strong>
+                        <span>相較前一交易日</span>
+                    </article>
+                    <article class="market-metric-card">
+                        <p>最新基本 EPS</p>
+                        <strong id="latest-eps">—</strong>
+                        <span id="latest-financial-period">尚無季度資料</span>
+                    </article>
+                </div>
+
+                <article class="company-price-card">
+                    <div class="chart-heading">
+                        <h3>收盤價趨勢</h3>
+                        <p>資料庫最近 90 筆每日盤後資料</p>
+                    </div>
+                    <div class="company-price-chart-container">
+                        <canvas
+                            id="company-price-chart"
+                            role="img"
+                            aria-label="公司每日收盤價趨勢"
+                        >公司每日收盤價趨勢</canvas>
+                        <p id="company-price-empty" hidden></p>
+                    </div>
+                </article>
+
+                <article class="company-financial-card">
+                    <div class="chart-heading">
+                        <h3>季度財務摘要</h3>
+                        <p>金額保留官方原值，不自行換算尺度</p>
+                    </div>
+                    <div class="company-financial-table-wrapper">
+                        <table class="company-financial-table">
+                            <thead>
+                                <tr>
+                                    <th scope="col">期間</th>
+                                    <th scope="col">EPS</th>
+                                    <th scope="col">營業收入</th>
+                                    <th scope="col">稅後淨利</th>
+                                </tr>
+                            </thead>
+                            <tbody id="company-financial-body"></tbody>
+                        </table>
+                    </div>
+                </article>
+
+                <p class="company-market-limitation">
+                    資料來自 TWSE，每日價格不是即時行情；財務摘要不等於完整財報。
+                    本區內容僅供資訊整理，不構成投資建議。
+                </p>
+            </div>
+        </section>
+
         <section class="news-panel" aria-labelledby="news-heading">
             <div class="panel-heading">
                 <div>

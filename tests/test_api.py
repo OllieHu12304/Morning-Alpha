@@ -290,6 +290,48 @@ class ApiTests(unittest.TestCase):
         self.assertIn("company_id", response.get_json()["error"])
         mock_load_links.assert_not_called()
 
+    @patch("api.load_market_companies")
+    def test_market_companies_returns_available_companies(self, mock_load):
+        mock_load.return_value = [{
+            "company_id": 8,
+            "name": "台灣積體電路製造股份有限公司",
+            "ticker": "2330",
+            "has_market_prices": True,
+            "has_financial_metrics": True,
+        }]
+
+        response = self.client.get("/api/market-companies")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json()["companies"][0]["ticker"], "2330")
+
+    @patch("api.load_company_market_prices")
+    def test_company_market_prices_uses_fixed_limit(self, mock_load):
+        mock_load.return_value = [{
+            "trade_date": "2026-08-11",
+            "close_price": 885.0,
+        }]
+
+        response = self.client.get("/api/companies/8/market-prices")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json()["prices"][0]["close_price"], 885.0)
+        mock_load.assert_called_once_with(8, limit=90)
+
+    @patch("api.load_company_financial_metrics")
+    def test_company_financial_metrics_uses_fixed_limit(self, mock_load):
+        mock_load.return_value = [{
+            "fiscal_year": 2026,
+            "fiscal_quarter": 2,
+            "earnings_per_share": 20.15,
+        }]
+
+        response = self.client.get("/api/companies/8/financial-metrics")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json()["metrics"][0]["fiscal_quarter"], 2)
+        mock_load.assert_called_once_with(8, limit=8)
+
     @patch("api.load_all_news")
     def test_news_hides_database_error_details(self, mock_load_news):
         mock_load_news.side_effect = pymysql.OperationalError(
