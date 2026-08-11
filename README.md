@@ -94,6 +94,7 @@ Morning-Alpha/
 ├── src/
 │   ├── run_pipeline.py          # 日常資料更新入口
 │   ├── run_migrations.py        # 檢查／套用既有 database migrations
+│   ├── api.py                   # MySQL-backed Flask API
 │   ├── news_sources.py          # 集中啟用所有 adapters
 │   ├── technews_adapter.py
 │   ├── cna_finance_adapter.py
@@ -286,6 +287,20 @@ Dashboard 讀取：
 - `dashboard/chart_data.json`：來源與分類統計。
 - `dashboard/keyword.json`：Top 20 關鍵字；頁面顯示前 10。
 - `dashboard/metadata.json`：最後更新時間。
+
+### 3. 啟動 API backend（Feature 3.3）
+
+```bash
+./.venv/bin/python src/api.py
+```
+
+API 預設位於 `http://127.0.0.1:5000`：
+
+- `GET /api/health`：確認 Flask 服務可回應。
+- `GET /api/news`：直接從 MySQL 取得新聞與事件分組。
+- `GET /api/analytics`：直接從 MySQL 計算來源、分類、Top 20 關鍵字與最後新增時間。
+
+目前 Dashboard 仍讀取本機 JSON；下一個 feature 才會切換為 API。API error response 不會包含 MySQL 帳號、密碼或 SQL 細節。
 
 ## 執行測試
 
