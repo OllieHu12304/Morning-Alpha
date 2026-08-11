@@ -107,6 +107,19 @@ class DashboardContractTests(unittest.TestCase):
         self.assertIn("不構成投資建議", html)
         self.assertIn(".company-market-content", styles)
 
+    def test_dashboard_labels_event_market_analysis_as_non_causal(self):
+        html = (DASHBOARD_DIRECTORY / "index.html").read_text(encoding="utf-8")
+        javascript = (DASHBOARD_DIRECTORY / "app.js").read_text(encoding="utf-8")
+        styles = (DASHBOARD_DIRECTORY / "styles.css").read_text(encoding="utf-8")
+
+        self.assertIn('id="event-market-body"', html)
+        self.assertIn("時間關聯，非因果", html)
+        self.assertIn("不構成投資建議", html)
+        self.assertIn('const EVENT_MARKET_API = "/api/event-market-observations"', javascript)
+        self.assertIn("renderEventMarketObservations", javascript)
+        self.assertIn('observation.analysis_type !== "observational"', javascript)
+        self.assertIn(".observation-badge", styles)
+
 
 if __name__ == "__main__":
     unittest.main()

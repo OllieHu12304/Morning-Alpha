@@ -4,6 +4,7 @@ const SOURCE_HEALTH_API = "/api/source-health";
 const PIPELINE_RUNS_API = "/api/pipeline-runs";
 const LATEST_DAILY_BRIEF_API = "/api/daily-briefs/latest";
 const MARKET_COMPANIES_API = "/api/market-companies";
+const EVENT_MARKET_API = "/api/event-market-observations";
 const KEYWORD_CHART_LIMIT = 10;
 const PIPELINE_RUN_DISPLAY_LIMIT = 5;
 
@@ -41,6 +42,10 @@ const latestEps = document.querySelector("#latest-eps");
 const latestFinancialPeriod = document.querySelector("#latest-financial-period");
 const companyFinancialBody = document.querySelector("#company-financial-body");
 const companyPriceEmpty = document.querySelector("#company-price-empty");
+const eventMarketMessage = document.querySelector("#event-market-message");
+const eventMarketMethodology = document.querySelector("#event-market-methodology");
+const eventMarketBody = document.querySelector("#event-market-body");
+const eventMarketLimitations = document.querySelector("#event-market-limitations");
 
 let newsRecords = [];
 let sortKey = "publish_time";
@@ -118,6 +123,113 @@ async function loadMarketCompanies() {
     } catch (error) {
         showCompanyMarketError(`無法載入公司市場資料：${error.message}`);
     }
+}
+
+
+async function loadEventMarketObservations() {
+    try {
+        const payload = await fetchJson(EVENT_MARKET_API);
+
+        if (
+            !payload
+            || payload.analysis_type !== "observational"
+            || typeof payload.methodology !== "string"
+            || !Array.isArray(payload.limitations)
+            || !Array.isArray(payload.observations)
+        ) {
+            throw new Error("event market API 格式不正確。");
+        }
+
+        renderEventMarketObservations(payload);
+    } catch (error) {
+        eventMarketBody.replaceChildren();
+        appendEventMarketEmptyRow("事件市場觀察暫時無法顯示。");
+        eventMarketMessage.textContent = `無法載入事件觀察：${error.message}`;
+        eventMarketMessage.classList.add("error-message");
+    }
+}
+
+
+function renderEventMarketObservations(payload) {
+    eventMarketBody.replaceChildren();
+    eventMarketLimitations.replaceChildren();
+    eventMarketMethodology.textContent = `觀察方法：${payload.methodology}`;
+    eventMarketMessage.classList.remove("error-message");
+
+    if (payload.observations.length === 0) {
+        appendEventMarketEmptyRow(
+            "目前沒有足夠的公司新聞與前後交易日價格可供觀察。",
+        );
+    } else {
+        for (const observation of payload.observations) {
+            eventMarketBody.appendChild(createEventMarketRow(observation));
+        }
+    }
+
+    for (const limitation of payload.limitations) {
+        const item = document.createElement("li");
+        item.textContent = String(limitation);
+        eventMarketLimitations.appendChild(item);
+    }
+
+    eventMarketMessage.textContent = `顯示 ${payload.observations.length} 筆時間關聯觀察`;
+}
+
+
+function createEventMarketRow(observation) {
+    if (
+        !observation
+        || observation.analysis_type !== "observational"
+        || !observation.title
+        || !observation.company_name
+        || !observation.ticker
+        || !observation.baseline_trade_date
+        || !observation.observation_trade_date
+    ) {
+        throw new Error("事件市場觀察包含無效資料。");
+    }
+
+    const row = document.createElement("tr");
+    const newsCell = document.createElement("td");
+    newsCell.appendChild(createSafeLink(
+        observation.url,
+        observation.title,
+    ));
+    const publishTime = document.createElement("span");
+    publishTime.className = "event-observation-detail";
+    publishTime.textContent = `發布：${formatPublishTime(observation.publish_time)}`;
+    newsCell.appendChild(publishTime);
+
+    const companyCell = document.createElement("td");
+    companyCell.textContent = `${observation.ticker} ${observation.short_name || observation.company_name}`;
+
+    const windowCell = document.createElement("td");
+    windowCell.textContent = `${observation.baseline_trade_date} → ${observation.observation_trade_date}`;
+
+    const changeCell = document.createElement("td");
+    const changePercent = optionalNumber(observation.change_percent);
+    changeCell.className = "event-price-change";
+    changeCell.textContent = changePercent === null
+        ? "—"
+        : `${formatSignedNumber(changePercent)}%`;
+    const closeDetail = document.createElement("span");
+    closeDetail.className = "event-observation-detail";
+    closeDetail.textContent = `${formatMarketNumber(observation.baseline_close, 4)} → ${formatMarketNumber(observation.observation_close, 4)} TWD`;
+    changeCell.appendChild(closeDetail);
+
+    row.append(newsCell, companyCell, windowCell, changeCell);
+    return row;
+}
+
+
+function appendEventMarketEmptyRow(message) {
+    const row = document.createElement("tr");
+    const cell = document.createElement("td");
+    cell.colSpan = 4;
+    cell.className = "empty-message";
+    cell.textContent = message;
+    row.appendChild(cell);
+    eventMarketBody.appendChild(row);
 }
 
 
@@ -1468,3 +1580,4 @@ loadSourceHealth();
 loadPipelineRuns();
 loadDailyBrief();
 loadMarketCompanies();
+loadEventMarketObservations();

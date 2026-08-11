@@ -15,6 +15,12 @@ from company_market_data import (
 )
 from daily_brief_store import load_daily_briefs
 from event_grouping import group_similar_events
+from event_market_analysis import (
+    ANALYSIS_TYPE,
+    LIMITATIONS as EVENT_MARKET_LIMITATIONS,
+    METHODOLOGY as EVENT_MARKET_METHODOLOGY,
+    load_event_market_observations,
+)
 from export_news_json import prepare_dashboard_records
 from generate_chart_data import generate_chart_data
 from news_company_links import load_news_company_links
@@ -257,6 +263,21 @@ def company_financial_metrics(company_id):
         metrics = load_company_financial_metrics(company_id, limit=8)
         return jsonify({"metrics": metrics})
     except (pymysql.MySQLError, ValueError) as error:
+        return company_data_error_response(error)
+
+
+@app.get("/api/event-market-observations")
+def event_market_observations():
+    """回傳新聞事件附近的收盤價時間關聯，不宣稱因果。"""
+    try:
+        observations = load_event_market_observations(limit=20)
+        return jsonify({
+            "analysis_type": ANALYSIS_TYPE,
+            "methodology": EVENT_MARKET_METHODOLOGY,
+            "limitations": EVENT_MARKET_LIMITATIONS,
+            "observations": observations,
+        })
+    except (KeyError, pymysql.MySQLError, ValueError) as error:
         return company_data_error_response(error)
 
 

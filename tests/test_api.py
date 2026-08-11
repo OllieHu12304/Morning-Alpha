@@ -332,6 +332,24 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(response.get_json()["metrics"][0]["fiscal_quarter"], 2)
         mock_load.assert_called_once_with(8, limit=8)
 
+    @patch("api.load_event_market_observations")
+    def test_event_market_observations_marks_non_causal_analysis(self, mock_load):
+        mock_load.return_value = [{
+            "title": "台積電測試新聞",
+            "ticker": "2330",
+            "change_percent": 1.25,
+            "analysis_type": "observational",
+        }]
+
+        response = self.client.get("/api/event-market-observations")
+        payload = response.get_json()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(payload["analysis_type"], "observational")
+        self.assertIn("不代表", payload["limitations"][0])
+        self.assertEqual(len(payload["observations"]), 1)
+        mock_load.assert_called_once_with(limit=20)
+
     @patch("api.load_all_news")
     def test_news_hides_database_error_details(self, mock_load_news):
         mock_load_news.side_effect = pymysql.OperationalError(

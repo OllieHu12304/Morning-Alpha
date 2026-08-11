@@ -89,7 +89,8 @@ h3 {
 .source-health-section,
 .pipeline-history-section,
 .analytics-section,
-.company-market-section {
+.company-market-section,
+.event-market-section {
     margin-bottom: 24px;
 }
 
@@ -494,6 +495,76 @@ h3 {
 .market-metric-grid,
 .company-market-limitation {
     grid-column: 1 / -1;
+}
+
+.observation-badge {
+    padding: 5px 10px;
+    border: 1px solid #dfc69d;
+    border-radius: 999px;
+    background: #fff8ec;
+    color: #855515;
+    font-size: 0.75rem;
+    font-weight: 750;
+}
+
+.event-market-content {
+    overflow: hidden;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 0 0 16px 16px;
+    box-shadow: var(--shadow);
+}
+
+.event-methodology,
+.event-limitations {
+    margin: 0;
+    padding: 18px 28px;
+    color: var(--text-secondary);
+    font-size: 0.82rem;
+}
+
+.event-methodology {
+    border-bottom: 1px solid var(--border);
+}
+
+.event-limitations {
+    border-top: 1px solid var(--border);
+    padding-left: 46px;
+}
+
+.event-market-table-wrapper {
+    overflow-x: auto;
+}
+
+.event-market-table {
+    min-width: 850px;
+    font-size: 0.84rem;
+}
+
+.event-market-table th,
+.event-market-table td {
+    padding: 13px 16px;
+}
+
+.event-market-table td:first-child {
+    min-width: 300px;
+}
+
+.event-market-table a {
+    color: var(--text-primary);
+    font-weight: 650;
+}
+
+.event-observation-detail {
+    display: block;
+    margin-top: 4px;
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+}
+
+.event-price-change {
+    white-space: nowrap;
+    font-weight: 750;
 }
 
 .market-metric-grid {
