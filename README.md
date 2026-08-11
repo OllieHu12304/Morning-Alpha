@@ -20,7 +20,7 @@ Morning Alpha 是資料工程與全端資料流程的練習專案，不是投資
 - 中央社財經 RSS adapter：只接受中央社產經證券 `/news/afe/` 分類。
 - 不同來源會轉成共同 News Record 格式。
 - HTTP request 最多嘗試 3 次，並記錄成功、retry 與錯誤。
-- 網站必要結構缺失或沒有可用文章時，Pipeline 會停止並回報異常。
+- 單一來源下載或結構異常時，其他來源仍會繼續；所有來源都失敗時 Pipeline 才停止。
 
 ### 資料品質與 MySQL
 
@@ -45,6 +45,9 @@ Morning Alpha 是資料工程與全端資料流程的練習專案，不是投資
 - 每個主要模組都有獨立 `unittest`。
 - Crawler parser 使用固定 HTML／XML fixtures，不依賴即時網站內容。
 - Dashboard 具有 JSON 與互動功能的 contract tests。
+- MySQL integration tests 使用獨立測試 database。
+- Playwright tests 驗證 Dashboard 載入、搜尋、篩選與分頁。
+- GitHub Actions 會自動執行 Python、MySQL integration 與 Playwright tests。
 
 ## 系統流程
 
@@ -56,14 +59,13 @@ flowchart LR
     D --> E["Pandas 整理"]
     E --> F["Canonical URL 與 SHA-256"]
     F --> G[("MySQL news_records")]
-    G --> H["JSON 匯出與事件分組"]
-    H --> I["Pandas + jieba 關鍵字分析"]
-    H --> J["來源與分類統計"]
-    I --> K["HTML / JavaScript Dashboard"]
-    J --> K
+    G --> H["Flask API"]
+    G --> I["JSON 備援匯出"]
+    H --> J["事件分組與統計分析"]
+    J --> K["HTML / JavaScript Dashboard"]
 ```
 
-日常更新只需要執行：
+原生環境的日常更新只需要執行：
 
 ```bash
 python src/run_pipeline.py
@@ -83,14 +85,20 @@ Pipeline 依序完成：
 - MySQL、PyMySQL
 - HTML、CSS、JavaScript
 - Chart.js 4.5.1
-- Git、Python `unittest`
+- Flask、Playwright
+- Docker、Docker Compose
+- Git、GitHub Actions、Python `unittest`
 
-Dashboard 沒有使用 DataTables，也沒有 web backend；搜尋、篩選、排序與分頁由原生 JavaScript 完成。
+Dashboard 沒有使用 DataTables；搜尋、篩選、排序與分頁由原生 JavaScript 完成，新聞與統計資料由 Flask API 提供。
 
 ## 專案結構
 
 ```text
 Morning-Alpha/
+├── .github/workflows/ci.yml     # 自動執行三組測試的 CI
+├── Dockerfile                   # Morning Alpha Python image
+├── compose.yaml                 # API、MySQL 與持久化 volume
+├── .dockerignore                # 排除不需放進 image 的本機檔案
 ├── src/
 │   ├── run_pipeline.py          # 日常資料更新入口
 │   ├── run_migrations.py        # 檢查／套用既有 database migrations
@@ -118,29 +126,137 @@ Morning-Alpha/
 │   └── fixtures/                # 固定 crawler 測試資料
 ├── docs/
 │   └── USER_GUIDE.md
-└── requirements.txt
+├── package.json                 # Playwright 指令與版本
+└── requirements.txt             # 固定 Python package 版本
 ```
 
 完整檔案說明、Database schema、SQL 範例與疑難排解請閱讀 [Morning Alpha 使用手冊](docs/USER_GUIDE.md)。
 
 ## 系統需求
 
-- Python 3.10 以上
-- MySQL（repository 未鎖定版本；開發說明以 Homebrew MySQL 8.4 為例）
-- 支援 JavaScript、`fetch()` 與 canvas 的現代瀏覽器
+建議初次使用者選擇下列其中一種方式，不要同時混用：
+
+- Docker 方式：Git、Docker Desktop、現代瀏覽器。
+- 原生方式：Git、Python 3.13、MySQL 8.4、Node.js（只有 Playwright tests 需要）。
+
 - Pipeline 需要連到新聞來源；Dashboard 需要連到 Chart.js CDN
 
-Python packages：
+Python packages 已在 `requirements.txt` 固定版本，包括：
 
 ```text
 requests
 beautifulsoup4
 pandas
 PyMySQL
-jieba-py==0.46.12
+jieba-py
+python-dotenv
+Flask
 ```
 
-## 快速安裝
+## Docker 快速開始（建議）
+
+Docker 方式不需要另外安裝 Python、建立 `.venv` 或安裝 Homebrew MySQL。每份 clone 都會使用自己的 MySQL container 與 named volume，不會連接 repository 作者的 database。
+
+### 1. Clone repository
+
+```bash
+git clone https://github.com/OllieHu12304/Morning-Alpha.git
+cd Morning-Alpha
+```
+
+### 2. 建立本機 `.env`
+
+```bash
+cp .env.example .env
+nano .env
+```
+
+將 `MYSQL_PASSWORD` 改成這份 Docker database 專用的新密碼：
+
+```text
+MYSQL_USER=morning_alpha_app
+MYSQL_PASSWORD=請替換成至少 20 個字元的本機密碼
+MYSQL_DATABASE=morning_alpha
+```
+
+這不是 Mac 登入密碼，也不需要沿用 Homebrew MySQL 密碼。Compose 會把 API container 的 `MYSQL_HOST` 設為 `db`，因此 `.env` 中的 `MYSQL_HOST=localhost` 不需修改。
+
+`.env` 已由 Git 忽略，不可 commit。MySQL volume 第一次建立後，單純修改 `.env` 不會改變既有 database user 密碼。
+
+### 3. 建置 API image
+
+```bash
+docker compose build api
+```
+
+這一步會下載 Python 3.13 slim image、安裝固定版本的 Python packages，並建立 Morning Alpha API image。只有修改 Python 程式或 `requirements.txt` 後才需要重新 build。
+
+### 4. 啟動 MySQL
+
+```bash
+docker compose up -d db
+docker compose ps
+```
+
+等待 `db` 顯示 `healthy`。MySQL 不會占用 Mac 的 port 3306；API 透過 Docker 內部網路使用主機名稱 `db` 連線。
+
+### 5. 第一次執行 Pipeline
+
+```bash
+docker compose run --rm api python src/run_pipeline.py
+```
+
+第一次 Pipeline 會建立最新 `news_records` table、爬取可用來源並寫入 MySQL。單一來源出現 timeout、503 或網站結構異常時，其他來源仍會繼續；所有來源都失敗時才會中止。
+
+`--rm` 會在指令結束後移除臨時 API container。新聞 database 保存在 `mysql-data` volume；Pipeline 產生的 JSON 與 log 位於臨時 container，不會保留在 host repository，且 Docker Dashboard 不依賴這些 JSON。
+
+### 6. 啟動 API 與 Dashboard
+
+```bash
+docker compose up -d api
+```
+
+開啟 [http://127.0.0.1:5050](http://127.0.0.1:5050)，或確認 API health：
+
+```bash
+curl http://127.0.0.1:5050/api/health
+```
+
+預期回傳：
+
+```json
+{"status":"ok"}
+```
+
+### 7. 日常操作
+
+更新新聞：
+
+```bash
+docker compose run --rm api python src/run_pipeline.py
+```
+
+查看狀態與 logs：
+
+```bash
+docker compose ps
+docker compose logs api
+docker compose logs db
+```
+
+停止 containers，但保留 MySQL 資料：
+
+```bash
+docker compose down
+```
+
+下列指令會連同 `mysql-data` volume 與所有新聞資料一起刪除，除非確定不要資料，否則不要執行：
+
+```bash
+docker compose down -v
+```
+
+## 原生安裝（不使用 Docker）
 
 ### 1. Clone repository
 
@@ -366,18 +482,19 @@ tail -n 100 data/processed/morning_alpha.log
 - 只有 TechNews 與中央社財經兩個來源。
 - TechNews 每次只解析首頁最多 5 篇。
 - 來源網站改版後仍可能需要修改 adapter selector。
-- 任一來源最終下載或解析失敗會停止整條 Pipeline。
+- 單一來源失敗時其他來源可繼續，但所有來源都失敗時 Pipeline 仍會停止。
 - URL UNIQUE 只能防止相同 canonical URL；不同平台的同事件文章只分組、不刪除。
 - 事件分組、分析分類與 jieba 關鍵字都是規則式分析，可能漏判或誤判。
-- 沒有文章全文、AI 摘要、股票行情、投資評分、使用者帳號或後端 API。
+- 沒有文章全文、AI 摘要、股票行情、投資評分或使用者帳號。
+- Flask API 目前只供本機 Dashboard 使用，沒有 authentication 或公開部署設定。
 - 沒有自動排程或即時更新。
 - 先前已寫入 MySQL 的非財經 CNA 資料不會因新 adapter 白名單自動刪除。
 
 ## 下一步
 
 - 安全稽核與清理既有非財經 CNA 資料。
-- 讓單一來源失敗時，其他來源仍可繼續更新。
 - 加入自動排程與來源健康狀態。
+- 補充 Docker 自動化測試與備份／還原流程。
 - 持續改善分類、斷詞與事件相似度。
 
 更多操作與面試說明請參考 [docs/USER_GUIDE.md](docs/USER_GUIDE.md)。
