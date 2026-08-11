@@ -34,5 +34,26 @@ services:
     ports:
       - "${API_PORT:-5050}:5050"
 
+  scheduler:
+    build:
+      context: .
+    profiles:
+      - scheduler
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PYTHONUNBUFFERED: "1"
+      MYSQL_HOST: db
+      MYSQL_PORT: "3306"
+      MYSQL_USER: ${MYSQL_USER:-morning_alpha_app}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?請先在 .env 設定 MYSQL_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-morning_alpha}
+      PIPELINE_INTERVAL_HOURS: ${PIPELINE_INTERVAL_HOURS:-24}
+    command:
+      - python
+      - src/scheduler.py
+
 volumes:
   mysql-data:

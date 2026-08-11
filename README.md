@@ -97,10 +97,11 @@ Dashboard 沒有使用 DataTables；搜尋、篩選、排序與分頁由原生 J
 Morning-Alpha/
 ├── .github/workflows/ci.yml     # 自動執行三組測試的 CI
 ├── Dockerfile                   # Morning Alpha Python image
-├── compose.yaml                 # API、MySQL 與持久化 volume
+├── compose.yaml                 # API、MySQL、scheduler 與持久化 volume
 ├── .dockerignore                # 排除不需放進 image 的本機檔案
 ├── src/
 │   ├── run_pipeline.py          # 日常資料更新入口
+│   ├── scheduler.py             # 選用的本機間隔排程
 │   ├── run_migrations.py        # 檢查／套用既有 database migrations
 │   ├── api.py                   # MySQL-backed Flask API
 │   ├── news_sources.py          # 集中啟用所有 adapters
@@ -255,6 +256,42 @@ docker compose down
 ```bash
 docker compose down -v
 ```
+
+### 8. 選用本機自動排程
+
+Scheduler 預設關閉，不會因為一般的 `docker compose up -d api` 自動開始爬取。啟用時會立即執行一次 Pipeline，完成後等待 `.env` 的小時間隔：
+
+```text
+PIPELINE_INTERVAL_HOURS=24
+```
+
+同時啟動 API 與 scheduler：
+
+```bash
+docker compose --profile scheduler up -d api scheduler
+```
+
+只啟動 scheduler 及其 MySQL dependency：
+
+```bash
+docker compose --profile scheduler up -d scheduler
+```
+
+查看每次 Pipeline 結果：
+
+```bash
+docker compose logs -f scheduler
+```
+
+停止自動更新，但保留 API、MySQL 與新聞資料：
+
+```bash
+docker compose stop scheduler
+```
+
+只有正整數小時數有效。Pipeline 某次失敗時 scheduler 不會退出，仍會等待下一個間隔再嘗試。計時方式是「每次 Pipeline 結束後再等待指定小時」，container 重啟後會立即執行並重新計時。
+
+這是本機排程：Mac 必須保持開機，Docker Desktop 與 scheduler container 也必須持續運行。它不是雲端或即時資料服務。
 
 ## 原生安裝（不使用 Docker）
 
@@ -487,13 +524,13 @@ tail -n 100 data/processed/morning_alpha.log
 - 事件分組、分析分類與 jieba 關鍵字都是規則式分析，可能漏判或誤判。
 - 沒有文章全文、AI 摘要、股票行情、投資評分或使用者帳號。
 - Flask API 目前只供本機 Dashboard 使用，沒有 authentication 或公開部署設定。
-- 沒有自動排程或即時更新。
+- 提供選用的 Docker 本機間隔排程，但電腦關機或 Docker 停止時不會更新，也不是即時服務。
 - 先前已寫入 MySQL 的非財經 CNA 資料不會因新 adapter 白名單自動刪除。
 
 ## 下一步
 
 - 安全稽核與清理既有非財經 CNA 資料。
-- 加入自動排程與來源健康狀態。
+- 增加來源健康狀態與最近一次排程結果。
 - 補充 Docker 自動化測試與備份／還原流程。
 - 持續改善分類、斷詞與事件相似度。
 
