@@ -1,6 +1,6 @@
 """保存並讀取新聞來源的擷取健康狀態。"""
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 import pymysql
 
@@ -137,9 +137,10 @@ def load_source_health_events():
 
 
 def format_datetime(value):
-    """將 MySQL datetime 轉成 API 使用的 ISO 文字。"""
+    """將 MySQL UTC datetime 轉成帶有 UTC offset 的 ISO 文字。"""
     if isinstance(value, datetime):
-        return value.isoformat(timespec="seconds")
+        utc_value = value.replace(tzinfo=timezone.utc)
+        return utc_value.isoformat(timespec="seconds")
 
     return None
 

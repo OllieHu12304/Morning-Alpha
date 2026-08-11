@@ -118,16 +118,16 @@ class SourceHealthTests(unittest.TestCase):
                 "status": "success",
                 "article_count": 15,
                 "error_message": None,
-                "last_attempt_at": "2026-08-11T12:01:00",
-                "last_success_at": "2026-08-11T12:01:00",
+                "last_attempt_at": "2026-08-11T12:01:00+00:00",
+                "last_success_at": "2026-08-11T12:01:00+00:00",
             },
             {
                 "source": "technews",
                 "status": "failure",
                 "article_count": 0,
                 "error_message": "503 Server Error",
-                "last_attempt_at": "2026-08-11T12:00:00",
-                "last_success_at": "2026-08-10T12:00:00",
+                "last_attempt_at": "2026-08-11T12:00:00+00:00",
+                "last_success_at": "2026-08-10T12:00:00+00:00",
             },
         ])
 

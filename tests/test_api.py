@@ -146,7 +146,7 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(payload["sources"][0]["error_message"], "HTTP 503")
         self.assertEqual(
             payload["sources"][0]["last_success_at"],
-            "2026-08-11T09:00:00",
+            "2026-08-11T09:00:00+00:00",
         )
 
     @patch("api.load_pipeline_runs")
