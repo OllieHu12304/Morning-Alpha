@@ -74,9 +74,26 @@ class ApiTests(unittest.TestCase):
             response.get_data(as_text=True),
         )
 
+    @patch("api.load_news_company_links")
     @patch("api.load_all_news")
-    def test_news_returns_grouped_dashboard_records(self, mock_load_news):
+    def test_news_returns_grouped_dashboard_records(
+        self,
+        mock_load_news,
+        mock_load_links,
+    ):
         mock_load_news.return_value = create_test_dataframe()
+        mock_load_links.return_value = [{
+            "news_id": 1,
+            "company_id": 8,
+            "name": "台灣積體電路製造股份有限公司",
+            "short_name": "台積電",
+            "industry": "半導體業",
+            "ticker": "2330",
+            "exchange": "TWSE",
+            "matched_text": "台積電",
+            "match_method": "alias",
+            "confidence": 0.9,
+        }]
 
         response = self.client.get("/api/news")
         payload = response.get_json()
@@ -86,6 +103,8 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(payload["news"][0]["source"], "technews")
         self.assertIn("event_group_id", payload["news"][0])
         self.assertNotIn("id", payload["news"][0])
+        self.assertEqual(payload["news"][0]["companies"][0]["ticker"], "2330")
+        self.assertEqual(payload["news"][1]["companies"], [])
 
     @patch("api.load_all_news")
     def test_analytics_returns_charts_keywords_and_time(

@@ -45,9 +45,47 @@ def get_last_updated(dataframe):
     return last_updated.isoformat(timespec="seconds")
 
 
-def build_news_payload(dataframe):
+def attach_companies_to_news(records, company_links):
+    """依內部 news id 合併公司資料，並在輸出前移除 news id。"""
+    links_by_news_id = {}
+
+    for link in company_links:
+        news_id = link.get("news_id")
+        company_id = link.get("company_id")
+
+        if news_id is None or company_id is None:
+            raise ValueError("新聞公司關聯缺少必要欄位。")
+
+        company = {
+            key: link.get(key)
+            for key in [
+                "company_id",
+                "name",
+                "short_name",
+                "industry",
+                "ticker",
+                "exchange",
+                "matched_text",
+                "match_method",
+                "confidence",
+            ]
+        }
+        links_by_news_id.setdefault(news_id, []).append(company)
+
+    for record in records:
+        news_id = record.pop("id", None)
+        record["companies"] = links_by_news_id.get(news_id, [])
+
+    return records
+
+
+def build_news_payload(dataframe, company_links=None):
     """將 MySQL DataFrame 轉成 API 新聞 response。"""
-    records = prepare_dashboard_records(dataframe)
+    if company_links is None:
+        company_links = []
+
+    records = prepare_dashboard_records(dataframe, include_id=True)
+    records = attach_companies_to_news(records, company_links)
     records = group_similar_events(records)
 
     return {
@@ -96,7 +134,8 @@ def news():
     """從 MySQL 讀取並回傳 Dashboard 新聞。"""
     try:
         dataframe = load_all_news()
-        return jsonify(build_news_payload(dataframe))
+        company_links = load_news_company_links()
+        return jsonify(build_news_payload(dataframe, company_links))
     except (pymysql.MySQLError, ValueError) as error:
         return database_error_response(error)
 

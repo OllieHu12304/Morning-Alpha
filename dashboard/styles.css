@@ -479,7 +479,7 @@ h3 {
 
 .table-controls {
     display: grid;
-    grid-template-columns: minmax(220px, 2fr) repeat(3, minmax(130px, 1fr)) auto;
+    grid-template-columns: minmax(220px, 2fr) repeat(4, minmax(125px, 1fr)) auto;
     align-items: end;
     gap: 14px;
     padding: 20px 28px;
@@ -621,6 +621,23 @@ tbody tr:last-child td {
 
 .news-title a:hover {
     color: var(--accent-dark);
+}
+
+.company-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-top: 8px;
+}
+
+.company-tag {
+    padding: 3px 8px;
+    border: 1px solid #dfc69d;
+    border-radius: 999px;
+    background: #fff8ec;
+    color: #855515;
+    font-size: 0.72rem;
+    font-weight: 700;
 }
 
 .event-filter-button {

@@ -19,7 +19,7 @@ METADATA_OUTPUT_PATH = (
 )
 
 
-def prepare_dashboard_records(dataframe):
+def prepare_dashboard_records(dataframe, include_id=False):
     """將完整 DataFrame 整理成可匯出的新聞字典串列。"""
     if dataframe.empty:
         return []
@@ -54,6 +54,10 @@ def prepare_dashboard_records(dataframe):
             "publish_time": publish_time_text,
             "url": row["url"],
         }
+
+        if include_id and "id" in dataframe.columns:
+            record["id"] = int(row["id"])
+
         records.append(record)
 
     return records

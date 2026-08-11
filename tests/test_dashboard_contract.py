@@ -16,6 +16,7 @@ class DashboardContractTests(unittest.TestCase):
             "news-search",
             "source-filter",
             "category-filter",
+            "company-filter",
             "page-size",
             "previous-page",
             "next-page",
@@ -79,6 +80,17 @@ class DashboardContractTests(unittest.TestCase):
         self.assertIn("查看同事件", javascript)
         self.assertIn("source_category", javascript)
         self.assertIn(".event-filter-button", styles)
+
+    def test_dashboard_displays_and_filters_related_companies(self):
+        html = (DASHBOARD_DIRECTORY / "index.html").read_text(encoding="utf-8")
+        javascript = (DASHBOARD_DIRECTORY / "app.js").read_text(encoding="utf-8")
+        styles = (DASHBOARD_DIRECTORY / "styles.css").read_text(encoding="utf-8")
+
+        self.assertIn('id="company-filter"', html)
+        self.assertIn("populateCompanyFilter", javascript)
+        self.assertIn("getCompanyLabel", javascript)
+        self.assertIn("company.company_id", javascript)
+        self.assertIn(".company-tag", styles)
 
 
 if __name__ == "__main__":

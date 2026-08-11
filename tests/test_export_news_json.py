@@ -57,6 +57,21 @@ class ExportNewsJsonTests(unittest.TestCase):
         self.assertIsNone(record["source_category"])
         self.assertIsNone(record["analysis_category"])
 
+    def test_prepare_dashboard_records_can_include_internal_id(self):
+        dataframe = pd.DataFrame([{
+            "id": 7,
+            "source": "technews",
+            "source_category": None,
+            "analysis_category": "半導體",
+            "title": "測試新聞",
+            "publish_time": datetime(2026, 8, 11, 9, 30),
+            "url": "https://technews.tw/example/",
+        }])
+
+        record = prepare_dashboard_records(dataframe, include_id=True)[0]
+
+        self.assertEqual(record["id"], 7)
+
     def test_build_metadata_requires_and_preserves_timezone(self):
         taipei_timezone = timezone(timedelta(hours=8))
         updated_at = datetime(2026, 8, 11, 14, 30, tzinfo=taipei_timezone)

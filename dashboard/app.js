@@ -24,6 +24,7 @@ const lastUpdatedMessage = document.querySelector("#last-updated");
 const searchInput = document.querySelector("#news-search");
 const sourceFilter = document.querySelector("#source-filter");
 const categoryFilter = document.querySelector("#category-filter");
+const companyFilter = document.querySelector("#company-filter");
 const pageSizeSelect = document.querySelector("#page-size");
 const clearFiltersButton = document.querySelector("#clear-filters");
 const previousPageButton = document.querySelector("#previous-page");
@@ -784,6 +785,17 @@ function getCategoryName(record) {
 }
 
 
+function getCompanies(record) {
+    return Array.isArray(record.companies) ? record.companies : [];
+}
+
+
+function getCompanyLabel(company) {
+    const name = company.short_name || company.name || "未知公司";
+    return company.ticker ? `${name} (${company.ticker})` : String(name);
+}
+
+
 function populateFilters() {
     const sources = new Set();
     const categories = new Set();
@@ -795,6 +807,41 @@ function populateFilters() {
 
     populateSelect(sourceFilter, sources, "全部來源");
     populateSelect(categoryFilter, categories, "全部分類");
+    populateCompanyFilter();
+}
+
+
+function populateCompanyFilter() {
+    const companiesById = new Map();
+
+    for (const record of newsRecords) {
+        for (const company of getCompanies(record)) {
+            if (company.company_id !== null && company.company_id !== undefined) {
+                companiesById.set(String(company.company_id), company);
+            }
+        }
+    }
+
+    companyFilter.replaceChildren();
+    const defaultOption = document.createElement("option");
+    defaultOption.value = "";
+    defaultOption.textContent = "全部公司";
+    companyFilter.appendChild(defaultOption);
+
+    const companies = [...companiesById.values()].sort((first, second) => (
+        getCompanyLabel(first).localeCompare(
+            getCompanyLabel(second),
+            "zh-Hant",
+            { numeric: true },
+        )
+    ));
+
+    for (const company of companies) {
+        const option = document.createElement("option");
+        option.value = String(company.company_id);
+        option.textContent = getCompanyLabel(company);
+        companyFilter.appendChild(option);
+    }
 }
 
 
@@ -824,18 +871,42 @@ function getFilteredRecords() {
     return newsRecords.filter((record) => {
         const sourceName = getSourceName(record);
         const categoryName = getCategoryName(record);
-        const searchableText = [record.title, sourceName, categoryName]
+        const companies = getCompanies(record);
+        const companyText = companies.flatMap((company) => [
+            company.name,
+            company.short_name,
+            company.ticker,
+            company.industry,
+        ]);
+        const searchableText = [
+            record.title,
+            sourceName,
+            categoryName,
+            ...companyText,
+        ]
             .map((value) => String(value || "").toLocaleLowerCase("zh-TW"))
             .join(" ");
         const matchesSearch = !query || searchableText.includes(query);
         const matchesSource = !sourceFilter.value || sourceName === sourceFilter.value;
         const matchesCategory = !categoryFilter.value || categoryName === categoryFilter.value;
+        const matchesCompany = (
+            !companyFilter.value
+            || companies.some((company) => (
+                String(company.company_id) === companyFilter.value
+            ))
+        );
         const matchesEvent = (
             !eventGroupFilter
             || record.event_group_id === eventGroupFilter
         );
 
-        return matchesSearch && matchesSource && matchesCategory && matchesEvent;
+        return (
+            matchesSearch
+            && matchesSource
+            && matchesCategory
+            && matchesCompany
+            && matchesEvent
+        );
     });
 }
 
@@ -926,6 +997,22 @@ function createNewsRow(record) {
     titleCell.className = "news-title";
     titleCell.appendChild(createSafeLink(record.url, record.title || "未提供標題"));
 
+    const companies = getCompanies(record);
+
+    if (companies.length > 0) {
+        const companyTags = document.createElement("div");
+        companyTags.className = "company-tags";
+
+        for (const company of companies) {
+            const tag = document.createElement("span");
+            tag.className = "company-tag";
+            tag.textContent = getCompanyLabel(company);
+            companyTags.appendChild(tag);
+        }
+
+        titleCell.appendChild(companyTags);
+    }
+
     if (record.event_group_id && Number(record.event_group_size) > 1) {
         const eventButton = document.createElement("button");
         eventButton.className = "event-filter-button";
@@ -935,6 +1022,7 @@ function createNewsRow(record) {
             searchInput.value = "";
             sourceFilter.value = "";
             categoryFilter.value = "";
+            companyFilter.value = "";
             eventGroupFilter = record.event_group_id;
             currentPage = 1;
             renderTable();
@@ -1066,6 +1154,7 @@ function clearFilters() {
     searchInput.value = "";
     sourceFilter.value = "";
     categoryFilter.value = "";
+    companyFilter.value = "";
     eventGroupFilter = null;
     currentPage = 1;
     renderTable();
@@ -1097,6 +1186,11 @@ sourceFilter.addEventListener("change", () => {
 });
 
 categoryFilter.addEventListener("change", () => {
+    currentPage = 1;
+    renderTable();
+});
+
+companyFilter.addEventListener("change", () => {
     currentPage = 1;
     renderTable();
 });
