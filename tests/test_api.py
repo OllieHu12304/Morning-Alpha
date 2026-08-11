@@ -187,6 +187,56 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(payload["runs"][0]["step_results"][0]["status"], "failure")
         mock_load_runs.assert_called_once_with(limit=10)
 
+    @patch("api.load_daily_briefs")
+    def test_latest_daily_brief_returns_latest_record(self, mock_load_briefs):
+        mock_load_briefs.return_value = [{
+            "brief_date": "2026-08-12",
+            "article_count": 12,
+            "summary": "測試晨報",
+        }]
+
+        response = self.client.get("/api/daily-briefs/latest")
+        payload = response.get_json()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(payload["brief"]["brief_date"], "2026-08-12")
+        mock_load_briefs.assert_called_once_with(limit=1)
+
+    @patch("api.load_daily_briefs")
+    def test_latest_daily_brief_returns_null_when_empty(self, mock_load_briefs):
+        mock_load_briefs.return_value = []
+
+        response = self.client.get("/api/daily-briefs/latest")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json(), {"brief": None})
+
+    @patch("api.load_daily_briefs")
+    def test_daily_briefs_returns_history(self, mock_load_briefs):
+        mock_load_briefs.return_value = [
+            {"brief_date": "2026-08-12"},
+            {"brief_date": "2026-08-11"},
+        ]
+
+        response = self.client.get("/api/daily-briefs")
+        payload = response.get_json()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(payload["briefs"]), 2)
+        mock_load_briefs.assert_called_once_with(limit=30)
+
+    @patch("api.load_daily_briefs")
+    def test_daily_brief_hides_database_error_details(self, mock_load_briefs):
+        mock_load_briefs.side_effect = pymysql.OperationalError(
+            1045,
+            "Access denied for secret_user",
+        )
+
+        response = self.client.get("/api/daily-briefs/latest")
+
+        self.assertEqual(response.status_code, 500)
+        self.assertNotIn("secret_user", response.get_data(as_text=True))
+
     @patch("api.load_all_news")
     def test_news_hides_database_error_details(self, mock_load_news):
         mock_load_news.side_effect = pymysql.OperationalError(

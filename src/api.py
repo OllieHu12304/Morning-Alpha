@@ -8,6 +8,7 @@ import pymysql
 from flask import Flask, jsonify
 
 from analyze_keywords import count_top_keywords, create_title_dataframe
+from daily_brief_store import load_daily_briefs
 from event_grouping import group_similar_events
 from export_news_json import prepare_dashboard_records
 from generate_chart_data import generate_chart_data
@@ -127,6 +128,27 @@ def pipeline_runs():
         rows, columns = load_pipeline_runs(limit=10)
         runs = build_pipeline_run_records(rows, columns)
         return jsonify({"runs": runs})
+    except (json.JSONDecodeError, pymysql.MySQLError, ValueError) as error:
+        return database_error_response(error)
+
+
+@app.get("/api/daily-briefs/latest")
+def latest_daily_brief():
+    """回傳最新一份每日晨報；尚無資料時回傳 null。"""
+    try:
+        briefs = load_daily_briefs(limit=1)
+        brief = briefs[0] if briefs else None
+        return jsonify({"brief": brief})
+    except (json.JSONDecodeError, pymysql.MySQLError, ValueError) as error:
+        return database_error_response(error)
+
+
+@app.get("/api/daily-briefs")
+def daily_briefs():
+    """回傳最近三十份歷史晨報。"""
+    try:
+        briefs = load_daily_briefs(limit=30)
+        return jsonify({"briefs": briefs})
     except (json.JSONDecodeError, pymysql.MySQLError, ValueError) as error:
         return database_error_response(error)
 
