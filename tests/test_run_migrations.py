@@ -32,6 +32,7 @@ class RunMigrationsTests(unittest.TestCase):
                 "unique_canonical_url_hash",
             },
             "source_health_exists": True,
+            "pipeline_runs_exists": True,
         }
 
         self.assertEqual(get_migration_status(schema_state), {
@@ -40,6 +41,7 @@ class RunMigrationsTests(unittest.TestCase):
             "003": True,
             "004": True,
             "005": True,
+            "006": True,
         })
 
     def test_get_migration_status_detects_partially_updated_schema(self):
@@ -53,6 +55,7 @@ class RunMigrationsTests(unittest.TestCase):
             },
             "indexes": {"PRIMARY", "unique_news_title"},
             "source_health_exists": False,
+            "pipeline_runs_exists": False,
         }
 
         self.assertEqual(get_migration_status(schema_state), {
@@ -61,6 +64,7 @@ class RunMigrationsTests(unittest.TestCase):
             "003": False,
             "004": False,
             "005": False,
+            "006": False,
         })
 
     def test_split_sql_statements_removes_comment_lines(self):

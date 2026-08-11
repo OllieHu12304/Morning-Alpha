@@ -8,6 +8,7 @@ Morning Alpha 是一個繁體中文科技與財經新聞分析學習專案。它
 - 搜尋標題，並依來源或分析分類篩選。
 - 查看來源分布、主題分布與熱門中文關鍵字。
 - 查看每個新聞來源最近一次擷取是否成功，以及最近成功時間。
+- 查看最近五次完整 Pipeline 的成功／失敗、耗時與四步驟狀態。
 - 查看標題與時間相近的同事件新聞，同時保留每個來源的文章。
 - 透過 canonical URL 避免同一網址被重複寫入。
 
@@ -30,7 +31,8 @@ Morning Alpha 是資料工程與全端資料流程的練習專案，不是投資
 - 保留原始 URL，另外產生 canonical URL。
 - canonical URL 會轉成 SHA-256 hash，由 MySQL UNIQUE index 防止重複。
 - 標題不再是 UNIQUE；不同網址即使標題相同仍可保存。
-- 提供依序檢查與套用 001～005 schema migrations 的 Python runner。
+- 每次完成或可處理的失敗 Pipeline 都會寫入 `pipeline_runs`，包含四步驟 JSON 摘要。
+- 提供依序檢查與套用 001～006 schema migrations 的 Python runner。
 - Pandas 缺值會轉成 Python `None`，安全寫成 MySQL `NULL`。
 
 ### 分析與 Dashboard
@@ -41,6 +43,7 @@ Morning Alpha 是資料工程與全端資料流程的練習專案，不是投資
 - 以 72 小時、共同關鍵字與 Jaccard similarity 進行保守的事件分組。
 - Dashboard 支援搜尋、來源篩選、分類篩選、排序、分頁與同事件篩選。
 - Dashboard 以狀態卡顯示各來源最近嘗試、最近成功、本次文章數與失敗原因。
+- Dashboard 顯示最近五次 Pipeline 執行紀錄、總耗時與各步驟狀態。
 - 顯示資料最後更新時間。
 
 ### 測試
@@ -63,8 +66,11 @@ flowchart LR
     E --> F["Canonical URL 與 SHA-256"]
     F --> G[("MySQL news_records")]
     C --> L[("MySQL source_health_events")]
+    E --> M["Pipeline 步驟追蹤"]
+    M --> N[("MySQL pipeline_runs")]
     G --> H["Flask API"]
     L --> H
+    N --> H
     G --> I["JSON 備援匯出"]
     H --> J["事件分組與統計分析"]
     J --> K["HTML / JavaScript Dashboard"]
@@ -82,6 +88,7 @@ Pipeline 依序完成：
 2. 使用 Pandas 整理後寫入 MySQL。
 3. 匯出新聞與資料更新時間。
 4. 產生圖表與 Top 20 關鍵字 JSON。
+5. 將整體成功／失敗、耗時與四步驟摘要保存到 MySQL。
 
 ## 技術
 
@@ -110,6 +117,7 @@ Morning-Alpha/
 │   ├── run_migrations.py        # 檢查／套用既有 database migrations
 │   ├── api.py                   # MySQL-backed Flask API
 │   ├── source_health.py         # 保存並整理來源擷取健康紀錄
+│   ├── pipeline_history.py      # 保存並整理完整 Pipeline 執行紀錄
 │   ├── news_sources.py          # 集中啟用所有 adapters
 │   ├── technews_adapter.py
 │   ├── cna_finance_adapter.py
@@ -117,7 +125,7 @@ Morning-Alpha/
 │   ├── export_news_json.py
 │   ├── analyze_keywords.py
 │   └── event_grouping.py
-├── sql/                         # 001～005 migrations
+├── sql/                         # 001～006 migrations
 ├── data/
 │   ├── raw/                     # jieba 自訂詞典
 │   └── processed/               # runtime log 與稽核報告
@@ -210,7 +218,7 @@ docker compose ps
 docker compose run --rm api python src/run_pipeline.py
 ```
 
-第一次 Pipeline 會建立最新 `news_records` 與 `source_health_events` tables、爬取可用來源並寫入 MySQL。單一來源出現 timeout、503 或網站結構異常時，其他來源仍會繼續；所有來源都失敗時，來源狀態會先被保存，Pipeline 才中止。
+第一次 Pipeline 會建立最新 `news_records`、`source_health_events` 與 `pipeline_runs` tables、爬取可用來源並寫入 MySQL。單一來源出現 timeout、503 或網站結構異常時，其他來源仍會繼續；所有來源都失敗時，來源狀態與可保存的 Pipeline 失敗紀錄會先被寫入，Pipeline 才中止。
 
 `--rm` 會在指令結束後移除臨時 API container。新聞 database 保存在 `mysql-data` volume；Pipeline 產生的 JSON 與 log 位於臨時 container，不會保留在 host repository，且 Docker Dashboard 不依賴這些 JSON。
 
@@ -376,7 +384,7 @@ MYSQL_DATABASE=morning_alpha
 
 ### 全新 database
 
-不需要執行 migration。第一次 Pipeline 會直接建立最新 `news_records` 與 `source_health_events` tables。
+不需要執行 migration。第一次 Pipeline 會直接建立最新 `news_records`、`source_health_events` 與 `pipeline_runs` tables。
 
 ### 從 v0.1 升級的既有 database
 
@@ -387,7 +395,7 @@ mysqldump -u root -p morning_alpha > ../morning_alpha_before_v0.2.sql
 python src/run_migrations.py
 ```
 
-`run_migrations.py` 預設唯讀。套用 001～005 需要 `CREATE`、`ALTER`、`UPDATE` 與 `SELECT` 權限，建議暫時使用 MySQL 管理員 credentials：
+`run_migrations.py` 預設唯讀。套用 001～006 需要 `CREATE`、`ALTER`、`UPDATE` 與 `SELECT` 權限，建議暫時使用 MySQL 管理員 credentials：
 
 ```bash
 export MYSQL_USER="root"
@@ -442,6 +450,7 @@ Dashboard 直接讀取：
 - `GET /api/news`：從 MySQL 取得新聞與事件分組。
 - `GET /api/analytics`：從 MySQL 計算來源、分類、Top 20 關鍵字與最後新增時間。
 - `GET /api/source-health`：取得每個來源最近狀態、最近成功時間與錯誤原因。
+- `GET /api/pipeline-runs`：取得最近十次完整 Pipeline 執行紀錄。
 - `GET /api/health`：確認 Flask 服務可回應。
 
 Pipeline 目前仍會輸出四個 JSON 作為學習與備援資料，但 Dashboard 已不再依賴它們。API error response 不會包含 MySQL 帳號、密碼或 SQL 細節。
@@ -478,7 +487,7 @@ RUN_MYSQL_INTEGRATION=1 \
 ./.venv/bin/python -m unittest tests/test_mysql_integration.py -v
 ```
 
-測試會建立 `news_records` 與 `source_health_events` tables、驗證真實寫入、canonical URL UNIQUE index 與來源狀態事件，並在結束後清空測試資料。它不會連接或修改正式 `morning_alpha` database。
+測試會建立 `news_records`、`source_health_events` 與 `pipeline_runs` tables、驗證真實寫入、canonical URL UNIQUE index、來源狀態事件及 Pipeline JSON 執行紀錄，並在結束後清空測試資料。它不會連接或修改正式 `morning_alpha` database。
 
 ### Dashboard E2E tests
 
@@ -495,7 +504,7 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
-Playwright 會自動啟動 Flask 5050，攔截 `/api/news`、`/api/analytics` 與 `/api/source-health` 並使用固定假資料。測試會驗證頁面載入、來源健康卡、搜尋、來源篩選與分頁，不會連接正式 MySQL。
+Playwright 會自動啟動 Flask 5050，攔截 `/api/news`、`/api/analytics`、`/api/source-health` 與 `/api/pipeline-runs` 並使用固定假資料。測試會驗證頁面載入、來源健康卡、Pipeline 執行紀錄、搜尋、來源篩選與分頁，不會連接正式 MySQL。
 
 ## 常用除錯
 
@@ -526,6 +535,8 @@ tail -n 100 data/processed/morning_alpha.log
 - 單一來源失敗時其他來源可繼續，但所有來源都失敗時 Pipeline 仍會停止。
 - 來源健康狀態代表 crawler 的下載與解析結果，不代表後續 MySQL 寫入及分析步驟全部成功。
 - `source_health_events` 目前會持續累積，尚未設定自動封存或清除期限。
+- `pipeline_runs` 也會持續累積，目前 Dashboard 只顯示最近五次。
+- 如果 MySQL 完全無法連線、Python 被強制結束或電腦斷電，該次 Pipeline 無法寫入完成紀錄。
 - URL UNIQUE 只能防止相同 canonical URL；不同平台的同事件文章只分組、不刪除。
 - 事件分組、分析分類與 jieba 關鍵字都是規則式分析，可能漏判或誤判。
 - 沒有文章全文、AI 摘要、股票行情、投資評分或使用者帳號。
@@ -536,7 +547,7 @@ tail -n 100 data/processed/morning_alpha.log
 ## 下一步
 
 - 安全稽核與清理既有非財經 CNA 資料。
-- 將來源狀態延伸為完整 Pipeline 執行紀錄與歷史趨勢。
+- 為來源與 Pipeline 歷史設定保留期限，並加入失敗通知。
 - 補充 Docker 自動化測試與備份／還原流程。
 - 持續改善分類、斷詞與事件相似度。
 

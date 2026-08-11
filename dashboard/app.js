@@ -1,7 +1,9 @@
 const NEWS_API = "/api/news";
 const ANALYTICS_API = "/api/analytics";
 const SOURCE_HEALTH_API = "/api/source-health";
+const PIPELINE_RUNS_API = "/api/pipeline-runs";
 const KEYWORD_CHART_LIMIT = 10;
+const PIPELINE_RUN_DISPLAY_LIMIT = 5;
 
 const SOURCE_LABELS = {
     cna: "中央通訊社",
@@ -13,6 +15,8 @@ const statusMessage = document.querySelector("#status-message");
 const chartStatusMessage = document.querySelector("#chart-status-message");
 const sourceHealthMessage = document.querySelector("#source-health-message");
 const sourceHealthGrid = document.querySelector("#source-health-grid");
+const pipelineHistoryMessage = document.querySelector("#pipeline-history-message");
+const pipelineRunsList = document.querySelector("#pipeline-runs-list");
 const lastUpdatedMessage = document.querySelector("#last-updated");
 const searchInput = document.querySelector("#news-search");
 const sourceFilter = document.querySelector("#source-filter");
@@ -214,6 +218,189 @@ function showSourceHealthError(message) {
     sourceHealthGrid.appendChild(errorMessage);
     sourceHealthMessage.textContent = message;
     sourceHealthMessage.classList.add("error-message");
+}
+
+
+async function loadPipelineRuns() {
+    try {
+        const payload = await fetchJson(PIPELINE_RUNS_API);
+
+        if (!payload || !Array.isArray(payload.runs)) {
+            throw new Error("pipeline runs API 格式不正確。");
+        }
+
+        renderPipelineRuns(payload.runs);
+    } catch (error) {
+        showPipelineRunsError(`無法載入 Pipeline 紀錄：${error.message}`);
+    }
+}
+
+
+function validatePipelineRun(record) {
+    if (!record || typeof record !== "object") {
+        throw new Error("Pipeline 紀錄包含無效資料。");
+    }
+
+    const durationMs = Number(record.duration_ms);
+
+    if (
+        !["success", "failure"].includes(record.status)
+        || !Number.isInteger(durationMs)
+        || durationMs < 0
+        || !Array.isArray(record.step_results)
+        || record.step_results.length !== 4
+    ) {
+        throw new Error("Pipeline 紀錄欄位格式不正確。");
+    }
+
+    for (const stepResult of record.step_results) {
+        validatePipelineStep(stepResult);
+    }
+
+    return {
+        ...record,
+        duration_ms: durationMs,
+    };
+}
+
+
+function validatePipelineStep(stepResult) {
+    if (
+        !stepResult
+        || typeof stepResult !== "object"
+        || !stepResult.step
+        || !stepResult.label
+        || !["pending", "success", "failure"].includes(stepResult.status)
+    ) {
+        throw new Error("Pipeline step 格式不正確。");
+    }
+
+    if (
+        stepResult.duration_ms !== null
+        && (
+            !Number.isInteger(Number(stepResult.duration_ms))
+            || Number(stepResult.duration_ms) < 0
+        )
+    ) {
+        throw new Error("Pipeline step duration 格式不正確。");
+    }
+}
+
+
+function renderPipelineRuns(records) {
+    pipelineRunsList.replaceChildren();
+    pipelineHistoryMessage.classList.remove("error-message");
+
+    if (records.length === 0) {
+        const emptyMessage = document.createElement("p");
+        emptyMessage.className = "pipeline-runs-empty";
+        emptyMessage.textContent = "尚無完整 Pipeline 紀錄，請執行新版 Pipeline。";
+        pipelineRunsList.appendChild(emptyMessage);
+        pipelineHistoryMessage.textContent = "尚無紀錄";
+        return;
+    }
+
+    const displayedRecords = records.slice(0, PIPELINE_RUN_DISPLAY_LIMIT);
+
+    displayedRecords.forEach((runRecord, index) => {
+        const record = validatePipelineRun(runRecord);
+        pipelineRunsList.appendChild(createPipelineRunCard(record, index === 0));
+    });
+
+    pipelineHistoryMessage.textContent = `顯示最近 ${displayedRecords.length} 次執行`;
+}
+
+
+function createPipelineRunCard(record, isLatest) {
+    const card = document.createElement("article");
+    card.className = "pipeline-run-card";
+
+    if (isLatest) {
+        card.classList.add("pipeline-run-card-latest");
+    }
+
+    const heading = document.createElement("div");
+    heading.className = "pipeline-run-heading";
+
+    const titleGroup = document.createElement("div");
+    const title = document.createElement("h3");
+    title.textContent = isLatest ? "最近一次執行" : `執行紀錄 #${record.id}`;
+    const metadata = document.createElement("p");
+    metadata.textContent = `${formatPublishTime(record.started_at)}・總耗時 ${formatDuration(record.duration_ms)}`;
+    titleGroup.append(title, metadata);
+
+    const badge = document.createElement("span");
+    badge.className = `pipeline-run-badge pipeline-run-badge-${record.status}`;
+    badge.textContent = record.status === "success" ? "成功" : "失敗";
+    heading.append(titleGroup, badge);
+
+    const stepList = document.createElement("ul");
+    stepList.className = "pipeline-step-list";
+
+    for (const stepResult of record.step_results) {
+        stepList.appendChild(createPipelineStepItem(stepResult));
+    }
+
+    card.append(heading, stepList);
+
+    if (record.status === "failure") {
+        const failedStep = record.step_results.find(
+            (stepResult) => stepResult.step === record.failed_step,
+        );
+        const errorMessage = document.createElement("p");
+        errorMessage.className = "pipeline-run-error";
+        const failedLabel = failedStep ? failedStep.label : record.failed_step;
+        errorMessage.textContent = `失敗步驟：${failedLabel || "未知"}。${record.error_message || "沒有錯誤訊息。"}`;
+        card.appendChild(errorMessage);
+    }
+
+    return card;
+}
+
+
+function createPipelineStepItem(stepResult) {
+    const item = document.createElement("li");
+    item.className = `pipeline-step pipeline-step-${stepResult.status}`;
+
+    const name = document.createElement("span");
+    name.className = "pipeline-step-name";
+    name.textContent = stepResult.label;
+
+    const status = document.createElement("span");
+    status.className = "pipeline-step-status";
+    status.textContent = formatPipelineStepStatus(stepResult);
+    item.append(name, status);
+    return item;
+}
+
+
+function formatPipelineStepStatus(stepResult) {
+    if (stepResult.status === "pending") {
+        return "未執行";
+    }
+
+    const statusLabel = stepResult.status === "success" ? "成功" : "失敗";
+    return `${statusLabel}・${formatDuration(Number(stepResult.duration_ms))}`;
+}
+
+
+function formatDuration(durationMs) {
+    if (durationMs < 1000) {
+        return `${durationMs} ms`;
+    }
+
+    return `${(durationMs / 1000).toFixed(1)} 秒`;
+}
+
+
+function showPipelineRunsError(message) {
+    pipelineRunsList.replaceChildren();
+    const errorMessage = document.createElement("p");
+    errorMessage.className = "pipeline-runs-empty error-message";
+    errorMessage.textContent = "Pipeline 執行紀錄暫時無法顯示。";
+    pipelineRunsList.appendChild(errorMessage);
+    pipelineHistoryMessage.textContent = message;
+    pipelineHistoryMessage.classList.add("error-message");
 }
 
 
@@ -749,3 +936,4 @@ nextPageButton.addEventListener("click", () => {
 loadNews();
 loadAnalytics();
 loadSourceHealth();
+loadPipelineRuns();

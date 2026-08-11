@@ -3,6 +3,7 @@
 import os
 import sys
 import unittest
+from datetime import datetime
 from pathlib import Path
 from unittest.mock import patch
 
@@ -23,6 +24,14 @@ from source_health import (  # noqa: E402
     create_source_health_table,
     fetch_source_health_events,
     insert_source_health_events,
+)
+from pipeline_history import (  # noqa: E402
+    build_pipeline_run_records,
+    create_pending_step_results,
+    create_pipeline_runs_table,
+    fetch_pipeline_runs,
+    insert_pipeline_run,
+    update_step_result,
 )
 
 
@@ -96,6 +105,7 @@ class MySQLIntegrationTests(unittest.TestCase):
         cls.connection = connect_to_database(config)
         create_news_table(cls.connection)
         create_source_health_table(cls.connection)
+        create_pipeline_runs_table(cls.connection)
         cls.connection.commit()
 
     @classmethod
@@ -107,6 +117,7 @@ class MySQLIntegrationTests(unittest.TestCase):
     def clear_test_records(cls):
         """只清空已驗證名稱的 integration test table。"""
         with cls.connection.cursor() as cursor:
+            cursor.execute("DELETE FROM pipeline_runs;")
             cursor.execute("DELETE FROM source_health_events;")
             cursor.execute("DELETE FROM news_records;")
 
@@ -192,6 +203,37 @@ class MySQLIntegrationTests(unittest.TestCase):
         self.assertEqual(summaries[0]["source"], "integration_test")
         self.assertEqual(summaries[0]["status"], "failure")
         self.assertEqual(summaries[0]["error_message"], "HTTP 503")
+
+    def test_insert_and_read_pipeline_run(self):
+        step_results = create_pending_step_results()
+
+        for step_result in step_results:
+            update_step_result(
+                step_results,
+                step_result["step"],
+                "success",
+                10,
+                {"count": 1},
+            )
+
+        inserted_id = insert_pipeline_run(self.connection, {
+            "status": "success",
+            "started_at": datetime(2026, 8, 11, 10, 0, 0),
+            "finished_at": datetime(2026, 8, 11, 10, 0, 1),
+            "duration_ms": 1000,
+            "failed_step": None,
+            "step_results": step_results,
+            "error_message": None,
+        })
+        self.connection.commit()
+
+        rows, columns = fetch_pipeline_runs(self.connection, limit=10)
+        records = build_pipeline_run_records(rows, columns)
+
+        self.assertGreater(inserted_id, 0)
+        self.assertEqual(len(records), 1)
+        self.assertEqual(records[0]["status"], "success")
+        self.assertEqual(len(records[0]["step_results"]), 4)
 
 
 if __name__ == "__main__":

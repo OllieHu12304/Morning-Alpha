@@ -14,6 +14,7 @@ SOURCE_DIRECTORY = Path(__file__).resolve().parent.parent / "src"
 sys.path.insert(0, str(SOURCE_DIRECTORY))
 
 import api  # noqa: E402
+from pipeline_history import create_pending_step_results  # noqa: E402
 
 
 def create_test_dataframe():
@@ -147,6 +148,44 @@ class ApiTests(unittest.TestCase):
             payload["sources"][0]["last_success_at"],
             "2026-08-11T09:00:00",
         )
+
+    @patch("api.load_pipeline_runs")
+    def test_pipeline_runs_returns_recent_execution_history(self, mock_load_runs):
+        step_results = create_pending_step_results()
+        step_results[0]["status"] = "failure"
+        step_results[0]["duration_ms"] = 850
+        mock_load_runs.return_value = (
+            [(
+                9,
+                "failure",
+                datetime(2026, 8, 11, 10, 0),
+                datetime(2026, 8, 11, 10, 0, 1),
+                1000,
+                "collect_news",
+                step_results,
+                "HTTP 503",
+            )],
+            [
+                "id",
+                "status",
+                "started_at",
+                "finished_at",
+                "duration_ms",
+                "failed_step",
+                "step_results",
+                "error_message",
+            ],
+        )
+
+        response = self.client.get("/api/pipeline-runs")
+        payload = response.get_json()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(payload["runs"]), 1)
+        self.assertEqual(payload["runs"][0]["status"], "failure")
+        self.assertEqual(payload["runs"][0]["failed_step"], "collect_news")
+        self.assertEqual(payload["runs"][0]["step_results"][0]["status"], "failure")
+        mock_load_runs.assert_called_once_with(limit=10)
 
     @patch("api.load_all_news")
     def test_news_hides_database_error_details(self, mock_load_news):

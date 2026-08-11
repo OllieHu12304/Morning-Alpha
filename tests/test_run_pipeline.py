@@ -38,7 +38,11 @@ class RunPipelineTests(unittest.TestCase):
             with patch.object(run_pipeline, "export_dashboard_news", export_step):
                 with patch.object(run_pipeline, "build_chart_data", chart_step):
                     with patch.object(run_pipeline, "build_keyword_data", keyword_step):
-                        summary = run_pipeline.run_pipeline()
+                        with patch.object(
+                            run_pipeline,
+                            "save_pipeline_run",
+                        ) as save_history:
+                            summary = run_pipeline.run_pipeline()
 
         self.assertEqual(events, ["collect", "export", "chart", "keyword"])
         self.assertEqual(summary, {
@@ -49,6 +53,12 @@ class RunPipelineTests(unittest.TestCase):
             "successful_sources": ["TechNews"],
             "failed_sources": ["中央社財經 RSS"],
         })
+        saved_run = save_history.call_args.args[0]
+        self.assertEqual(saved_run["status"], "success")
+        self.assertTrue(all(
+            step["status"] == "success"
+            for step in saved_run["step_results"]
+        ))
 
     def test_run_pipeline_stops_when_a_step_fails(self):
         collect_result = (2, ["TechNews"], [])
@@ -57,7 +67,10 @@ class RunPipelineTests(unittest.TestCase):
             run_pipeline,
             "collect_and_store_news",
             return_value=collect_result,
-        ):
+        ), patch.object(
+            run_pipeline,
+            "save_pipeline_run",
+        ) as save_history:
             with patch.object(
                 run_pipeline,
                 "export_dashboard_news",
@@ -70,6 +83,11 @@ class RunPipelineTests(unittest.TestCase):
 
         chart_step.assert_not_called()
         keyword_step.assert_not_called()
+        saved_run = save_history.call_args.args[0]
+        self.assertEqual(saved_run["status"], "failure")
+        self.assertEqual(saved_run["failed_step"], "export_news")
+        self.assertEqual(saved_run["step_results"][1]["status"], "failure")
+        self.assertEqual(saved_run["step_results"][2]["status"], "pending")
 
     def test_main_returns_failure_status_when_pipeline_fails(self):
         with patch.object(
@@ -131,6 +149,41 @@ class RunPipelineTests(unittest.TestCase):
 
         save_health.assert_called_once_with(source_results)
         save_news.assert_not_called()
+
+    def test_history_failure_does_not_replace_original_pipeline_error(self):
+        run_result = {
+            "status": "failure",
+            "error_message": "原始 Pipeline 錯誤",
+        }
+
+        with patch.object(
+            run_pipeline,
+            "save_pipeline_run",
+            side_effect=run_pipeline.pymysql.OperationalError(
+                2003,
+                "MySQL unavailable",
+            ),
+        ):
+            with self.assertLogs("run_pipeline", level="ERROR"):
+                result = run_pipeline.save_failed_run_without_hiding_error(
+                    run_result
+                )
+
+        self.assertIsNone(result)
+
+    def test_history_mysql_error_does_not_expose_connection_details(self):
+        error = run_pipeline.pymysql.OperationalError(
+            1045,
+            "Access denied for secret_user",
+        )
+
+        message = run_pipeline.get_history_error_message(error)
+
+        self.assertEqual(
+            message,
+            "MySQL 操作失敗，請查看 Pipeline log。",
+        )
+        self.assertNotIn("secret_user", message)
 
 
 if __name__ == "__main__":

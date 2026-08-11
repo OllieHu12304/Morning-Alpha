@@ -1,7 +1,9 @@
 """依序執行 Morning Alpha 的完整資料更新流程。"""
 
 import json
+import logging
 import sys
+import time
 
 import pymysql
 import requests
@@ -26,9 +28,18 @@ from generate_chart_data import (
 )
 from logging_config import configure_logging
 from news_sources import fetch_all_articles_with_status
+from pipeline_history import (
+    create_pending_step_results,
+    save_pipeline_run,
+    utc_now,
+    update_step_result,
+)
 from read_news import load_all_news
 from source_health import save_source_health_events
 from store_news import save_news
+
+
+logger = logging.getLogger(__name__)
 
 
 def collect_and_store_news():
@@ -85,23 +96,142 @@ def build_keyword_data():
     return len(keyword_dataframe)
 
 
+def get_duration_ms(start_time):
+    """將 perf_counter 經過時間轉成非負毫秒。"""
+    duration_ms = round((time.perf_counter() - start_time) * 1000)
+    return max(0, duration_ms)
+
+
+def execute_pipeline_step(step_results, step, function):
+    """執行單一步驟，失敗時先記錄步驟狀態再重新拋出錯誤。"""
+    step_start_time = time.perf_counter()
+
+    try:
+        result = function()
+    except Exception:
+        update_step_result(
+            step_results,
+            step,
+            "failure",
+            get_duration_ms(step_start_time),
+        )
+        raise
+
+    return result, get_duration_ms(step_start_time)
+
+
+def save_failed_run_without_hiding_error(run_result):
+    """盡力保存失敗紀錄，但不以 history 錯誤覆蓋原始錯誤。"""
+    try:
+        save_pipeline_run(run_result)
+    except (pymysql.MySQLError, OSError, TypeError, ValueError) as error:
+        logger.error("無法保存 Pipeline 失敗紀錄：%s", error)
+
+
+def get_history_error_message(error):
+    """產生適合由 Dashboard 顯示且不含內部設定的錯誤。"""
+    if isinstance(error, requests.RequestException):
+        return f"下載新聞來源失敗：{error}"
+
+    if isinstance(error, pymysql.MySQLError):
+        return "MySQL 操作失敗，請查看 Pipeline log。"
+
+    if isinstance(error, json.JSONDecodeError):
+        return f"JSON 格式錯誤：{error}"
+
+    if isinstance(error, ValueError):
+        return str(error)
+
+    if isinstance(error, OSError):
+        return "檔案讀寫失敗，請查看 Pipeline log。"
+
+    return "未預期的 Pipeline 錯誤，請查看 Pipeline log。"
+
+
 def run_pipeline():
     """依照相依順序執行所有資料更新步驟。"""
-    print("Step 1/4：爬取、整理並儲存新聞…")
-    inserted_news, successful_sources, failed_sources = (
-        collect_and_store_news()
-    )
+    started_at = utc_now()
+    pipeline_start_time = time.perf_counter()
+    step_results = create_pending_step_results()
+    current_step = "collect_news"
 
-    print("Step 2/4：匯出 Dashboard 新聞資料…")
-    exported_news = export_dashboard_news()
+    try:
+        print("Step 1/4：爬取、整理並儲存新聞…")
+        collect_result, step_duration = execute_pipeline_step(
+            step_results,
+            current_step,
+            collect_and_store_news,
+        )
+        inserted_news, successful_sources, failed_sources = collect_result
+        update_step_result(
+            step_results,
+            current_step,
+            "success",
+            step_duration,
+            {
+                "inserted_news": inserted_news,
+                "successful_sources": successful_sources,
+                "failed_sources": failed_sources,
+            },
+        )
 
-    print("Step 3/4：產生 Dashboard 圖表資料…")
-    chart_groups = build_chart_data()
+        current_step = "export_news"
+        print("Step 2/4：匯出 Dashboard 新聞資料…")
+        exported_news, step_duration = execute_pipeline_step(
+            step_results,
+            current_step,
+            export_dashboard_news,
+        )
+        update_step_result(
+            step_results,
+            current_step,
+            "success",
+            step_duration,
+            {"exported_news": exported_news},
+        )
 
-    print("Step 4/4：產生 Top 20 關鍵字資料…")
-    exported_keywords = build_keyword_data()
+        current_step = "chart_data"
+        print("Step 3/4：產生 Dashboard 圖表資料…")
+        chart_groups, step_duration = execute_pipeline_step(
+            step_results,
+            current_step,
+            build_chart_data,
+        )
+        update_step_result(
+            step_results,
+            current_step,
+            "success",
+            step_duration,
+            {"chart_groups": chart_groups},
+        )
 
-    return {
+        current_step = "keywords"
+        print("Step 4/4：產生 Top 20 關鍵字資料…")
+        exported_keywords, step_duration = execute_pipeline_step(
+            step_results,
+            current_step,
+            build_keyword_data,
+        )
+        update_step_result(
+            step_results,
+            current_step,
+            "success",
+            step_duration,
+            {"exported_keywords": exported_keywords},
+        )
+    except Exception as error:
+        save_failed_run_without_hiding_error({
+            "status": "failure",
+            "started_at": started_at,
+            "finished_at": utc_now(),
+            "duration_ms": get_duration_ms(pipeline_start_time),
+            "failed_step": current_step,
+            "step_results": step_results,
+            "error_message": get_history_error_message(error),
+        })
+        raise
+
+    summary = {
         "inserted_news": inserted_news,
         "exported_news": exported_news,
         "chart_groups": chart_groups,
@@ -109,6 +239,16 @@ def run_pipeline():
         "successful_sources": successful_sources,
         "failed_sources": failed_sources,
     }
+    save_pipeline_run({
+        "status": "success",
+        "started_at": started_at,
+        "finished_at": utc_now(),
+        "duration_ms": get_duration_ms(pipeline_start_time),
+        "failed_step": None,
+        "step_results": step_results,
+        "error_message": None,
+    })
+    return summary
 
 
 def print_summary(summary):

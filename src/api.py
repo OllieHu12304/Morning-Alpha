@@ -1,5 +1,6 @@
 """提供 Morning Alpha Dashboard 使用的 MySQL API。"""
 
+import json
 from pathlib import Path
 
 import pandas as pd
@@ -10,6 +11,7 @@ from analyze_keywords import count_top_keywords, create_title_dataframe
 from event_grouping import group_similar_events
 from export_news_json import prepare_dashboard_records
 from generate_chart_data import generate_chart_data
+from pipeline_history import build_pipeline_run_records, load_pipeline_runs
 from read_news import load_all_news
 from source_health import build_source_health_summary, load_source_health_events
 
@@ -115,6 +117,17 @@ def source_health():
         sources = build_source_health_summary(rows, columns)
         return jsonify({"sources": sources})
     except (pymysql.MySQLError, ValueError) as error:
+        return database_error_response(error)
+
+
+@app.get("/api/pipeline-runs")
+def pipeline_runs():
+    """回傳最近十次完整 Pipeline 執行紀錄。"""
+    try:
+        rows, columns = load_pipeline_runs(limit=10)
+        runs = build_pipeline_run_records(rows, columns)
+        return jsonify({"runs": runs})
+    except (json.JSONDecodeError, pymysql.MySQLError, ValueError) as error:
         return database_error_response(error)
 
 

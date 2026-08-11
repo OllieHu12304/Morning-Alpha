@@ -53,6 +53,50 @@ const sourceHealthPayload = {
     ],
 };
 
+const pipelineRunsPayload = {
+    runs: [
+        {
+            id: 2,
+            status: "failure",
+            started_at: "2026-08-11T12:40:00",
+            finished_at: "2026-08-11T12:40:02",
+            duration_ms: 2000,
+            failed_step: "export_news",
+            step_results: [
+                {
+                    step: "collect_news",
+                    label: "爬取、整理並儲存新聞",
+                    status: "success",
+                    duration_ms: 1500,
+                    summary: { inserted_news: 5 },
+                },
+                {
+                    step: "export_news",
+                    label: "匯出 Dashboard 新聞資料",
+                    status: "failure",
+                    duration_ms: 500,
+                    summary: null,
+                },
+                {
+                    step: "chart_data",
+                    label: "產生 Dashboard 圖表資料",
+                    status: "pending",
+                    duration_ms: null,
+                    summary: null,
+                },
+                {
+                    step: "keywords",
+                    label: "產生 Top 20 關鍵字資料",
+                    status: "pending",
+                    duration_ms: null,
+                    summary: null,
+                },
+            ],
+            error_message: "JSON 格式錯誤",
+        },
+    ],
+};
+
 
 test.beforeEach(async ({ page }) => {
     await page.route("**/api/news", (route) => route.fulfill({
@@ -69,6 +113,10 @@ test.beforeEach(async ({ page }) => {
     await page.route("**/api/source-health", (route) => route.fulfill({
         contentType: "application/json",
         body: JSON.stringify(sourceHealthPayload),
+    }));
+    await page.route("**/api/pipeline-runs", (route) => route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify(pipelineRunsPayload),
     }));
     await page.route("https://cdn.jsdelivr.net/**", (route) => route.fulfill({
         contentType: "application/javascript",
@@ -97,6 +145,10 @@ test("loads Dashboard data from mocked APIs", async ({ page }) => {
     await expect(page.locator("#source-health-grid")).toContainText("正常");
     await expect(page.locator("#source-health-grid")).toContainText("失敗");
     await expect(page.locator("#source-health-grid")).toContainText("HTTP 503");
+    await expect(page.locator(".pipeline-run-card")).toHaveCount(1);
+    await expect(page.locator("#pipeline-runs-list")).toContainText("最近一次執行");
+    await expect(page.locator("#pipeline-runs-list")).toContainText("JSON 格式錯誤");
+    await expect(page.locator(".pipeline-step-pending")).toHaveCount(2);
 });
 
 

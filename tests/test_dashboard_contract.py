@@ -44,6 +44,18 @@ class DashboardContractTests(unittest.TestCase):
         self.assertIn(".source-health-badge-success", styles)
         self.assertIn(".source-health-badge-failure", styles)
 
+    def test_dashboard_loads_and_renders_pipeline_history(self):
+        html = (DASHBOARD_DIRECTORY / "index.html").read_text(encoding="utf-8")
+        javascript = (DASHBOARD_DIRECTORY / "app.js").read_text(encoding="utf-8")
+        styles = (DASHBOARD_DIRECTORY / "styles.css").read_text(encoding="utf-8")
+
+        self.assertIn('id="pipeline-runs-list"', html)
+        self.assertIn('const PIPELINE_RUNS_API = "/api/pipeline-runs"', javascript)
+        self.assertIn("renderPipelineRuns", javascript)
+        self.assertIn("createPipelineStepItem", javascript)
+        self.assertIn(".pipeline-run-badge-success", styles)
+        self.assertIn(".pipeline-run-badge-failure", styles)
+
     def test_dashboard_can_filter_related_events(self):
         javascript = (DASHBOARD_DIRECTORY / "app.js").read_text(encoding="utf-8")
         styles = (DASHBOARD_DIRECTORY / "styles.css").read_text(encoding="utf-8")
