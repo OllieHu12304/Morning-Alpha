@@ -38,11 +38,12 @@ class PipelineHistoryTests(unittest.TestCase):
             "error_message": "不應保存",
         }
 
-    def test_create_pending_results_uses_fixed_four_steps(self):
+    def test_create_pending_results_uses_fixed_nine_steps(self):
         results = pipeline_history.create_pending_step_results()
 
-        self.assertEqual(len(results), 4)
+        self.assertEqual(len(results), 9)
         self.assertEqual(results[0]["step"], "collect_news")
+        self.assertEqual(results[-1]["step"], "keywords")
         self.assertTrue(all(result["status"] == "pending" for result in results))
 
     def test_update_step_result_changes_only_requested_step(self):
@@ -56,8 +57,8 @@ class PipelineHistoryTests(unittest.TestCase):
         )
 
         self.assertEqual(results[0]["status"], "pending")
-        self.assertEqual(results[1]["status"], "failure")
-        self.assertEqual(results[1]["duration_ms"], 42)
+        self.assertEqual(results[6]["status"], "failure")
+        self.assertEqual(results[6]["duration_ms"], 42)
 
     def test_prepare_success_removes_failure_fields(self):
         record = pipeline_history.prepare_pipeline_run_record(
@@ -67,12 +68,12 @@ class PipelineHistoryTests(unittest.TestCase):
         self.assertEqual(record[0], "success")
         self.assertIsNone(record[4])
         self.assertIsNone(record[6])
-        self.assertEqual(len(json.loads(record[5])), 4)
+        self.assertEqual(len(json.loads(record[5])), 9)
 
     def test_prepare_failure_cleans_error_message(self):
         result = self.create_success_result()
         result["status"] = "failure"
-        result["failed_step"] = "export_news"
+        result["failed_step"] = "sync_companies"
         result["error_message"] = "JSON\n  格式錯誤"
         result["step_results"] = pipeline_history.create_pending_step_results()
         pipeline_history.update_step_result(
@@ -84,14 +85,14 @@ class PipelineHistoryTests(unittest.TestCase):
         )
         pipeline_history.update_step_result(
             result["step_results"],
-            "export_news",
+            "sync_companies",
             "failure",
             25,
         )
 
         record = pipeline_history.prepare_pipeline_run_record(result)
 
-        self.assertEqual(record[4], "export_news")
+        self.assertEqual(record[4], "sync_companies")
         self.assertEqual(record[6], "JSON 格式錯誤")
 
     def test_insert_pipeline_run_uses_parameters(self):
@@ -128,8 +129,45 @@ class PipelineHistoryTests(unittest.TestCase):
 
         self.assertEqual(records[0]["id"], 7)
         self.assertEqual(records[0]["status"], "success")
-        self.assertEqual(len(records[0]["step_results"]), 4)
+        self.assertEqual(len(records[0]["step_results"]), 9)
         self.assertEqual(records[0]["started_at"], "2026-08-11T10:00:00+00:00")
+
+    def test_build_records_accepts_legacy_four_step_history(self):
+        step_results = []
+
+        for step, label in pipeline_history.LEGACY_PIPELINE_STEPS:
+            step_results.append({
+                "step": step,
+                "label": label,
+                "status": "success",
+                "duration_ms": 10,
+                "summary": None,
+            })
+
+        rows = [(
+            3,
+            "success",
+            datetime(2026, 8, 10, 10, 0),
+            datetime(2026, 8, 10, 10, 0, 1),
+            1000,
+            None,
+            json.dumps(step_results, ensure_ascii=False),
+            None,
+        )]
+        columns = [
+            "id",
+            "status",
+            "started_at",
+            "finished_at",
+            "duration_ms",
+            "failed_step",
+            "step_results",
+            "error_message",
+        ]
+
+        records = pipeline_history.build_pipeline_run_records(rows, columns)
+
+        self.assertEqual(len(records[0]["step_results"]), 4)
 
     def test_migration_defines_pipeline_runs_json(self):
         migration_sql = (

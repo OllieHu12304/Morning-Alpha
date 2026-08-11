@@ -30,28 +30,91 @@ class RunPipelineTests(unittest.TestCase):
             ["中央社財經 RSS"],
         )
         collect_step = self.create_step(events, "collect", collect_result)
+        company_step = self.create_step(events, "companies", 1000)
+        link_step = self.create_step(
+            events,
+            "links",
+            {"news_count": 15, "link_count": 6},
+        )
+        market_step = self.create_step(
+            events,
+            "market",
+            {"source_count": 10, "saved_count": 9, "skipped_count": 1},
+        )
+        financial_step = self.create_step(
+            events,
+            "financial",
+            {"source_count": 8, "saved_count": 7, "skipped_count": 1},
+        )
+        brief_step = self.create_step(
+            events,
+            "brief",
+            {"brief_date": "2026-08-12", "article_count": 5},
+        )
         export_step = self.create_step(events, "export", 15)
         chart_step = self.create_step(events, "chart", 3)
         keyword_step = self.create_step(events, "keyword", 12)
 
-        with patch.object(run_pipeline, "collect_and_store_news", collect_step):
-            with patch.object(run_pipeline, "export_dashboard_news", export_step):
-                with patch.object(run_pipeline, "build_chart_data", chart_step):
-                    with patch.object(run_pipeline, "build_keyword_data", keyword_step):
-                        with patch.object(
-                            run_pipeline,
-                            "save_pipeline_run",
-                        ) as save_history, patch.object(
-                            run_pipeline,
-                            "cleanup_history",
-                            return_value={
-                                "source_health_events": 0,
-                                "pipeline_runs": 0,
-                            },
-                        ) as cleanup_history:
-                            summary = run_pipeline.run_pipeline()
+        with patch.object(
+            run_pipeline,
+            "collect_and_store_news",
+            collect_step,
+        ), patch.object(
+            run_pipeline,
+            "sync_company_data",
+            company_step,
+        ), patch.object(
+            run_pipeline,
+            "run_news_company_sync",
+            link_step,
+        ), patch.object(
+            run_pipeline,
+            "sync_market_prices",
+            market_step,
+        ), patch.object(
+            run_pipeline,
+            "sync_financial_metrics",
+            financial_step,
+        ), patch.object(
+            run_pipeline,
+            "generate_and_store_daily_brief",
+            brief_step,
+        ), patch.object(
+            run_pipeline,
+            "export_dashboard_news",
+            export_step,
+        ), patch.object(
+            run_pipeline,
+            "build_chart_data",
+            chart_step,
+        ), patch.object(
+            run_pipeline,
+            "build_keyword_data",
+            keyword_step,
+        ), patch.object(
+            run_pipeline,
+            "save_pipeline_run",
+        ) as save_history, patch.object(
+            run_pipeline,
+            "cleanup_history",
+            return_value={
+                "source_health_events": 0,
+                "pipeline_runs": 0,
+            },
+        ) as cleanup_history:
+            summary = run_pipeline.run_pipeline()
 
-        self.assertEqual(events, ["collect", "export", "chart", "keyword"])
+        self.assertEqual(events, [
+            "collect",
+            "companies",
+            "links",
+            "market",
+            "financial",
+            "brief",
+            "export",
+            "chart",
+            "keyword",
+        ])
         self.assertEqual(summary, {
             "inserted_news": 2,
             "exported_news": 15,
@@ -59,6 +122,12 @@ class RunPipelineTests(unittest.TestCase):
             "exported_keywords": 12,
             "successful_sources": ["TechNews"],
             "failed_sources": ["中央社財經 RSS"],
+            "imported_companies": 1000,
+            "company_links": 6,
+            "market_prices": 9,
+            "financial_metrics": 7,
+            "daily_brief_date": "2026-08-12",
+            "daily_brief_articles": 5,
         })
         saved_run = save_history.call_args.args[0]
         self.assertEqual(saved_run["status"], "success")
@@ -77,6 +146,31 @@ class RunPipelineTests(unittest.TestCase):
             return_value=collect_result,
         ), patch.object(
             run_pipeline,
+            "sync_company_data",
+            side_effect=ValueError("測試錯誤"),
+        ), patch.object(
+            run_pipeline,
+            "run_news_company_sync",
+        ) as link_step, patch.object(
+            run_pipeline,
+            "sync_market_prices",
+        ) as market_step, patch.object(
+            run_pipeline,
+            "sync_financial_metrics",
+        ) as financial_step, patch.object(
+            run_pipeline,
+            "generate_and_store_daily_brief",
+        ) as brief_step, patch.object(
+            run_pipeline,
+            "export_dashboard_news",
+        ) as export_step, patch.object(
+            run_pipeline,
+            "build_chart_data",
+        ) as chart_step, patch.object(
+            run_pipeline,
+            "build_keyword_data",
+        ) as keyword_step, patch.object(
+            run_pipeline,
             "save_pipeline_run",
         ) as save_history, patch.object(
             run_pipeline,
@@ -86,24 +180,71 @@ class RunPipelineTests(unittest.TestCase):
                 "pipeline_runs": 0,
             },
         ) as cleanup_history:
-            with patch.object(
-                run_pipeline,
-                "export_dashboard_news",
-                side_effect=ValueError("測試錯誤"),
-            ):
-                with patch.object(run_pipeline, "build_chart_data") as chart_step:
-                    with patch.object(run_pipeline, "build_keyword_data") as keyword_step:
-                        with self.assertRaisesRegex(ValueError, "測試錯誤"):
-                            run_pipeline.run_pipeline()
+            with self.assertRaisesRegex(ValueError, "測試錯誤"):
+                run_pipeline.run_pipeline()
 
+        link_step.assert_not_called()
+        market_step.assert_not_called()
+        financial_step.assert_not_called()
+        brief_step.assert_not_called()
+        export_step.assert_not_called()
         chart_step.assert_not_called()
         keyword_step.assert_not_called()
         saved_run = save_history.call_args.args[0]
         self.assertEqual(saved_run["status"], "failure")
-        self.assertEqual(saved_run["failed_step"], "export_news")
+        self.assertEqual(saved_run["failed_step"], "sync_companies")
         self.assertEqual(saved_run["step_results"][1]["status"], "failure")
         self.assertEqual(saved_run["step_results"][2]["status"], "pending")
         cleanup_history.assert_called_once_with()
+
+    def test_generate_daily_brief_reads_builds_and_saves(self):
+        fake_dataframe = object()
+        records = [{"title": "測試新聞"}]
+        brief = {
+            "brief_date": "2026-08-12",
+            "article_count": 1,
+        }
+
+        with patch.object(
+            run_pipeline,
+            "load_all_news",
+            return_value=fake_dataframe,
+        ), patch.object(
+            run_pipeline,
+            "prepare_dashboard_records",
+            return_value=records,
+        ) as prepare_records, patch.object(
+            run_pipeline,
+            "get_latest_brief_date",
+            return_value="brief-date",
+        ), patch.object(
+            run_pipeline,
+            "build_daily_brief",
+            return_value=brief,
+        ) as build_brief, patch.object(
+            run_pipeline,
+            "save_daily_brief",
+        ) as save_brief:
+            result = run_pipeline.generate_and_store_daily_brief()
+
+        prepare_records.assert_called_once_with(fake_dataframe)
+        build_brief.assert_called_once_with(records, "brief-date")
+        save_brief.assert_called_once_with(brief)
+        self.assertEqual(result["article_count"], 1)
+
+    def test_sync_company_data_prepares_watchlist_table(self):
+        with patch.object(
+            run_pipeline,
+            "sync_company_directory",
+            return_value=1000,
+        ), patch.object(
+            run_pipeline,
+            "ensure_watchlist_table",
+        ) as ensure_watchlist:
+            result = run_pipeline.sync_company_data()
+
+        self.assertEqual(result, 1000)
+        ensure_watchlist.assert_called_once_with()
 
     def test_main_returns_failure_status_when_pipeline_fails(self):
         with patch.object(
@@ -128,6 +269,12 @@ class RunPipelineTests(unittest.TestCase):
             "exported_keywords": 20,
             "successful_sources": ["中央社財經 RSS"],
             "failed_sources": ["TechNews"],
+            "imported_companies": 1000,
+            "company_links": 6,
+            "market_prices": 9,
+            "financial_metrics": 7,
+            "daily_brief_date": "2026-08-12",
+            "daily_brief_articles": 5,
         }
 
         with patch("builtins.print") as print_message:

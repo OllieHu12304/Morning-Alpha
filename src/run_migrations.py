@@ -23,6 +23,7 @@ MIGRATION_PATHS = {
     "009": MIGRATION_DIRECTORY / "009_create_news_company_links.sql",
     "010": MIGRATION_DIRECTORY / "010_create_market_prices.sql",
     "011": MIGRATION_DIRECTORY / "011_create_financial_metrics.sql",
+    "012": MIGRATION_DIRECTORY / "012_create_watchlist_items.sql",
 }
 INDEPENDENT_MIGRATIONS = {"005", "006", "007", "008"}
 
@@ -64,6 +65,9 @@ def fetch_schema_state(connection):
         cursor.execute("SHOW TABLES LIKE 'financial_metrics';")
         financial_metrics_exists = cursor.fetchone() is not None
 
+        cursor.execute("SHOW TABLES LIKE 'watchlist_items';")
+        watchlist_items_exists = cursor.fetchone() is not None
+
         if not table_exists:
             return {
                 "table_exists": False,
@@ -76,6 +80,7 @@ def fetch_schema_state(connection):
                 "news_company_links_exists": news_company_links_exists,
                 "market_prices_exists": market_prices_exists,
                 "financial_metrics_exists": financial_metrics_exists,
+                "watchlist_items_exists": watchlist_items_exists,
             }
 
         cursor.execute("SHOW COLUMNS FROM news_records;")
@@ -95,11 +100,12 @@ def fetch_schema_state(connection):
         "news_company_links_exists": news_company_links_exists,
         "market_prices_exists": market_prices_exists,
         "financial_metrics_exists": financial_metrics_exists,
+        "watchlist_items_exists": watchlist_items_exists,
     }
 
 
 def get_migration_status(schema_state):
-    """將目前 schema 轉成 001 到 007 的完成狀態。"""
+    """將目前 schema 轉成 001 到 012 的完成狀態。"""
     columns = schema_state["columns"]
     indexes = schema_state["indexes"]
     quality_columns = {
@@ -122,6 +128,7 @@ def get_migration_status(schema_state):
         "009": schema_state.get("news_company_links_exists", False),
         "010": schema_state.get("market_prices_exists", False),
         "011": schema_state.get("financial_metrics_exists", False),
+        "012": schema_state.get("watchlist_items_exists", False),
     }
 
 

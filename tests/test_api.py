@@ -350,6 +350,64 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(len(payload["observations"]), 1)
         mock_load.assert_called_once_with(limit=20)
 
+    @patch("api.load_watchlist")
+    def test_watchlist_returns_tracked_companies(self, mock_load):
+        mock_load.return_value = [{
+            "company_id": 8,
+            "name": "台灣積體電路製造股份有限公司",
+            "short_name": "台積電",
+            "ticker": "2330",
+        }]
+
+        response = self.client.get("/api/watchlist")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json()["items"][0]["ticker"], "2330")
+
+    @patch("api.add_watchlist_company")
+    def test_add_watchlist_returns_created_for_new_item(self, mock_add):
+        mock_add.return_value = True
+
+        response = self.client.post("/api/watchlist/8")
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.get_json(), {"company_id": 8, "added": True})
+        mock_add.assert_called_once_with(8)
+
+    @patch("api.remove_watchlist_company")
+    def test_remove_watchlist_is_idempotent(self, mock_remove):
+        mock_remove.return_value = False
+
+        response = self.client.delete("/api/watchlist/8")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json()["removed"], False)
+        mock_remove.assert_called_once_with(8)
+
+    @patch("api.add_watchlist_company")
+    def test_add_watchlist_returns_safe_validation_error(self, mock_add):
+        mock_add.side_effect = ValueError("找不到指定公司。")
+
+        response = self.client.post("/api/watchlist/999")
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.get_json()["error"], "找不到指定公司。")
+
+    @patch("api.load_personalized_brief")
+    def test_personalized_brief_returns_latest_window(self, mock_load):
+        mock_load.return_value = {
+            "brief_date": "2026-08-12",
+            "watchlist_count": 1,
+            "article_count": 2,
+            "summary": "目前追蹤 1 家公司，本期找到 2 篇相關新聞。",
+        }
+
+        response = self.client.get("/api/personalized-brief")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json()["brief"]["watchlist_count"], 1)
+        mock_load.assert_called_once_with()
+
     @patch("api.load_all_news")
     def test_news_hides_database_error_details(self, mock_load_news):
         mock_load_news.side_effect = pymysql.OperationalError(

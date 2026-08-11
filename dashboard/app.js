@@ -5,6 +5,8 @@ const PIPELINE_RUNS_API = "/api/pipeline-runs";
 const LATEST_DAILY_BRIEF_API = "/api/daily-briefs/latest";
 const MARKET_COMPANIES_API = "/api/market-companies";
 const EVENT_MARKET_API = "/api/event-market-observations";
+const WATCHLIST_API = "/api/watchlist";
+const PERSONALIZED_BRIEF_API = "/api/personalized-brief";
 const KEYWORD_CHART_LIMIT = 10;
 const PIPELINE_RUN_DISPLAY_LIMIT = 5;
 
@@ -22,6 +24,9 @@ const pipelineHistoryMessage = document.querySelector("#pipeline-history-message
 const pipelineRunsList = document.querySelector("#pipeline-runs-list");
 const dailyBriefMessage = document.querySelector("#daily-brief-message");
 const dailyBriefContent = document.querySelector("#daily-brief-content");
+const personalizedBriefMessage = document.querySelector("#personalized-brief-message");
+const personalizedBriefResult = document.querySelector("#personalized-brief-result");
+const watchlistItems = document.querySelector("#watchlist-items");
 const lastUpdatedMessage = document.querySelector("#last-updated");
 const searchInput = document.querySelector("#news-search");
 const sourceFilter = document.querySelector("#source-filter");
@@ -34,6 +39,7 @@ const nextPageButton = document.querySelector("#next-page");
 const pageStatus = document.querySelector("#page-status");
 const tableHeaders = document.querySelectorAll("th[data-key]");
 const marketCompanySelect = document.querySelector("#market-company-select");
+const watchlistToggle = document.querySelector("#watchlist-toggle");
 const companyMarketMessage = document.querySelector("#company-market-message");
 const latestClosePrice = document.querySelector("#latest-close-price");
 const latestTradeDate = document.querySelector("#latest-trade-date");
@@ -54,16 +60,166 @@ let currentPage = 1;
 let pageSize = Number(pageSizeSelect.value);
 let eventGroupFilter = null;
 let companyPriceChart = null;
+let watchlistCompanyIds = new Set();
 
 
-async function fetchJson(url) {
-    const response = await fetch(url, { cache: "no-store" });
+async function fetchJson(url, options = {}) {
+    const response = await fetch(url, {
+        cache: "no-store",
+        ...options,
+    });
 
     if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
     }
 
     return response.json();
+}
+
+
+async function loadWatchlist() {
+    try {
+        const payload = await fetchJson(WATCHLIST_API);
+
+        if (!payload || !Array.isArray(payload.items)) {
+            throw new Error("watchlist API 格式不正確。");
+        }
+
+        watchlistCompanyIds = new Set(
+            payload.items.map((item) => String(item.company_id)),
+        );
+        renderWatchlistItems(payload.items);
+        updateWatchlistButton();
+        return true;
+    } catch (error) {
+        watchlistItems.replaceChildren();
+        watchlistToggle.disabled = true;
+        personalizedBriefMessage.textContent = `無法載入追蹤清單：${error.message}`;
+        personalizedBriefMessage.classList.add("error-message");
+        return false;
+    }
+}
+
+
+function renderWatchlistItems(items) {
+    watchlistItems.replaceChildren();
+
+    if (items.length === 0) {
+        const item = document.createElement("li");
+        item.className = "watchlist-empty";
+        item.textContent = "尚未追蹤公司，可從下方公司市場資料加入。";
+        watchlistItems.appendChild(item);
+        return;
+    }
+
+    for (const company of items) {
+        if (!company.company_id || !company.name) {
+            throw new Error("追蹤清單包含無效公司資料。");
+        }
+
+        const item = document.createElement("li");
+        const name = company.short_name || company.name;
+        item.textContent = company.ticker
+            ? `${company.ticker} ${name}`
+            : name;
+        watchlistItems.appendChild(item);
+    }
+}
+
+
+async function loadPersonalizedBrief() {
+    try {
+        const payload = await fetchJson(PERSONALIZED_BRIEF_API);
+
+        if (!payload || !payload.brief) {
+            throw new Error("personalized brief API 格式不正確。");
+        }
+
+        renderPersonalizedBrief(payload.brief);
+    } catch (error) {
+        personalizedBriefResult.replaceChildren();
+        personalizedBriefMessage.textContent = `無法載入個人化晨報：${error.message}`;
+        personalizedBriefMessage.classList.add("error-message");
+    }
+}
+
+
+function renderPersonalizedBrief(brief) {
+    validateDailyBrief(brief);
+
+    if (
+        !Number.isInteger(Number(brief.watchlist_count))
+        || !Array.isArray(brief.watched_companies)
+    ) {
+        throw new Error("個人化晨報欄位格式不正確。");
+    }
+
+    personalizedBriefResult.replaceChildren();
+    personalizedBriefMessage.classList.remove("error-message");
+
+    const summary = document.createElement("p");
+    summary.className = "personalized-summary";
+    summary.textContent = String(brief.summary);
+    personalizedBriefResult.appendChild(summary);
+
+    const highlights = document.createElement("ol");
+    highlights.className = "personalized-highlights";
+
+    for (const highlight of brief.highlights) {
+        highlights.appendChild(createBriefHighlight(highlight));
+    }
+
+    if (brief.highlights.length === 0) {
+        const item = document.createElement("li");
+        item.textContent = "本期沒有可顯示的追蹤公司新聞。";
+        highlights.appendChild(item);
+    }
+
+    personalizedBriefResult.appendChild(highlights);
+    personalizedBriefMessage.textContent = `追蹤 ${brief.watchlist_count} 家公司・相關新聞 ${brief.article_count} 篇`;
+}
+
+
+function updateWatchlistButton() {
+    const companyId = marketCompanySelect.value;
+
+    if (!companyId || marketCompanySelect.disabled) {
+        watchlistToggle.disabled = true;
+        watchlistToggle.textContent = "加入追蹤";
+        return;
+    }
+
+    watchlistToggle.disabled = false;
+    watchlistToggle.textContent = watchlistCompanyIds.has(companyId)
+        ? "移除追蹤"
+        : "加入追蹤";
+}
+
+
+async function toggleSelectedCompanyWatchlist() {
+    const companyId = marketCompanySelect.value;
+
+    if (!companyId) {
+        return;
+    }
+
+    const isTracked = watchlistCompanyIds.has(companyId);
+    watchlistToggle.disabled = true;
+
+    try {
+        await fetchJson(`${WATCHLIST_API}/${companyId}`, {
+            method: isTracked ? "DELETE" : "POST",
+        });
+        const loaded = await loadWatchlist();
+
+        if (loaded) {
+            await loadPersonalizedBrief();
+        }
+    } catch (error) {
+        personalizedBriefMessage.textContent = `無法更新追蹤清單：${error.message}`;
+        personalizedBriefMessage.classList.add("error-message");
+        updateWatchlistButton();
+    }
 }
 
 
@@ -244,6 +400,7 @@ function populateMarketCompanySelect(companies) {
         marketCompanySelect.disabled = true;
         companyMarketMessage.textContent = "請先同步 TWSE 資料";
         renderCompanyMarketData([], []);
+        updateWatchlistButton();
         return;
     }
 
@@ -260,6 +417,7 @@ function populateMarketCompanySelect(companies) {
     }
 
     marketCompanySelect.disabled = false;
+    updateWatchlistButton();
 }
 
 
@@ -267,8 +425,11 @@ async function loadSelectedCompanyMarketData() {
     const companyId = marketCompanySelect.value;
 
     if (!companyId) {
+        updateWatchlistButton();
         return;
     }
+
+    updateWatchlistButton();
 
     companyMarketMessage.textContent = "正在載入價格與財務資料…";
     companyMarketMessage.classList.remove("error-message");
@@ -794,7 +955,7 @@ function validatePipelineRun(record) {
         || !Number.isInteger(durationMs)
         || durationMs < 0
         || !Array.isArray(record.step_results)
-        || record.step_results.length !== 4
+        || ![4, 9].includes(record.step_results.length)
     ) {
         throw new Error("Pipeline 紀錄欄位格式不正確。");
     }
@@ -1561,6 +1722,7 @@ pageSizeSelect.addEventListener("change", () => {
 clearFiltersButton.addEventListener("click", clearFilters);
 
 marketCompanySelect.addEventListener("change", loadSelectedCompanyMarketData);
+watchlistToggle.addEventListener("click", toggleSelectedCompanyWatchlist);
 
 previousPageButton.addEventListener("click", () => {
     if (currentPage > 1) {
@@ -1581,3 +1743,8 @@ loadPipelineRuns();
 loadDailyBrief();
 loadMarketCompanies();
 loadEventMarketObservations();
+loadWatchlist().then((loaded) => {
+    if (loaded) {
+        loadPersonalizedBrief();
+    }
+});

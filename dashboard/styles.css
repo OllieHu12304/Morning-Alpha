@@ -86,6 +86,7 @@ h3 {
 }
 
 .daily-brief-section,
+.personalized-brief-section,
 .source-health-section,
 .pipeline-history-section,
 .analytics-section,
@@ -198,6 +199,67 @@ h3 {
     background: var(--surface);
     color: var(--text-secondary);
     text-align: center;
+}
+
+.personalized-brief-content {
+    overflow: hidden;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 0 0 16px 16px;
+    box-shadow: var(--shadow);
+}
+
+.watchlist-items {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 0;
+    padding: 18px 28px;
+    border-bottom: 1px solid var(--border);
+    list-style: none;
+}
+
+.watchlist-items li:not(.watchlist-empty) {
+    padding: 5px 10px;
+    border-radius: 999px;
+    background: #edf8f6;
+    color: var(--accent-dark);
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+.watchlist-empty {
+    color: var(--text-secondary);
+    font-size: 0.86rem;
+}
+
+#personalized-brief-result {
+    padding: 22px 28px;
+}
+
+.personalized-summary {
+    margin: 0;
+    font-weight: 650;
+}
+
+.personalized-highlights {
+    margin: 14px 0 0;
+    padding-left: 22px;
+}
+
+.personalized-highlights li {
+    margin-top: 8px;
+}
+
+.personalized-highlights a {
+    color: var(--text-primary);
+    font-weight: 650;
+}
+
+.personalized-highlights span {
+    display: block;
+    color: var(--text-secondary);
+    font-size: 0.78rem;
 }
 
 .source-health-grid {
@@ -350,7 +412,7 @@ h3 {
 
 .pipeline-step-list {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
     gap: 10px;
     margin: 18px 0 0;
     padding: 0;
@@ -460,6 +522,12 @@ h3 {
 
 .company-market-heading {
     align-items: center;
+}
+
+.market-company-actions {
+    display: flex;
+    align-items: end;
+    gap: 10px;
 }
 
 .market-company-control {
@@ -931,6 +999,16 @@ noscript .error-message {
 
     .daily-brief-content {
         grid-template-columns: 1fr;
+    }
+
+    .market-company-actions {
+        width: 100%;
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .market-company-control {
+        min-width: 0;
     }
 
     .company-market-content,

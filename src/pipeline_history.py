@@ -11,8 +11,19 @@ from store_news import connect_to_database, get_database_config
 MAX_ERROR_LENGTH = 500
 VALID_RUN_STATUSES = {"success", "failure"}
 VALID_STEP_STATUSES = {"pending", "success", "failure"}
+LEGACY_PIPELINE_STEPS = [
+    ("collect_news", "爬取、整理並儲存新聞"),
+    ("export_news", "匯出 Dashboard 新聞資料"),
+    ("chart_data", "產生 Dashboard 圖表資料"),
+    ("keywords", "產生 Top 20 關鍵字資料"),
+]
 PIPELINE_STEPS = [
     ("collect_news", "爬取、整理並儲存新聞"),
+    ("sync_companies", "同步 TWSE 公司資料"),
+    ("link_news_companies", "建立新聞公司關聯"),
+    ("sync_market_prices", "同步 TWSE 每日價格"),
+    ("sync_financial_metrics", "同步 TWSE 財務摘要"),
+    ("daily_brief", "產生並保存每日晨報"),
     ("export_news", "匯出 Dashboard 新聞資料"),
     ("chart_data", "產生 Dashboard 圖表資料"),
     ("keywords", "產生 Top 20 關鍵字資料"),
@@ -62,7 +73,7 @@ LIMIT %s;
 
 
 def create_pending_step_results():
-    """建立四個尚未執行的固定 Pipeline steps。"""
+    """建立目前九個尚未執行的固定 Pipeline steps。"""
     results = []
 
     for step, label in PIPELINE_STEPS:
@@ -116,11 +127,10 @@ def clean_error_message(error_message):
 
 
 def validate_step_results(step_results):
-    """確認四個步驟的 JSON 結構可安全保存。"""
-    if not isinstance(step_results, list) or len(step_results) != len(PIPELINE_STEPS):
-        raise ValueError("Pipeline step_results 必須包含四個步驟。")
+    """確認目前九步驟或舊版四步驟歷史可安全讀取。"""
+    if not isinstance(step_results, list):
+        raise ValueError("Pipeline step_results 必須是 list。")
 
-    expected_definitions = PIPELINE_STEPS
     actual_definitions = []
 
     for result in step_results:
@@ -144,8 +154,12 @@ def validate_step_results(step_results):
         ):
             raise ValueError("Pipeline step_result duration_ms 無效。")
 
-    if actual_definitions != expected_definitions:
+    known_definitions = [PIPELINE_STEPS, LEGACY_PIPELINE_STEPS]
+
+    if actual_definitions not in known_definitions:
         raise ValueError("Pipeline step_results 順序或名稱不正確。")
+
+    return actual_definitions
 
 
 def prepare_pipeline_run_record(run_result):
@@ -170,7 +184,7 @@ def prepare_pipeline_run_record(run_result):
     if not isinstance(duration_ms, int) or duration_ms < 0:
         raise ValueError("Pipeline duration_ms 必須是非負整數。")
 
-    validate_step_results(step_results)
+    step_definitions = validate_step_results(step_results)
     step_statuses = {
         result["step"]: result["status"]
         for result in step_results
@@ -189,11 +203,12 @@ def prepare_pipeline_run_record(run_result):
         if step_statuses[failed_step] != "failure":
             raise ValueError("failed_step 必須對應 failure 步驟。")
 
-        failed_index = [step for step, _ in PIPELINE_STEPS].index(failed_step)
+        step_names = [step for step, _ in step_definitions]
+        failed_index = step_names.index(failed_step)
         expected_statuses = (
             ["success"] * failed_index
             + ["failure"]
-            + ["pending"] * (len(PIPELINE_STEPS) - failed_index - 1)
+            + ["pending"] * (len(step_definitions) - failed_index - 1)
         )
 
         if list(step_statuses.values()) != expected_statuses:

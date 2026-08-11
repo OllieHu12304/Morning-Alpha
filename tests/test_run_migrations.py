@@ -38,6 +38,7 @@ class RunMigrationsTests(unittest.TestCase):
             "news_company_links_exists": True,
             "market_prices_exists": True,
             "financial_metrics_exists": True,
+            "watchlist_items_exists": True,
         }
 
         self.assertEqual(get_migration_status(schema_state), {
@@ -52,6 +53,7 @@ class RunMigrationsTests(unittest.TestCase):
             "009": True,
             "010": True,
             "011": True,
+            "012": True,
         })
 
     def test_get_migration_status_detects_partially_updated_schema(self):
@@ -71,6 +73,7 @@ class RunMigrationsTests(unittest.TestCase):
             "news_company_links_exists": False,
             "market_prices_exists": False,
             "financial_metrics_exists": False,
+            "watchlist_items_exists": False,
         }
 
         self.assertEqual(get_migration_status(schema_state), {
@@ -85,6 +88,7 @@ class RunMigrationsTests(unittest.TestCase):
             "009": False,
             "010": False,
             "011": False,
+            "012": False,
         })
 
     def test_split_sql_statements_removes_comment_lines(self):

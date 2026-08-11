@@ -18,7 +18,7 @@
 <body>
     <header class="page-header">
         <div class="header-content">
-            <p class="eyebrow">Morning Alpha v0.2 Alpha</p>
+            <p class="eyebrow">Morning Alpha Phase 4 Alpha</p>
             <h1>科技與財經新聞分析</h1>
             <p class="subtitle">
                 透過 API 讀取 MySQL 新聞，快速掌握來源、主題與熱門關鍵字。
@@ -41,6 +41,33 @@
                 </p>
             </div>
             <article id="daily-brief-content" class="daily-brief-content"></article>
+        </section>
+
+        <section
+            class="personalized-brief-section"
+            aria-labelledby="personalized-brief-heading"
+        >
+            <div class="section-heading">
+                <div>
+                    <p class="section-label">My Watchlist</p>
+                    <h2 id="personalized-brief-heading">我的追蹤晨報</h2>
+                </div>
+                <p
+                    id="personalized-brief-message"
+                    class="status-message"
+                    role="status"
+                >
+                    正在載入追蹤清單…
+                </p>
+            </div>
+            <div class="personalized-brief-content">
+                <ul
+                    id="watchlist-items"
+                    class="watchlist-items"
+                    aria-label="目前追蹤公司"
+                ></ul>
+                <article id="personalized-brief-result"></article>
+            </div>
         </section>
 
         <section
@@ -151,12 +178,22 @@
                     <p class="section-label">Company Market Data</p>
                     <h2 id="company-market-heading">公司市場資料</h2>
                 </div>
-                <label class="market-company-control">
-                    <span>選擇公司</span>
-                    <select id="market-company-select" disabled>
-                        <option value="">正在載入公司…</option>
-                    </select>
-                </label>
+                <div class="market-company-actions">
+                    <label class="market-company-control">
+                        <span>選擇公司</span>
+                        <select id="market-company-select" disabled>
+                            <option value="">正在載入公司…</option>
+                        </select>
+                    </label>
+                    <button
+                        id="watchlist-toggle"
+                        class="secondary-button"
+                        type="button"
+                        disabled
+                    >
+                        加入追蹤
+                    </button>
+                </div>
                 <p
                     id="company-market-message"
                     class="status-message"

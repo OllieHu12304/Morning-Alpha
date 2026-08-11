@@ -43,6 +43,12 @@ from company_directory import (  # noqa: E402
     create_company_directory_tables,
     import_company_records,
 )
+from watchlist import (  # noqa: E402
+    create_watchlist_table,
+    delete_watchlist_item,
+    fetch_watchlist,
+    insert_watchlist_item,
+)
 
 
 TEST_DATABASE_NAME = "morning_alpha_test"
@@ -134,6 +140,7 @@ class MySQLIntegrationTests(unittest.TestCase):
         create_pipeline_runs_table(cls.connection)
         create_daily_briefs_table(cls.connection)
         create_company_directory_tables(cls.connection)
+        create_watchlist_table(cls.connection)
         cls.connection.commit()
 
     @classmethod
@@ -145,6 +152,7 @@ class MySQLIntegrationTests(unittest.TestCase):
     def clear_test_records(cls):
         """只清空已驗證名稱的 integration test table。"""
         with cls.connection.cursor() as cursor:
+            cursor.execute("DELETE FROM watchlist_items;")
             cursor.execute("DELETE FROM company_aliases;")
             cursor.execute("DELETE FROM securities;")
             cursor.execute("DELETE FROM companies;")
@@ -257,7 +265,7 @@ class MySQLIntegrationTests(unittest.TestCase):
         self.assertGreater(inserted_id, 0)
         self.assertEqual(len(records), 1)
         self.assertEqual(records[0]["status"], "success")
-        self.assertEqual(len(records[0]["step_results"]), 4)
+        self.assertEqual(len(records[0]["step_results"]), 9)
 
     def test_upsert_and_read_daily_brief(self):
         brief = {
@@ -350,6 +358,35 @@ class MySQLIntegrationTests(unittest.TestCase):
         self.assertEqual(company_count, 1)
         self.assertEqual(security_count, 1)
         self.assertEqual(alias_count, 2)
+
+    def test_add_read_and_remove_watchlist_company(self):
+        record = {
+            "name": "台灣積體電路製造股份有限公司",
+            "short_name": "台積電",
+            "industry": "半導體業",
+            "market": "TWSE",
+            "ticker": "2330",
+            "exchange": "TWSE",
+            "currency": "TWD",
+            "aliases": ["台積電"],
+        }
+        import_company_records(self.connection, [record])
+
+        with self.connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT id FROM companies WHERE short_name = %s;",
+                ("台積電",),
+            )
+            company_id = cursor.fetchone()[0]
+
+        added = insert_watchlist_item(self.connection, company_id)
+        items = fetch_watchlist(self.connection)
+        removed = delete_watchlist_item(self.connection, company_id)
+        self.connection.commit()
+
+        self.assertTrue(added)
+        self.assertEqual(items[0]["ticker"], "2330")
+        self.assertTrue(removed)
 
     def test_history_retention_deletes_only_old_records(self):
         old_time = datetime(2026, 1, 1, 0, 0, 0)

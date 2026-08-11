@@ -120,6 +120,23 @@ class DashboardContractTests(unittest.TestCase):
         self.assertIn('observation.analysis_type !== "observational"', javascript)
         self.assertIn(".observation-badge", styles)
 
+    def test_dashboard_manages_watchlist_and_personalized_brief(self):
+        html = (DASHBOARD_DIRECTORY / "index.html").read_text(encoding="utf-8")
+        javascript = (DASHBOARD_DIRECTORY / "app.js").read_text(encoding="utf-8")
+        styles = (DASHBOARD_DIRECTORY / "styles.css").read_text(encoding="utf-8")
+
+        self.assertIn('id="watchlist-toggle"', html)
+        self.assertIn('id="personalized-brief-result"', html)
+        self.assertIn('const WATCHLIST_API = "/api/watchlist"', javascript)
+        self.assertIn(
+            'const PERSONALIZED_BRIEF_API = "/api/personalized-brief"',
+            javascript,
+        )
+        self.assertIn("toggleSelectedCompanyWatchlist", javascript)
+        self.assertIn("renderPersonalizedBrief", javascript)
+        self.assertIn("![4, 9].includes(record.step_results.length)", javascript)
+        self.assertIn(".watchlist-items", styles)
+
 
 if __name__ == "__main__":
     unittest.main()

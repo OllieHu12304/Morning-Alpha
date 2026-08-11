@@ -14,6 +14,9 @@ from analyze_keywords import (
     load_news_dataframe,
 )
 from analyze_news import create_dataframe, transform_dataframe
+from daily_brief import build_daily_brief
+from daily_brief_store import save_daily_brief
+from daily_brief_window import get_latest_brief_date
 from export_news_json import (
     build_metadata,
     export_json,
@@ -30,6 +33,7 @@ from failure_notification import send_failure_notification
 from history_retention import cleanup_history
 from logging_config import configure_logging
 from news_sources import fetch_all_articles_with_status
+from news_company_links import run_news_company_sync
 from pipeline_history import (
     create_pending_step_results,
     save_pipeline_run,
@@ -39,6 +43,10 @@ from pipeline_history import (
 from read_news import load_all_news
 from source_health import save_source_health_events
 from store_news import save_news
+from sync_company_directory import run as sync_company_directory
+from sync_financial_metrics import run as sync_financial_metrics
+from sync_market_prices import run as sync_market_prices
+from watchlist import ensure_watchlist_table
 
 
 logger = logging.getLogger(__name__)
@@ -96,6 +104,26 @@ def build_keyword_data():
     keyword_dataframe = count_top_keywords(dataframe)
     export_keyword_json(keyword_dataframe)
     return len(keyword_dataframe)
+
+
+def generate_and_store_daily_brief():
+    """從 MySQL 新聞建立最近一個完整時間窗的每日晨報。"""
+    dataframe = load_all_news()
+    records = prepare_dashboard_records(dataframe)
+    brief_date = get_latest_brief_date()
+    brief = build_daily_brief(records, brief_date)
+    save_daily_brief(brief)
+    return {
+        "brief_date": brief["brief_date"],
+        "article_count": brief["article_count"],
+    }
+
+
+def sync_company_data():
+    """同步公司目錄，並確保相依的本機追蹤清單 table 存在。"""
+    imported_count = sync_company_directory()
+    ensure_watchlist_table()
+    return imported_count
 
 
 def get_duration_ms(start_time):
@@ -161,7 +189,7 @@ def send_failure_notification_without_hiding_error(error_message):
 def get_history_error_message(error):
     """產生適合由 Dashboard 顯示且不含內部設定的錯誤。"""
     if isinstance(error, requests.RequestException):
-        return f"下載新聞來源失敗：{error}"
+        return f"下載外部資料失敗：{error}"
 
     if isinstance(error, pymysql.MySQLError):
         return "MySQL 操作失敗，請查看 Pipeline log。"
@@ -181,7 +209,7 @@ def get_history_error_message(error):
 def get_terminal_error_message(error):
     """建立原有 terminal 風格的 Pipeline 錯誤訊息。"""
     if isinstance(error, requests.RequestException):
-        return f"Pipeline 中止：下載新聞來源時發生錯誤：{error}"
+        return f"Pipeline 中止：下載外部資料時發生錯誤：{error}"
 
     if isinstance(error, pymysql.MySQLError):
         return f"Pipeline 中止：MySQL 發生錯誤：{error}"
@@ -206,7 +234,7 @@ def run_pipeline():
     current_step = "collect_news"
 
     try:
-        print("Step 1/4：爬取、整理並儲存新聞…")
+        print("Step 1/9：爬取、整理並儲存新聞…")
         collect_result, step_duration = execute_pipeline_step(
             step_results,
             current_step,
@@ -225,8 +253,83 @@ def run_pipeline():
             },
         )
 
+        current_step = "sync_companies"
+        print("Step 2/9：同步 TWSE 公司資料…")
+        imported_companies, step_duration = execute_pipeline_step(
+            step_results,
+            current_step,
+            sync_company_data,
+        )
+        update_step_result(
+            step_results,
+            current_step,
+            "success",
+            step_duration,
+            {"imported_companies": imported_companies},
+        )
+
+        current_step = "link_news_companies"
+        print("Step 3/9：建立新聞公司關聯…")
+        company_link_result, step_duration = execute_pipeline_step(
+            step_results,
+            current_step,
+            run_news_company_sync,
+        )
+        update_step_result(
+            step_results,
+            current_step,
+            "success",
+            step_duration,
+            company_link_result,
+        )
+
+        current_step = "sync_market_prices"
+        print("Step 4/9：同步 TWSE 每日價格…")
+        market_price_result, step_duration = execute_pipeline_step(
+            step_results,
+            current_step,
+            sync_market_prices,
+        )
+        update_step_result(
+            step_results,
+            current_step,
+            "success",
+            step_duration,
+            market_price_result,
+        )
+
+        current_step = "sync_financial_metrics"
+        print("Step 5/9：同步 TWSE 財務摘要…")
+        financial_metric_result, step_duration = execute_pipeline_step(
+            step_results,
+            current_step,
+            sync_financial_metrics,
+        )
+        update_step_result(
+            step_results,
+            current_step,
+            "success",
+            step_duration,
+            financial_metric_result,
+        )
+
+        current_step = "daily_brief"
+        print("Step 6/9：產生並保存每日晨報…")
+        daily_brief_result, step_duration = execute_pipeline_step(
+            step_results,
+            current_step,
+            generate_and_store_daily_brief,
+        )
+        update_step_result(
+            step_results,
+            current_step,
+            "success",
+            step_duration,
+            daily_brief_result,
+        )
+
         current_step = "export_news"
-        print("Step 2/4：匯出 Dashboard 新聞資料…")
+        print("Step 7/9：匯出 Dashboard 新聞資料…")
         exported_news, step_duration = execute_pipeline_step(
             step_results,
             current_step,
@@ -241,7 +344,7 @@ def run_pipeline():
         )
 
         current_step = "chart_data"
-        print("Step 3/4：產生 Dashboard 圖表資料…")
+        print("Step 8/9：產生 Dashboard 圖表資料…")
         chart_groups, step_duration = execute_pipeline_step(
             step_results,
             current_step,
@@ -256,7 +359,7 @@ def run_pipeline():
         )
 
         current_step = "keywords"
-        print("Step 4/4：產生 Top 20 關鍵字資料…")
+        print("Step 9/9：產生 Top 20 關鍵字資料…")
         exported_keywords, step_duration = execute_pipeline_step(
             step_results,
             current_step,
@@ -289,6 +392,12 @@ def run_pipeline():
         "exported_keywords": exported_keywords,
         "successful_sources": successful_sources,
         "failed_sources": failed_sources,
+        "imported_companies": imported_companies,
+        "company_links": company_link_result["link_count"],
+        "market_prices": market_price_result["saved_count"],
+        "financial_metrics": financial_metric_result["saved_count"],
+        "daily_brief_date": daily_brief_result["brief_date"],
+        "daily_brief_articles": daily_brief_result["article_count"],
     }
     save_pipeline_run({
         "status": "success",
@@ -307,6 +416,14 @@ def print_summary(summary):
     """顯示 pipeline 的執行結果。"""
     print("Morning Alpha 資料更新完成。")
     print(f"MySQL 新增新聞：{summary['inserted_news']} 筆")
+    print(f"TWSE 公司資料：{summary['imported_companies']} 筆")
+    print(f"新聞公司關聯：{summary['company_links']} 筆")
+    print(f"每日價格保存：{summary['market_prices']} 筆")
+    print(f"財務摘要保存：{summary['financial_metrics']} 筆")
+    print(
+        f"每日晨報：{summary['daily_brief_date']}，"
+        f"收錄 {summary['daily_brief_articles']} 篇"
+    )
     print(f"news.json 新聞：{summary['exported_news']} 筆")
     print(f"chart_data.json 統計群組：{summary['chart_groups']} 組")
     print(f"keyword.json 關鍵字：{summary['exported_keywords']} 個")

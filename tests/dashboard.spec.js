@@ -116,8 +116,43 @@ const dailyBriefPayload = {
     },
 };
 
+const marketCompaniesPayload = {
+    companies: [{
+        company_id: 8,
+        name: "台灣積體電路製造股份有限公司",
+        short_name: "台積電",
+        ticker: "2330",
+        exchange: "TWSE",
+        has_market_prices: true,
+        has_financial_metrics: true,
+    }],
+};
+
+let trackedCompanies = [];
+
+
+function createPersonalizedBriefPayload() {
+    const hasWatchlist = trackedCompanies.length > 0;
+
+    return {
+        brief: {
+            ...dailyBriefPayload.brief,
+            article_count: hasWatchlist ? 1 : 0,
+            watchlist_count: trackedCompanies.length,
+            watched_companies: trackedCompanies,
+            summary: hasWatchlist
+                ? "目前追蹤 1 家公司，本期找到 1 篇相關新聞。"
+                : "尚未加入追蹤公司，請先從公司市場資料加入。",
+            highlights: hasWatchlist
+                ? dailyBriefPayload.brief.highlights
+                : [],
+        },
+    };
+}
+
 
 test.beforeEach(async ({ page }) => {
+    trackedCompanies = [];
     await page.route("**/api/news", (route) => route.fulfill({
         contentType: "application/json",
         body: JSON.stringify({
@@ -140,6 +175,58 @@ test.beforeEach(async ({ page }) => {
     await page.route("**/api/daily-briefs/latest", (route) => route.fulfill({
         contentType: "application/json",
         body: JSON.stringify(dailyBriefPayload),
+    }));
+    await page.route("**/api/market-companies", (route) => route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify(marketCompaniesPayload),
+    }));
+    await page.route("**/api/companies/8/market-prices", (route) => route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({ prices: [] }),
+    }));
+    await page.route("**/api/companies/8/financial-metrics", (route) => route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({ metrics: [] }),
+    }));
+    await page.route("**/api/event-market-observations", (route) => route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({
+            analysis_type: "observational",
+            methodology: "固定測試方法",
+            limitations: ["測試資料不代表因果。"],
+            observations: [],
+        }),
+    }));
+    await page.route(/\/api\/watchlist(?:\/\d+)?$/, async (route) => {
+        const method = route.request().method();
+
+        if (method === "GET") {
+            await route.fulfill({
+                contentType: "application/json",
+                body: JSON.stringify({ items: trackedCompanies }),
+            });
+            return;
+        }
+
+        if (method === "POST") {
+            trackedCompanies = [{
+                company_id: 8,
+                name: "台灣積體電路製造股份有限公司",
+                short_name: "台積電",
+                ticker: "2330",
+            }];
+        } else if (method === "DELETE") {
+            trackedCompanies = [];
+        }
+
+        await route.fulfill({
+            contentType: "application/json",
+            body: JSON.stringify({ company_id: 8 }),
+        });
+    });
+    await page.route("**/api/personalized-brief", (route) => route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify(createPersonalizedBriefPayload()),
     }));
     await page.route("https://cdn.jsdelivr.net/**", (route) => route.fulfill({
         contentType: "application/javascript",
@@ -181,6 +268,9 @@ test("loads Dashboard data from mocked APIs", async ({ page }) => {
     await expect(page.locator("#daily-brief-message")).toHaveText(
         "收錄 12 篇新聞",
     );
+    await expect(page.locator("#personalized-brief-result")).toContainText(
+        "尚未加入追蹤公司",
+    );
 });
 
 
@@ -207,4 +297,22 @@ test("moves between Dashboard pages", async ({ page }) => {
 
     await expect(page.locator("#page-status")).toHaveText("第 2 / 2 頁");
     await expect(page.locator("#news-table-body tr")).toHaveCount(2);
+});
+
+
+test("adds and removes a company from the local watchlist", async ({ page }) => {
+    await expect(page.locator("#watchlist-toggle")).toHaveText("加入追蹤");
+
+    await page.locator("#watchlist-toggle").click();
+
+    await expect(page.locator("#watchlist-toggle")).toHaveText("移除追蹤");
+    await expect(page.locator("#watchlist-items")).toContainText("2330 台積電");
+    await expect(page.locator("#personalized-brief-result")).toContainText(
+        "本期找到 1 篇相關新聞",
+    );
+
+    await page.locator("#watchlist-toggle").click();
+
+    await expect(page.locator("#watchlist-toggle")).toHaveText("加入追蹤");
+    await expect(page.locator("#watchlist-items")).toContainText("尚未追蹤公司");
 });

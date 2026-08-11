@@ -1,7 +1,8 @@
 # Morning Alpha 市場與財務資料來源契約
 
-這份文件記錄 Morning Alpha Phase 4 使用哪些外部資料，以及 Python
-adapter 必須轉換成什麼格式。Feature 4.11 只定義契約，不會下載或寫入資料庫。
+這份文件記錄 Morning Alpha Phase 4 實際使用哪些外部資料，以及 Python
+adapter 轉換成什麼格式。契約最初由 Feature 4.11 定義，目前下載、驗證、
+MySQL upsert、API 與 Dashboard 已由後續 Features 實作。
 
 ## 選擇原則
 
@@ -42,8 +43,8 @@ adapter 必須轉換成什麼格式。Feature 4.11 只定義契約，不會下�
 | `Change` | `price_change` | 與前一交易日的價差 |
 | `Transaction` | `transaction_count` | 成交筆數 |
 
-adapter 還要補上 `exchange="TWSE"`、`currency="TWD"`、`source` 與
-`fetched_at`。資料的唯一識別預計使用 `ticker + exchange + trade_date`。
+adapter 還會補上 `exchange="TWSE"`、`currency="TWD"`、`source` 與
+`fetched_at`。MySQL 實際以 `security_id + trade_date` 作為唯一識別。
 
 ### 價格資料限制
 
@@ -83,9 +84,9 @@ adapter 還要補上 `exchange="TWSE"`、`currency="TWD"`、`source` 與
 | `營業外收入及支出` | `non_operating_income_expense` | 保留官方原始數值尺度 |
 | `稅後淨利` | `net_income` | 保留官方原始數值尺度 |
 
-adapter 還要補上 `exchange="TWSE"`、`currency="TWD"`、`source` 與
-`fetched_at`。唯一識別預計使用 `ticker + exchange + fiscal_year +
-fiscal_quarter`。
+adapter 還會補上 `exchange="TWSE"`、`currency="TWD"`、`source` 與
+`fetched_at`。MySQL 實際以 `security_id + fiscal_year + fiscal_quarter`
+作為唯一識別。
 
 ### 財務資料限制
 

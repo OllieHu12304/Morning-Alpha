@@ -25,8 +25,14 @@ from export_news_json import prepare_dashboard_records
 from generate_chart_data import generate_chart_data
 from news_company_links import load_news_company_links
 from pipeline_history import build_pipeline_run_records, load_pipeline_runs
+from personalized_brief import load_personalized_brief
 from read_news import load_all_news
 from source_health import build_source_health_summary, load_source_health_events
+from watchlist import (
+    add_watchlist_company,
+    load_watchlist,
+    remove_watchlist_company,
+)
 
 
 DASHBOARD_DIRECTORY = Path(__file__).resolve().parent.parent / "dashboard"
@@ -277,6 +283,54 @@ def event_market_observations():
             "limitations": EVENT_MARKET_LIMITATIONS,
             "observations": observations,
         })
+    except (KeyError, pymysql.MySQLError, ValueError) as error:
+        return company_data_error_response(error)
+
+
+@app.get("/api/watchlist")
+def watchlist():
+    """回傳本機單一使用者的公司追蹤清單。"""
+    try:
+        return jsonify({"items": load_watchlist()})
+    except (pymysql.MySQLError, ValueError) as error:
+        return company_data_error_response(error)
+
+
+@app.post("/api/watchlist/<int:company_id>")
+def add_watchlist_item(company_id):
+    """將指定公司加入追蹤清單；重複加入保持相同狀態。"""
+    try:
+        added = add_watchlist_company(company_id)
+        return jsonify({
+            "company_id": company_id,
+            "added": added,
+        }), 201 if added else 200
+    except ValueError as error:
+        return jsonify({"error": str(error)}), 400
+    except pymysql.MySQLError as error:
+        return company_data_error_response(error)
+
+
+@app.delete("/api/watchlist/<int:company_id>")
+def delete_watchlist_item(company_id):
+    """將指定公司移出追蹤清單；不存在時保持相同狀態。"""
+    try:
+        removed = remove_watchlist_company(company_id)
+        return jsonify({
+            "company_id": company_id,
+            "removed": removed,
+        })
+    except ValueError as error:
+        return jsonify({"error": str(error)}), 400
+    except pymysql.MySQLError as error:
+        return company_data_error_response(error)
+
+
+@app.get("/api/personalized-brief")
+def personalized_brief():
+    """即時計算最新時間窗的追蹤公司個人化晨報。"""
+    try:
+        return jsonify({"brief": load_personalized_brief()})
     except (KeyError, pymysql.MySQLError, ValueError) as error:
         return company_data_error_response(error)
 
