@@ -57,6 +57,22 @@ Morning Alpha 是資料工程與全端資料流程的練習專案，不是投資
 - Playwright tests 驗證 Dashboard 載入、搜尋、篩選與分頁。
 - GitHub Actions 會自動執行 Python、MySQL integration 與 Playwright tests。
 
+## 第三階段收斂狀態
+
+第三階段「提升自動化程度」已完成目前本機學習專案需要的範圍：
+
+| 原定方向 | 目前實作 | 範圍邊界 |
+| --- | --- | --- |
+| 定期執行 | 選用的 Docker 本機 scheduler | Mac、Docker Desktop 與 scheduler container 必須持續運作；不是雲端排程 |
+| 敏感設定 | 本機 `.env`、CI environment／secrets | 尚未整合雲端 secret manager |
+| API backend | Flask API 直接讀取 MySQL | 本機使用，沒有 authentication 或正式公開部署設定 |
+| 自動測試 | Crawler unit tests、MySQL integration tests、Playwright tests、GitHub Actions CI | CI 不會連進使用者 Mac 的 MySQL，也不執行正式新聞排程 |
+| 可重現環境 | 固定 Python／Playwright package versions，並提供 Docker | 仍需可連線的新聞來源與 Chart.js CDN |
+
+來源健康、Pipeline 歷史、90 天歷史保留與 Discord 失敗通知是已完成的選配維運功能，不是執行核心新聞流程的必要條件。
+
+v0.2 Alpha 至此停止擴充新的 Feature 3 維運功能，接下來只做完整驗證、文件一致性與阻擋 release 的錯誤修正，再準備 release candidate／正式 tag。
+
 ## 系統流程
 
 ```mermaid
@@ -579,10 +595,11 @@ tail -n 100 data/processed/morning_alpha.log
 - 提供選用的 Docker 本機間隔排程，但電腦關機或 Docker 停止時不會更新，也不是即時服務。
 - 先前已寫入 MySQL 的非財經 CNA 資料不會因新 adapter 白名單自動刪除。
 
-## 下一步
+## v0.2 收斂後
 
-- 安全稽核與清理既有非財經 CNA 資料。
-- 建立 MySQL 與 Docker volume 的備份／還原流程。
-- 持續改善分類、斷詞與事件相似度。
+- 在本機原生與 Docker 環境完成一次 end-to-end 驗證。
+- 只修正阻擋 release 的程式或文件問題，不再擴充 Feature 3。
+- 驗證完成後建立 v0.2 release candidate／正式 tag。
+- 資料清理、分析準確度、備份與雲端部署等新需求，另外評估為後續產品階段。
 
 更多操作與面試說明請參考 [docs/USER_GUIDE.md](docs/USER_GUIDE.md)。
