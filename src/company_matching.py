@@ -64,6 +64,83 @@ def create_match(candidate, matched_text, match_method, confidence):
     }
 
 
+def find_text_spans(text, search_text):
+    """找出 search_text 在 text 中每一次出現的起訖位置。"""
+    spans = []
+    start = 0
+
+    while True:
+        match_start = text.find(search_text, start)
+
+        if match_start == -1:
+            break
+
+        match_end = match_start + len(search_text)
+        spans.append((match_start, match_end))
+        start = match_start + 1
+
+    return spans
+
+
+def spans_overlap(first_span, second_span):
+    """判斷兩段文字位置是否互相重疊。"""
+    return (
+        first_span[0] < second_span[1]
+        and second_span[0] < first_span[1]
+    )
+
+
+def remove_overlapping_matches(normalized_title, matches):
+    """同一段文字有多個命中時，優先保留較長的公司名稱。"""
+    matches_with_spans = []
+
+    for match in matches:
+        normalized_matched_text = normalize_text(match["matched_text"])
+        spans = find_text_spans(normalized_title, normalized_matched_text)
+        matches_with_spans.append({
+            "match": match,
+            "text_length": len(normalized_matched_text),
+            "spans": spans,
+        })
+
+    matches_with_spans.sort(
+        key=lambda item: (
+            -item["text_length"],
+            -item["match"]["confidence"],
+            item["match"]["company_id"],
+        )
+    )
+
+    kept_matches = []
+    claimed_spans = []
+
+    for item in matches_with_spans:
+        independent_spans = []
+
+        for span in item["spans"]:
+            overlaps_longer_match = any(
+                claimed["text_length"] > item["text_length"]
+                and spans_overlap(span, claimed["span"])
+                for claimed in claimed_spans
+            )
+
+            if not overlaps_longer_match:
+                independent_spans.append(span)
+
+        if not independent_spans:
+            continue
+
+        kept_matches.append(item["match"])
+
+        for span in independent_spans:
+            claimed_spans.append({
+                "span": span,
+                "text_length": item["text_length"],
+            })
+
+    return kept_matches
+
+
 def match_candidate(title, normalized_title, candidate, ambiguous_aliases):
     """找出標題對一個公司候選的最佳 match。"""
     matches = []
@@ -152,6 +229,8 @@ def match_title_companies(title, candidates):
 
         if match is not None:
             matches.append(match)
+
+    matches = remove_overlapping_matches(normalized_title, matches)
 
     return sorted(
         matches,

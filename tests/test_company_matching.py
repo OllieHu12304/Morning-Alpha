@@ -87,6 +87,69 @@ class CompanyMatchingTests(unittest.TestCase):
 
         self.assertEqual(matches, [])
 
+    def test_keeps_longest_company_name_at_the_same_position(self):
+        candidates = [
+            make_candidate(
+                company_id=1,
+                name="華電聯網股份有限公司",
+                short_name="華電",
+                ticker="1603",
+                aliases=["華電"],
+            ),
+            make_candidate(
+                company_id=2,
+                name="中華汽車工業股份有限公司",
+                short_name="中華",
+                ticker="2204",
+                aliases=["中華"],
+            ),
+            make_candidate(
+                company_id=3,
+                name="中華電信股份有限公司",
+                short_name="中華電",
+                ticker="2412",
+                aliases=["中華電"],
+            ),
+        ]
+
+        matches = match_title_companies(
+            "中華電攜手 Nokia 推動 AI-RAN 技術驗證應用",
+            candidates,
+        )
+
+        self.assertEqual(
+            [match["ticker"] for match in matches],
+            ["2412"],
+        )
+
+    def test_keeps_shorter_name_when_it_appears_independently(self):
+        candidates = [
+            make_candidate(
+                company_id=1,
+                name="華電聯網股份有限公司",
+                short_name="華電",
+                ticker="1603",
+                aliases=["華電"],
+            ),
+            make_candidate(
+                company_id=2,
+                name="中華電信股份有限公司",
+                short_name="中華電",
+                ticker="2412",
+                aliases=["中華電"],
+            ),
+        ]
+
+        matches = match_title_companies(
+            "中華電與華電宣布合作",
+            candidates,
+        )
+
+        self.assertEqual(
+            {match["ticker"] for match in matches},
+            {"1603", "2412"},
+        )
+
     def test_match_news_records_does_not_modify_original(self):
         records = [{"title": "台積電營收成長"}]
 
