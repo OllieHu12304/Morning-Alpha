@@ -1,8 +1,11 @@
 """測試新聞資料寫入 MySQL 前的準備邏輯與 schema。"""
 
+import os
 import sys
+import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 import pandas as pd
 
@@ -15,6 +18,46 @@ import store_news  # noqa: E402
 
 
 class StoreNewsTests(unittest.TestCase):
+    def test_get_database_config_loads_dotenv_file(self):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            env_path = Path(temporary_directory) / ".env"
+            env_path.write_text(
+                "MYSQL_USER=dotenv_user\n"
+                "MYSQL_PASSWORD=dotenv_password\n"
+                "MYSQL_DATABASE=dotenv_database\n",
+                encoding="utf-8",
+            )
+
+            with patch.object(store_news, "ENV_PATH", env_path):
+                with patch.dict(os.environ, {}, clear=True):
+                    config = store_news.get_database_config()
+
+        self.assertEqual(config["user"], "dotenv_user")
+        self.assertEqual(config["password"], "dotenv_password")
+        self.assertEqual(config["database"], "dotenv_database")
+        self.assertEqual(config["host"], "localhost")
+        self.assertEqual(config["port"], 3306)
+
+    def test_shell_environment_overrides_dotenv_file(self):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            env_path = Path(temporary_directory) / ".env"
+            env_path.write_text(
+                "MYSQL_USER=dotenv_user\n"
+                "MYSQL_PASSWORD=dotenv_password\n",
+                encoding="utf-8",
+            )
+            shell_environment = {
+                "MYSQL_USER": "shell_user",
+                "MYSQL_PASSWORD": "shell_password",
+            }
+
+            with patch.object(store_news, "ENV_PATH", env_path):
+                with patch.dict(os.environ, shell_environment, clear=True):
+                    config = store_news.get_database_config()
+
+        self.assertEqual(config["user"], "shell_user")
+        self.assertEqual(config["password"], "shell_password")
+
     def test_prepare_news_records_adds_source_and_canonical_url(self):
         dataframe = pd.DataFrame([{
             "source": "technews",

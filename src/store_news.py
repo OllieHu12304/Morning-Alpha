@@ -1,16 +1,21 @@
 """將整理完成的 TechNews 新聞寫入 MySQL。"""
 
 import os
+from pathlib import Path
 
 import pandas as pd
 import pymysql
 import requests
+from dotenv import load_dotenv
 
 from analyze_news import create_dataframe, transform_dataframe
 from canonical_url_hash import create_canonical_url_hash
 from news_category import infer_category
 from news_sources import fetch_all_articles
 from url_normalizer import normalize_url
+
+PROJECT_DIRECTORY = Path(__file__).resolve().parent.parent
+ENV_PATH = PROJECT_DIRECTORY / ".env"
 
 CREATE_TABLE_SQL = """
 CREATE TABLE IF NOT EXISTS news_records (
@@ -46,14 +51,23 @@ VALUES (%s, %s, %s, %s, %s, %s, %s, %s);
 """
 
 
+def load_environment(env_path=None):
+    """載入本機 .env，但不覆蓋已存在的環境變數。"""
+    if env_path is None:
+        env_path = ENV_PATH
+
+    load_dotenv(dotenv_path=env_path, override=False)
+
+
 def get_database_config():
-    """從環境變數取得 MySQL 連線設定。"""
+    """從 .env 或環境變數取得 MySQL 連線設定。"""
+    load_environment()
     user = os.getenv("MYSQL_USER")
     password = os.getenv("MYSQL_PASSWORD")
 
     if not user or not password:
         raise ValueError(
-            "請先設定 MYSQL_USER 與 MYSQL_PASSWORD 環境變數。"
+            "請先在 .env 或環境變數設定 MYSQL_USER 與 MYSQL_PASSWORD。"
         )
 
     try:

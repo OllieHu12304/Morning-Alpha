@@ -187,16 +187,25 @@ TO 'morning_alpha_app'@'localhost';
 
 請把真實密碼保存在密碼管理器，不要寫入 repository。
 
-### 4. 設定目前 terminal 的連線值
+### 4. 建立本機 `.env`
 
 ```bash
-export MYSQL_USER="morning_alpha_app"
-read -s "MYSQL_PASSWORD?MySQL app password: "
-echo
-export MYSQL_PASSWORD
+cp .env.example .env
 ```
 
-選用變數與預設值：
+開啟 `.env`，將 `MYSQL_PASSWORD` 替換成真實 app password：
+
+```text
+MYSQL_HOST=localhost
+MYSQL_PORT=3306
+MYSQL_USER=morning_alpha_app
+MYSQL_PASSWORD=請替換成真實密碼
+MYSQL_DATABASE=morning_alpha
+```
+
+`.env` 已由 Git 忽略，不應提交；`.env.example` 只保存欄位範例。Shell environment 與未來 GitHub Secrets 的優先權高於 `.env`。
+
+可用變數與預設值：
 
 | 環境變數 | 預設值 |
 | --- | --- |
@@ -204,7 +213,7 @@ export MYSQL_PASSWORD
 | `MYSQL_PORT` | `3306` |
 | `MYSQL_DATABASE` | `morning_alpha` |
 
-`MYSQL_USER` 與 `MYSQL_PASSWORD` 沒有預設值，而且新 terminal 不會自動保留先前的 export。
+`MYSQL_USER` 與 `MYSQL_PASSWORD` 沒有預設值；未建立 `.env` 時仍可沿用原本的 `export` 方式。
 
 ## Database migrations
 
@@ -231,7 +240,13 @@ export MYSQL_PASSWORD
 python src/run_migrations.py --apply
 ```
 
-完成後重新設定 `morning_alpha_app` credentials，再執行日常 Pipeline。
+完成後清除管理員 shell credentials，讓程式重新讀取 `.env` 中的 `morning_alpha_app`：
+
+```bash
+unset MYSQL_USER MYSQL_PASSWORD
+```
+
+再執行日常 Pipeline。
 
 ## 執行 Morning Alpha
 
