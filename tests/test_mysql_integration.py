@@ -39,7 +39,10 @@ from daily_brief_store import (  # noqa: E402
     fetch_daily_briefs,
     upsert_daily_brief,
 )
-from company_directory import create_company_directory_tables  # noqa: E402
+from company_directory import (  # noqa: E402
+    create_company_directory_tables,
+    import_company_records,
+)
 
 
 TEST_DATABASE_NAME = "morning_alpha_test"
@@ -319,6 +322,34 @@ class MySQLIntegrationTests(unittest.TestCase):
             record = cursor.fetchone()
 
         self.assertEqual(record, ("台積電", "2330", "半導體業"))
+
+    def test_import_company_record_can_run_twice(self):
+        record = {
+            "name": "聯發科技股份有限公司",
+            "short_name": "聯發科",
+            "industry": "半導體業",
+            "market": "TWSE",
+            "ticker": "2454",
+            "exchange": "TWSE",
+            "currency": "TWD",
+            "aliases": ["聯發科", "聯發科技股份有限公司"],
+        }
+
+        import_company_records(self.connection, [record])
+        import_company_records(self.connection, [record])
+        self.connection.commit()
+
+        with self.connection.cursor() as cursor:
+            cursor.execute("SELECT COUNT(*) FROM companies;")
+            company_count = cursor.fetchone()[0]
+            cursor.execute("SELECT COUNT(*) FROM securities;")
+            security_count = cursor.fetchone()[0]
+            cursor.execute("SELECT COUNT(*) FROM company_aliases;")
+            alias_count = cursor.fetchone()[0]
+
+        self.assertEqual(company_count, 1)
+        self.assertEqual(security_count, 1)
+        self.assertEqual(alias_count, 2)
 
     def test_history_retention_deletes_only_old_records(self):
         old_time = datetime(2026, 1, 1, 0, 0, 0)

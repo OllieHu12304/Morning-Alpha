@@ -71,6 +71,35 @@ COMPANY_DIRECTORY_TABLE_STATEMENTS = [
     CREATE_COMPANY_ALIASES_TABLE_SQL,
 ]
 
+UPSERT_INDUSTRY_SQL = """
+INSERT INTO industries (name)
+VALUES (%s)
+ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id);
+"""
+
+UPSERT_COMPANY_SQL = """
+INSERT INTO companies (name, short_name, industry_id, market)
+VALUES (%s, %s, %s, %s)
+ON DUPLICATE KEY UPDATE
+    id = LAST_INSERT_ID(id),
+    short_name = VALUES(short_name),
+    industry_id = VALUES(industry_id);
+"""
+
+UPSERT_SECURITY_SQL = """
+INSERT INTO securities (company_id, ticker, exchange, currency, is_active)
+VALUES (%s, %s, %s, %s, TRUE)
+ON DUPLICATE KEY UPDATE
+    company_id = VALUES(company_id),
+    currency = VALUES(currency),
+    is_active = TRUE;
+"""
+
+INSERT_ALIAS_SQL = """
+INSERT IGNORE INTO company_aliases (company_id, alias)
+VALUES (%s, %s);
+"""
+
 
 def create_company_directory_tables(connection):
     """按照 foreign key 相依順序建立四張公司資料表。"""
@@ -88,6 +117,95 @@ def ensure_company_directory():
         create_company_directory_tables(connection)
         connection.commit()
     except pymysql.MySQLError:
+        connection.rollback()
+        raise
+    finally:
+        connection.close()
+
+
+def validate_company_record(record):
+    """確認 adapter 提供公司匯入需要的共同欄位。"""
+    required_fields = [
+        "name",
+        "short_name",
+        "industry",
+        "market",
+        "ticker",
+        "exchange",
+        "currency",
+    ]
+
+    if not isinstance(record, dict):
+        raise ValueError("公司紀錄必須是 object。")
+
+    if any(not str(record.get(field, "")).strip() for field in required_fields):
+        raise ValueError("公司紀錄缺少必要欄位。")
+
+    aliases = record.get("aliases")
+
+    if not isinstance(aliases, list) or not aliases:
+        raise ValueError("公司紀錄必須包含至少一個 alias。")
+
+
+def upsert_company_record(cursor, record):
+    """以同一 cursor 更新一筆公司、股票與別名資料。"""
+    validate_company_record(record)
+    cursor.execute(UPSERT_INDUSTRY_SQL, (record["industry"],))
+    industry_id = cursor.lastrowid
+    cursor.execute(
+        UPSERT_COMPANY_SQL,
+        (
+            record["name"],
+            record["short_name"],
+            industry_id,
+            record["market"],
+        ),
+    )
+    company_id = cursor.lastrowid
+    cursor.execute(
+        UPSERT_SECURITY_SQL,
+        (
+            company_id,
+            record["ticker"],
+            record["exchange"],
+            record["currency"],
+        ),
+    )
+
+    for alias in record["aliases"]:
+        cleaned_alias = str(alias).strip()
+
+        if cleaned_alias:
+            cursor.execute(
+                INSERT_ALIAS_SQL,
+                (company_id, cleaned_alias),
+            )
+
+
+def import_company_records(connection, records):
+    """匯入共同格式公司資料並回傳處理筆數。"""
+    if not isinstance(records, list):
+        raise ValueError("records 必須是 list。")
+
+    create_company_directory_tables(connection)
+
+    with connection.cursor() as cursor:
+        for record in records:
+            upsert_company_record(cursor, record)
+
+    return len(records)
+
+
+def sync_company_records(records):
+    """使用獨立 transaction 匯入公司資料。"""
+    config = get_database_config()
+    connection = connect_to_database(config)
+
+    try:
+        imported_count = import_company_records(connection, records)
+        connection.commit()
+        return imported_count
+    except (pymysql.MySQLError, ValueError):
         connection.rollback()
         raise
     finally:

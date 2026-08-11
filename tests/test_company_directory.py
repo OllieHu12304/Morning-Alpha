@@ -13,6 +13,7 @@ sys.path.insert(0, str(SOURCE_DIRECTORY))
 from company_directory import (  # noqa: E402
     COMPANY_DIRECTORY_TABLE_STATEMENTS,
     create_company_directory_tables,
+    import_company_records,
 )
 
 
@@ -53,6 +54,28 @@ class CompanyDirectoryTests(unittest.TestCase):
             "company_aliases",
         ]:
             self.assertIn(f"CREATE TABLE IF NOT EXISTS {table_name}", migration_sql)
+
+    def test_import_company_records_uses_parameterized_upserts(self):
+        connection = MagicMock()
+        cursor = connection.cursor.return_value.__enter__.return_value
+        cursor.lastrowid = 7
+        record = {
+            "name": "台灣積體電路製造股份有限公司",
+            "short_name": "台積電",
+            "industry": "半導體業",
+            "market": "TWSE",
+            "ticker": "2330",
+            "exchange": "TWSE",
+            "currency": "TWD",
+            "aliases": ["台積電", "台灣積體電路製造股份有限公司"],
+        }
+
+        imported_count = import_company_records(connection, [record])
+
+        self.assertEqual(imported_count, 1)
+        self.assertEqual(cursor.execute.call_count, 9)
+        self.assertEqual(cursor.execute.call_args_list[4].args[1], ("半導體業",))
+        self.assertEqual(cursor.execute.call_args_list[6].args[1][1], "2330")
 
 
 if __name__ == "__main__":
