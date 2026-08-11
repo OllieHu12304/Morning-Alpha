@@ -291,11 +291,37 @@ Pipeline 目前仍會輸出四個 JSON 作為學習與備援資料，但 Dashboa
 
 ## 執行測試
 
-測試不需要真實 MySQL 或新聞網站：
+一般測試不需要真實 MySQL 或新聞網站：
 
 ```bash
 ./.venv/bin/python -m unittest discover -s tests -v
 ```
+
+### MySQL integration tests
+
+Integration tests 只允許使用獨立的 `morning_alpha_test`。先用 MySQL 管理員建立一次：
+
+```sql
+CREATE DATABASE morning_alpha_test
+CHARACTER SET utf8mb4
+COLLATE utf8mb4_unicode_ci;
+
+CREATE USER 'morning_alpha_test_user'@'localhost'
+IDENTIFIED BY '請替換成安全的測試密碼';
+
+GRANT CREATE, INSERT, SELECT, DELETE
+ON morning_alpha_test.*
+TO 'morning_alpha_test_user'@'localhost';
+```
+
+將 `MYSQL_TEST_*` 設定加入本機 `.env`，再明確開啟 integration tests：
+
+```bash
+RUN_MYSQL_INTEGRATION=1 \
+./.venv/bin/python -m unittest tests/test_mysql_integration.py -v
+```
+
+測試會建立 `news_records` table、驗證真實寫入與 canonical URL UNIQUE index，並在結束後清空測試資料。它不會連接或修改正式 `morning_alpha` database。
 
 ## 常用除錯
 
