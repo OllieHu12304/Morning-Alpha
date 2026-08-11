@@ -18,6 +18,7 @@ class NewsSourcesTests(unittest.TestCase):
     def test_fetch_all_articles_keeps_records_from_every_source(self):
         technews_articles = [{"source": "technews"}]
         cna_articles = [{"source": "cna"}]
+        ltn_articles = [{"source": "ltn"}]
         disclosure_articles = [{"source": "twse_disclosure"}]
 
         with patch.object(
@@ -30,6 +31,10 @@ class NewsSourcesTests(unittest.TestCase):
             return_value=cna_articles,
         ), patch.object(
             news_sources,
+            "fetch_ltn_business",
+            return_value=ltn_articles,
+        ), patch.object(
+            news_sources,
             "fetch_twse_disclosures",
             return_value=disclosure_articles,
         ):
@@ -37,7 +42,10 @@ class NewsSourcesTests(unittest.TestCase):
 
         self.assertEqual(
             articles,
-            technews_articles + cna_articles + disclosure_articles,
+            technews_articles
+            + cna_articles
+            + ltn_articles
+            + disclosure_articles,
         )
 
     def test_source_failure_does_not_discard_successful_source(self):
@@ -51,6 +59,10 @@ class NewsSourcesTests(unittest.TestCase):
             news_sources,
             "fetch_cna_finance",
             return_value=cna_articles,
+        ), patch.object(
+            news_sources,
+            "fetch_ltn_business",
+            return_value=[],
         ), patch.object(
             news_sources,
             "fetch_twse_disclosures",
@@ -80,6 +92,10 @@ class NewsSourcesTests(unittest.TestCase):
             side_effect=ValueError("RSS 結構異常"),
         ), patch.object(
             news_sources,
+            "fetch_ltn_business",
+            return_value=[],
+        ), patch.object(
+            news_sources,
             "fetch_twse_disclosures",
             return_value=[],
         ):
@@ -101,6 +117,10 @@ class NewsSourcesTests(unittest.TestCase):
             news_sources,
             "fetch_cna_finance",
             side_effect=requests.Timeout("RSS timeout"),
+        ), patch.object(
+            news_sources,
+            "fetch_ltn_business",
+            side_effect=requests.HTTPError("LTN 503"),
         ), patch.object(
             news_sources,
             "fetch_twse_disclosures",

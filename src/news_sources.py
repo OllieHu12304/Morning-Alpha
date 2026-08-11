@@ -5,6 +5,7 @@ import logging
 import requests
 
 from cna_finance_adapter import fetch_articles as fetch_cna_finance
+from ltn_business_adapter import fetch_articles as fetch_ltn_business
 from technews_adapter import fetch_articles as fetch_technews
 from twse_disclosure_adapter import fetch_articles as fetch_twse_disclosures
 
@@ -17,6 +18,7 @@ def fetch_all_articles_with_status():
     source_fetchers = [
         ("technews", "TechNews", fetch_technews),
         ("cna", "中央社財經 RSS", fetch_cna_finance),
+        ("ltn", "自由時報財經 RSS", fetch_ltn_business),
         (
             "twse_disclosure",
             "TWSE 上市公司每日重大訊息",

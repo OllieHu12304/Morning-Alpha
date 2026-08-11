@@ -12,6 +12,7 @@ const PIPELINE_RUN_DISPLAY_LIMIT = 5;
 
 const SOURCE_LABELS = {
     cna: "中央通訊社",
+    ltn: "自由時報財經",
     technews: "TechNews 科技新報",
     twse_disclosure: "TWSE 官方重大訊息",
 };

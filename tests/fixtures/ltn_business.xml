@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+    <channel>
+        <title>自由時報電子報財經新聞</title>
+        <item>
+            <title><![CDATA[國巨公布最新營運消息]]></title>
+            <link>https://ec.ltn.com.tw/article/breakingnews/5000001</link>
+            <description><![CDATA[測試摘要不會寫入 Morning Alpha。]]></description>
+            <pubDate>Tue, 11 Aug 2026 17:30:00 +0800</pubDate>
+        </item>
+        <item>
+            <title><![CDATA[台股盤中市場焦點整理]]></title>
+            <link>https://ec.ltn.com.tw/article/breakingnews/5000002</link>
+            <pubDate>Tue, 11 Aug 2026 16:20:00 +0800</pubDate>
+        </item>
+        <item>
+            <title>缺少網址的測試資料</title>
+            <pubDate>Tue, 11 Aug 2026 15:00:00 +0800</pubDate>
+        </item>
+    </channel>
+</rss>

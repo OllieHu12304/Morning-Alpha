@@ -146,6 +146,7 @@ class DashboardContractTests(unittest.TestCase):
             'twse_disclosure: "TWSE 官方重大訊息"',
             javascript,
         )
+        self.assertIn('ltn: "自由時報財經"', javascript)
 
 
 if __name__ == "__main__":

@@ -35,6 +35,17 @@ class GenerateChartDataTests(unittest.TestCase):
             "TWSE 官方重大訊息",
         )
 
+    def test_record_source_label_maps_ltn(self):
+        record = {
+            "source": "ltn",
+            "url": "https://ec.ltn.com.tw/article/example",
+        }
+
+        self.assertEqual(
+            get_record_source_label(record),
+            "自由時報財經",
+        )
+
     def test_count_keywords_uses_top_twenty_pandas_rules(self):
         records = [{
             "title": "NVIDIA 推出 AI 晶片，nvidia 股價上漲",
