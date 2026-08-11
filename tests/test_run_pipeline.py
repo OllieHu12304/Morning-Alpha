@@ -97,6 +97,41 @@ class RunPipelineTests(unittest.TestCase):
         print_message.assert_any_call("成功來源：中央社財經 RSS")
         print_message.assert_any_call("失敗來源：TechNews")
 
+    def test_collect_saves_failures_before_all_sources_error(self):
+        source_results = [
+            {
+                "source": "technews",
+                "source_name": "TechNews",
+                "status": "failure",
+                "article_count": 0,
+                "error_message": "503",
+            },
+            {
+                "source": "cna",
+                "source_name": "中央社財經 RSS",
+                "status": "failure",
+                "article_count": 0,
+                "error_message": "timeout",
+            },
+        ]
+
+        with patch.object(
+            run_pipeline,
+            "fetch_all_articles_with_status",
+            return_value=([], source_results),
+        ), patch.object(
+            run_pipeline,
+            "save_source_health_events",
+        ) as save_health, patch.object(
+            run_pipeline,
+            "save_news",
+        ) as save_news:
+            with self.assertRaisesRegex(ValueError, "所有新聞來源都失敗"):
+                run_pipeline.collect_and_store_news()
+
+        save_health.assert_called_once_with(source_results)
+        save_news.assert_not_called()
+
 
 if __name__ == "__main__":
     unittest.main()

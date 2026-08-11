@@ -32,6 +32,18 @@ class DashboardContractTests(unittest.TestCase):
         self.assertIn("keywordRecordsToSeries", javascript)
         self.assertIn("formatLastUpdated", javascript)
 
+    def test_dashboard_loads_and_renders_source_health(self):
+        html = (DASHBOARD_DIRECTORY / "index.html").read_text(encoding="utf-8")
+        javascript = (DASHBOARD_DIRECTORY / "app.js").read_text(encoding="utf-8")
+        styles = (DASHBOARD_DIRECTORY / "styles.css").read_text(encoding="utf-8")
+
+        self.assertIn('id="source-health-grid"', html)
+        self.assertIn('const SOURCE_HEALTH_API = "/api/source-health"', javascript)
+        self.assertIn("renderSourceHealth", javascript)
+        self.assertIn("createSourceHealthCard", javascript)
+        self.assertIn(".source-health-badge-success", styles)
+        self.assertIn(".source-health-badge-failure", styles)
+
     def test_dashboard_can_filter_related_events(self):
         javascript = (DASHBOARD_DIRECTORY / "app.js").read_text(encoding="utf-8")
         styles = (DASHBOARD_DIRECTORY / "styles.css").read_text(encoding="utf-8")

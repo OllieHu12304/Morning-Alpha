@@ -1,5 +1,6 @@
 const NEWS_API = "/api/news";
 const ANALYTICS_API = "/api/analytics";
+const SOURCE_HEALTH_API = "/api/source-health";
 const KEYWORD_CHART_LIMIT = 10;
 
 const SOURCE_LABELS = {
@@ -10,6 +11,8 @@ const SOURCE_LABELS = {
 const tableBody = document.querySelector("#news-table-body");
 const statusMessage = document.querySelector("#status-message");
 const chartStatusMessage = document.querySelector("#chart-status-message");
+const sourceHealthMessage = document.querySelector("#source-health-message");
+const sourceHealthGrid = document.querySelector("#source-health-grid");
 const lastUpdatedMessage = document.querySelector("#last-updated");
 const searchInput = document.querySelector("#news-search");
 const sourceFilter = document.querySelector("#source-filter");
@@ -77,6 +80,140 @@ async function loadAnalytics() {
         showChartError(`無法載入統計 API：${error.message}`);
         lastUpdatedMessage.textContent = `資料庫最後新增：無法載入（${error.message}）`;
     }
+}
+
+
+async function loadSourceHealth() {
+    try {
+        const payload = await fetchJson(SOURCE_HEALTH_API);
+
+        if (!payload || !Array.isArray(payload.sources)) {
+            throw new Error("source health API 格式不正確。");
+        }
+
+        renderSourceHealth(payload.sources);
+    } catch (error) {
+        showSourceHealthError(`無法載入來源狀態：${error.message}`);
+    }
+}
+
+
+function validateSourceHealthRecord(record) {
+    if (!record || typeof record !== "object") {
+        throw new Error("來源狀態包含無效資料。");
+    }
+
+    const articleCount = Number(record.article_count);
+
+    if (
+        !record.source
+        || !["success", "failure"].includes(record.status)
+        || !Number.isInteger(articleCount)
+        || articleCount < 0
+    ) {
+        throw new Error("來源狀態欄位格式不正確。");
+    }
+
+    return {
+        ...record,
+        article_count: articleCount,
+    };
+}
+
+
+function renderSourceHealth(records) {
+    sourceHealthGrid.replaceChildren();
+    sourceHealthMessage.classList.remove("error-message");
+
+    if (records.length === 0) {
+        const emptyMessage = document.createElement("p");
+        emptyMessage.className = "source-health-empty";
+        emptyMessage.textContent = "尚無來源執行紀錄，請先執行 Pipeline。";
+        sourceHealthGrid.appendChild(emptyMessage);
+        sourceHealthMessage.textContent = "尚無紀錄";
+        return;
+    }
+
+    for (const sourceRecord of records) {
+        const record = validateSourceHealthRecord(sourceRecord);
+        sourceHealthGrid.appendChild(createSourceHealthCard(record));
+    }
+
+    sourceHealthMessage.textContent = `已載入 ${records.length} 個來源`;
+}
+
+
+function createSourceHealthCard(record) {
+    const card = document.createElement("article");
+    card.className = "source-health-card";
+
+    const heading = document.createElement("div");
+    heading.className = "source-health-card-heading";
+
+    const title = document.createElement("h3");
+    title.textContent = SOURCE_LABELS[record.source] || String(record.source);
+
+    const badge = document.createElement("span");
+    const isSuccessful = record.status === "success";
+    badge.className = `source-health-badge source-health-badge-${record.status}`;
+    badge.textContent = isSuccessful ? "正常" : "失敗";
+    heading.append(title, badge);
+
+    const details = document.createElement("dl");
+    details.className = "source-health-details";
+    appendSourceHealthDetail(
+        details,
+        "最近嘗試",
+        formatHealthTime(record.last_attempt_at),
+    );
+    appendSourceHealthDetail(
+        details,
+        "最近成功",
+        formatHealthTime(record.last_success_at),
+    );
+    appendSourceHealthDetail(
+        details,
+        "本次文章",
+        `${record.article_count} 篇`,
+    );
+
+    card.append(heading, details);
+
+    if (!isSuccessful && record.error_message) {
+        const errorMessage = document.createElement("p");
+        errorMessage.className = "source-health-error";
+        errorMessage.textContent = `失敗原因：${record.error_message}`;
+        card.appendChild(errorMessage);
+    }
+
+    return card;
+}
+
+
+function appendSourceHealthDetail(container, label, value) {
+    const detail = document.createElement("div");
+    const term = document.createElement("dt");
+    const description = document.createElement("dd");
+    term.textContent = label;
+    description.textContent = value;
+    detail.append(term, description);
+    container.appendChild(detail);
+}
+
+
+function formatHealthTime(value) {
+    return value ? formatPublishTime(value) : "尚無紀錄";
+}
+
+
+function showSourceHealthError(message) {
+    sourceHealthGrid.replaceChildren();
+    const errorMessage = document.createElement("p");
+    errorMessage.className = "source-health-empty error-message";
+    errorMessage.textContent = "來源狀態暫時無法顯示。";
+    sourceHealthGrid.appendChild(errorMessage);
+    sourceHealthMessage.textContent = message;
+    sourceHealthMessage.classList.add("error-message");
 }
 
 
@@ -611,3 +748,4 @@ nextPageButton.addEventListener("click", () => {
 
 loadNews();
 loadAnalytics();
+loadSourceHealth();

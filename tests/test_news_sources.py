@@ -44,13 +44,16 @@ class NewsSourcesTests(unittest.TestCase):
             "fetch_cna_finance",
             return_value=cna_articles,
         ):
-            result = news_sources.fetch_all_articles_with_status()
+            articles, source_results = (
+                news_sources.fetch_all_articles_with_status()
+            )
 
-        self.assertEqual(result, (
-            cna_articles,
-            ["中央社財經 RSS"],
-            ["TechNews"],
-        ))
+        self.assertEqual(articles, cna_articles)
+        self.assertEqual(source_results[0]["source"], "technews")
+        self.assertEqual(source_results[0]["status"], "failure")
+        self.assertEqual(source_results[1]["source"], "cna")
+        self.assertEqual(source_results[1]["status"], "success")
+        self.assertEqual(source_results[1]["article_count"], 1)
 
     def test_structure_failure_does_not_stop_other_source(self):
         technews_articles = [{"source": "technews"}]
@@ -64,13 +67,14 @@ class NewsSourcesTests(unittest.TestCase):
             "fetch_cna_finance",
             side_effect=ValueError("RSS 結構異常"),
         ):
-            result = news_sources.fetch_all_articles_with_status()
+            articles, source_results = (
+                news_sources.fetch_all_articles_with_status()
+            )
 
-        self.assertEqual(result, (
-            technews_articles,
-            ["TechNews"],
-            ["中央社財經 RSS"],
-        ))
+        self.assertEqual(articles, technews_articles)
+        self.assertEqual(source_results[0]["status"], "success")
+        self.assertEqual(source_results[1]["status"], "failure")
+        self.assertEqual(source_results[1]["error_message"], "RSS 結構異常")
 
     def test_all_sources_failure_stops_collection(self):
         with patch.object(
@@ -83,7 +87,7 @@ class NewsSourcesTests(unittest.TestCase):
             side_effect=requests.Timeout("RSS timeout"),
         ):
             with self.assertRaisesRegex(ValueError, "所有新聞來源都失敗"):
-                news_sources.fetch_all_articles_with_status()
+                news_sources.fetch_all_articles()
 
 
 if __name__ == "__main__":

@@ -16,6 +16,7 @@ MIGRATION_PATHS = {
     "002": MIGRATION_DIRECTORY / "002_add_canonical_url_hash.sql",
     "003": MIGRATION_DIRECTORY / "003_enforce_canonical_url_uniqueness.sql",
     "004": MIGRATION_DIRECTORY / "004_remove_title_unique.sql",
+    "005": MIGRATION_DIRECTORY / "005_create_source_health_events.sql",
 }
 
 
@@ -25,11 +26,15 @@ def fetch_schema_state(connection):
         cursor.execute("SHOW TABLES LIKE 'news_records';")
         table_exists = cursor.fetchone() is not None
 
+        cursor.execute("SHOW TABLES LIKE 'source_health_events';")
+        source_health_exists = cursor.fetchone() is not None
+
         if not table_exists:
             return {
                 "table_exists": False,
                 "columns": set(),
                 "indexes": set(),
+                "source_health_exists": source_health_exists,
             }
 
         cursor.execute("SHOW COLUMNS FROM news_records;")
@@ -42,11 +47,12 @@ def fetch_schema_state(connection):
         "table_exists": True,
         "columns": columns,
         "indexes": indexes,
+        "source_health_exists": source_health_exists,
     }
 
 
 def get_migration_status(schema_state):
-    """將目前 schema 轉成 001 到 004 的完成狀態。"""
+    """將目前 schema 轉成 001 到 005 的完成狀態。"""
     columns = schema_state["columns"]
     indexes = schema_state["indexes"]
     quality_columns = {
@@ -62,6 +68,7 @@ def get_migration_status(schema_state):
         "002": "canonical_url_hash" in columns,
         "003": canonical_unique_exists,
         "004": canonical_unique_exists and "unique_news_title" not in indexes,
+        "005": schema_state.get("source_health_exists", False),
     }
 
 
@@ -118,11 +125,13 @@ def print_status(schema_state):
     """以初學者容易閱讀的方式顯示 migration 狀態。"""
     if not schema_state["table_exists"]:
         print("news_records 尚未建立；第一次執行 Pipeline 會建立最新 schema。")
-        return
 
     migration_status = get_migration_status(schema_state)
 
     for migration_number in MIGRATION_PATHS:
+        if not schema_state["table_exists"] and migration_number != "005":
+            continue
+
         status_label = "完成" if migration_status[migration_number] else "待執行"
         print(f"Migration {migration_number}：{status_label}")
 
@@ -131,14 +140,15 @@ def apply_pending_migrations(connection):
     """依安全順序套用目前尚未完成的 migrations。"""
     schema_state = fetch_schema_state(connection)
 
-    if not schema_state["table_exists"]:
-        print("news_records 尚未建立，不需套用舊 schema migrations。")
-        return
+    if schema_state["table_exists"]:
+        validate_schema_state(schema_state)
 
-    validate_schema_state(schema_state)
     migration_status = get_migration_status(schema_state)
 
     for migration_number in MIGRATION_PATHS:
+        if not schema_state["table_exists"] and migration_number != "005":
+            continue
+
         if migration_status[migration_number]:
             print(f"Migration {migration_number} 已完成，跳過。")
             continue

@@ -11,6 +11,7 @@ from event_grouping import group_similar_events
 from export_news_json import prepare_dashboard_records
 from generate_chart_data import generate_chart_data
 from read_news import load_all_news
+from source_health import build_source_health_summary, load_source_health_events
 
 
 DASHBOARD_DIRECTORY = Path(__file__).resolve().parent.parent / "dashboard"
@@ -102,6 +103,17 @@ def analytics():
     try:
         dataframe = load_all_news()
         return jsonify(build_analytics_payload(dataframe))
+    except (pymysql.MySQLError, ValueError) as error:
+        return database_error_response(error)
+
+
+@app.get("/api/source-health")
+def source_health():
+    """回傳每個新聞來源最近一次執行與成功狀態。"""
+    try:
+        rows, columns = load_source_health_events()
+        sources = build_source_health_summary(rows, columns)
+        return jsonify({"sources": sources})
     except (pymysql.MySQLError, ValueError) as error:
         return database_error_response(error)
 

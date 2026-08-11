@@ -14,37 +14,57 @@ logger = logging.getLogger(__name__)
 def fetch_all_articles_with_status():
     """分開取得各來源，並回傳文章與來源執行結果。"""
     source_fetchers = [
-        ("TechNews", fetch_technews),
-        ("中央社財經 RSS", fetch_cna_finance),
+        ("technews", "TechNews", fetch_technews),
+        ("cna", "中央社財經 RSS", fetch_cna_finance),
     ]
     articles = []
-    successful_sources = []
-    failed_sources = []
+    source_results = []
 
-    for source_name, fetch_articles in source_fetchers:
+    for source, source_name, fetch_articles in source_fetchers:
         try:
             source_articles = fetch_articles()
         except (requests.RequestException, ValueError) as error:
             logger.error("%s 來源失敗：%s", source_name, error)
-            failed_sources.append(source_name)
+            source_results.append({
+                "source": source,
+                "source_name": source_name,
+                "status": "failure",
+                "article_count": 0,
+                "error_message": str(error),
+            })
             continue
 
         if not source_articles:
             logger.error("%s 來源沒有回傳文章。", source_name)
-            failed_sources.append(source_name)
+            source_results.append({
+                "source": source,
+                "source_name": source_name,
+                "status": "failure",
+                "article_count": 0,
+                "error_message": "來源沒有回傳文章。",
+            })
             continue
 
         articles.extend(source_articles)
-        successful_sources.append(source_name)
+        source_results.append({
+            "source": source,
+            "source_name": source_name,
+            "status": "success",
+            "article_count": len(source_articles),
+            "error_message": None,
+        })
 
-    if not successful_sources:
-        failed_labels = "、".join(failed_sources)
-        raise ValueError(f"所有新聞來源都失敗：{failed_labels}。")
-
-    return articles, successful_sources, failed_sources
+    return articles, source_results
 
 
 def fetch_all_articles():
     """依序取得所有來源，合併成共同格式串列。"""
-    articles, _, _ = fetch_all_articles_with_status()
+    articles, source_results = fetch_all_articles_with_status()
+
+    if not articles:
+        failed_labels = "、".join(
+            result["source_name"] for result in source_results
+        )
+        raise ValueError(f"所有新聞來源都失敗：{failed_labels}。")
+
     return articles

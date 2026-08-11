@@ -2,6 +2,7 @@
 
 import sys
 import unittest
+from datetime import datetime
 from pathlib import Path
 from unittest.mock import patch
 
@@ -105,6 +106,46 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(
             payload["last_updated"],
             "2026-08-11T09:35:00",
+        )
+
+    @patch("api.load_source_health_events")
+    def test_source_health_returns_latest_source_status(self, mock_load_events):
+        mock_load_events.return_value = (
+            [
+                (
+                    "technews",
+                    "failure",
+                    0,
+                    "HTTP 503",
+                    datetime(2026, 8, 11, 10, 0),
+                ),
+                (
+                    "technews",
+                    "success",
+                    5,
+                    None,
+                    datetime(2026, 8, 11, 9, 0),
+                ),
+            ],
+            [
+                "source",
+                "status",
+                "article_count",
+                "error_message",
+                "attempted_at",
+            ],
+        )
+
+        response = self.client.get("/api/source-health")
+        payload = response.get_json()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(payload["sources"]), 1)
+        self.assertEqual(payload["sources"][0]["status"], "failure")
+        self.assertEqual(payload["sources"][0]["error_message"], "HTTP 503")
+        self.assertEqual(
+            payload["sources"][0]["last_success_at"],
+            "2026-08-11T09:00:00",
         )
 
     @patch("api.load_all_news")

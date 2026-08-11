@@ -27,14 +27,32 @@ from generate_chart_data import (
 from logging_config import configure_logging
 from news_sources import fetch_all_articles_with_status
 from read_news import load_all_news
+from source_health import save_source_health_events
 from store_news import save_news
 
 
 def collect_and_store_news():
     """爬取、整理並將最新新聞寫入 MySQL。"""
-    articles, successful_sources, failed_sources = (
+    articles, source_results = (
         fetch_all_articles_with_status()
     )
+    save_source_health_events(source_results)
+
+    successful_sources = [
+        result["source_name"]
+        for result in source_results
+        if result["status"] == "success"
+    ]
+    failed_sources = [
+        result["source_name"]
+        for result in source_results
+        if result["status"] == "failure"
+    ]
+
+    if not successful_sources:
+        failed_labels = "、".join(failed_sources)
+        raise ValueError(f"所有新聞來源都失敗：{failed_labels}。")
+
     dataframe = create_dataframe(articles)
     dataframe = transform_dataframe(dataframe)
     inserted_news = save_news(dataframe)

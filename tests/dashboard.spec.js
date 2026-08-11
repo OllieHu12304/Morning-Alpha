@@ -32,6 +32,27 @@ const analyticsPayload = {
     last_updated: "2026-08-11T12:30:00",
 };
 
+const sourceHealthPayload = {
+    sources: [
+        {
+            source: "cna",
+            status: "success",
+            article_count: 8,
+            error_message: null,
+            last_attempt_at: "2026-08-11T12:35:00",
+            last_success_at: "2026-08-11T12:35:00",
+        },
+        {
+            source: "technews",
+            status: "failure",
+            article_count: 0,
+            error_message: "HTTP 503",
+            last_attempt_at: "2026-08-11T12:34:00",
+            last_success_at: "2026-08-11T10:00:00",
+        },
+    ],
+};
+
 
 test.beforeEach(async ({ page }) => {
     await page.route("**/api/news", (route) => route.fulfill({
@@ -44,6 +65,10 @@ test.beforeEach(async ({ page }) => {
     await page.route("**/api/analytics", (route) => route.fulfill({
         contentType: "application/json",
         body: JSON.stringify(analyticsPayload),
+    }));
+    await page.route("**/api/source-health", (route) => route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify(sourceHealthPayload),
     }));
     await page.route("https://cdn.jsdelivr.net/**", (route) => route.fulfill({
         contentType: "application/javascript",
@@ -68,6 +93,10 @@ test("loads Dashboard data from mocked APIs", async ({ page }) => {
     await expect(page.locator("#last-updated")).toContainText(
         "資料庫最後新增：",
     );
+    await expect(page.locator(".source-health-card")).toHaveCount(2);
+    await expect(page.locator("#source-health-grid")).toContainText("正常");
+    await expect(page.locator("#source-health-grid")).toContainText("失敗");
+    await expect(page.locator("#source-health-grid")).toContainText("HTTP 503");
 });
 
 

@@ -6,6 +6,10 @@
     --border: #dce2e8;
     --accent: #0b6e69;
     --accent-dark: #07534f;
+    --success: #18794e;
+    --success-background: #e9f7ef;
+    --failure: #9b2c2c;
+    --failure-background: #fff0f0;
     --header-background: #102a2e;
     --header-text: #f7fbfb;
     --shadow: 0 18px 45px rgba(24, 42, 48, 0.1);
@@ -81,6 +85,7 @@ h3 {
     padding: 0 24px 64px;
 }
 
+.source-health-section,
 .analytics-section {
     margin-bottom: 24px;
 }
@@ -95,6 +100,101 @@ h3 {
     border: 1px solid var(--border);
     border-bottom: 0;
     border-radius: 16px 16px 0 0;
+}
+
+.source-health-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1px;
+    overflow: hidden;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: 0 0 16px 16px;
+    box-shadow: var(--shadow);
+}
+
+.source-health-card {
+    min-width: 0;
+    padding: 22px 28px;
+    background: var(--surface);
+}
+
+.source-health-card-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.source-health-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 4px 9px;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.source-health-badge::before {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: currentColor;
+    content: "";
+}
+
+.source-health-badge-success {
+    background: var(--success-background);
+    color: var(--success);
+}
+
+.source-health-badge-failure {
+    background: var(--failure-background);
+    color: var(--failure);
+}
+
+.source-health-details {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+    margin: 18px 0 0;
+}
+
+.source-health-details div {
+    min-width: 0;
+}
+
+.source-health-details dt {
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.source-health-details dd {
+    margin: 3px 0 0;
+    font-size: 0.88rem;
+    overflow-wrap: anywhere;
+}
+
+.source-health-error {
+    margin: 16px 0 0;
+    padding: 10px 12px;
+    border-left: 3px solid var(--failure);
+    background: var(--failure-background);
+    color: var(--failure);
+    font-size: 0.84rem;
+    overflow-wrap: anywhere;
+}
+
+.source-health-empty {
+    grid-column: 1 / -1;
+    margin: 0;
+    padding: 28px;
+    background: var(--surface);
+    color: var(--text-secondary);
+    text-align: center;
 }
 
 .chart-grid {
@@ -429,6 +529,10 @@ noscript .error-message {
         grid-template-columns: 1fr;
     }
 
+    .source-health-grid {
+        grid-template-columns: 1fr;
+    }
+
     .chart-card,
     .chart-card-wide {
         grid-column: auto;
@@ -438,6 +542,14 @@ noscript .error-message {
     .chart-container,
     .chart-container-wide {
         min-height: 280px;
+    }
+
+    .source-health-card {
+        padding: 20px;
+    }
+
+    .source-health-details {
+        grid-template-columns: 1fr;
     }
 
     .table-controls {

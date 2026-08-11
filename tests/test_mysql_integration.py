@@ -18,6 +18,12 @@ from store_news import (  # noqa: E402
     insert_news_records,
     load_environment,
 )
+from source_health import (  # noqa: E402
+    build_source_health_summary,
+    create_source_health_table,
+    fetch_source_health_events,
+    insert_source_health_events,
+)
 
 
 TEST_DATABASE_NAME = "morning_alpha_test"
@@ -89,6 +95,7 @@ class MySQLIntegrationTests(unittest.TestCase):
         config = get_test_database_config()
         cls.connection = connect_to_database(config)
         create_news_table(cls.connection)
+        create_source_health_table(cls.connection)
         cls.connection.commit()
 
     @classmethod
@@ -100,6 +107,7 @@ class MySQLIntegrationTests(unittest.TestCase):
     def clear_test_records(cls):
         """只清空已驗證名稱的 integration test table。"""
         with cls.connection.cursor() as cursor:
+            cursor.execute("DELETE FROM source_health_events;")
             cursor.execute("DELETE FROM news_records;")
 
         cls.connection.commit()
@@ -163,6 +171,27 @@ class MySQLIntegrationTests(unittest.TestCase):
         self.assertEqual(first_count, 1)
         self.assertEqual(second_count, 0)
         self.assertEqual(record_count, 1)
+
+    def test_insert_and_read_source_health_event(self):
+        inserted_count = insert_source_health_events(
+            self.connection,
+            [{
+                "source": "integration_test",
+                "status": "failure",
+                "article_count": 0,
+                "error_message": "HTTP 503",
+            }],
+        )
+        self.connection.commit()
+
+        rows, columns = fetch_source_health_events(self.connection)
+        summaries = build_source_health_summary(rows, columns)
+
+        self.assertEqual(inserted_count, 1)
+        self.assertEqual(len(summaries), 1)
+        self.assertEqual(summaries[0]["source"], "integration_test")
+        self.assertEqual(summaries[0]["status"], "failure")
+        self.assertEqual(summaries[0]["error_message"], "HTTP 503")
 
 
 if __name__ == "__main__":
