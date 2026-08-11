@@ -25,17 +25,20 @@ from generate_chart_data import (
     load_news_records,
 )
 from logging_config import configure_logging
-from news_sources import fetch_all_articles
+from news_sources import fetch_all_articles_with_status
 from read_news import load_all_news
 from store_news import save_news
 
 
 def collect_and_store_news():
     """爬取、整理並將最新新聞寫入 MySQL。"""
-    articles = fetch_all_articles()
+    articles, successful_sources, failed_sources = (
+        fetch_all_articles_with_status()
+    )
     dataframe = create_dataframe(articles)
     dataframe = transform_dataframe(dataframe)
-    return save_news(dataframe)
+    inserted_news = save_news(dataframe)
+    return inserted_news, successful_sources, failed_sources
 
 
 def export_dashboard_news():
@@ -67,7 +70,9 @@ def build_keyword_data():
 def run_pipeline():
     """依照相依順序執行所有資料更新步驟。"""
     print("Step 1/4：爬取、整理並儲存新聞…")
-    inserted_news = collect_and_store_news()
+    inserted_news, successful_sources, failed_sources = (
+        collect_and_store_news()
+    )
 
     print("Step 2/4：匯出 Dashboard 新聞資料…")
     exported_news = export_dashboard_news()
@@ -83,6 +88,8 @@ def run_pipeline():
         "exported_news": exported_news,
         "chart_groups": chart_groups,
         "exported_keywords": exported_keywords,
+        "successful_sources": successful_sources,
+        "failed_sources": failed_sources,
     }
 
 
@@ -93,6 +100,12 @@ def print_summary(summary):
     print(f"news.json 新聞：{summary['exported_news']} 筆")
     print(f"chart_data.json 統計群組：{summary['chart_groups']} 組")
     print(f"keyword.json 關鍵字：{summary['exported_keywords']} 個")
+    print(f"成功來源：{'、'.join(summary['successful_sources'])}")
+
+    if summary["failed_sources"]:
+        print(f"失敗來源：{'、'.join(summary['failed_sources'])}")
+    else:
+        print("失敗來源：無")
 
 
 def main():

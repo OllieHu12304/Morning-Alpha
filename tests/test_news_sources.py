@@ -5,6 +5,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+import requests
+
 
 SOURCE_DIRECTORY = Path(__file__).resolve().parent.parent / "src"
 sys.path.insert(0, str(SOURCE_DIRECTORY))
@@ -29,6 +31,59 @@ class NewsSourcesTests(unittest.TestCase):
             articles = news_sources.fetch_all_articles()
 
         self.assertEqual(articles, technews_articles + cna_articles)
+
+    def test_source_failure_does_not_discard_successful_source(self):
+        cna_articles = [{"source": "cna"}]
+
+        with patch.object(
+            news_sources,
+            "fetch_technews",
+            side_effect=requests.Timeout("TechNews timeout"),
+        ), patch.object(
+            news_sources,
+            "fetch_cna_finance",
+            return_value=cna_articles,
+        ):
+            result = news_sources.fetch_all_articles_with_status()
+
+        self.assertEqual(result, (
+            cna_articles,
+            ["中央社財經 RSS"],
+            ["TechNews"],
+        ))
+
+    def test_structure_failure_does_not_stop_other_source(self):
+        technews_articles = [{"source": "technews"}]
+
+        with patch.object(
+            news_sources,
+            "fetch_technews",
+            return_value=technews_articles,
+        ), patch.object(
+            news_sources,
+            "fetch_cna_finance",
+            side_effect=ValueError("RSS 結構異常"),
+        ):
+            result = news_sources.fetch_all_articles_with_status()
+
+        self.assertEqual(result, (
+            technews_articles,
+            ["TechNews"],
+            ["中央社財經 RSS"],
+        ))
+
+    def test_all_sources_failure_stops_collection(self):
+        with patch.object(
+            news_sources,
+            "fetch_technews",
+            side_effect=requests.HTTPError("503"),
+        ), patch.object(
+            news_sources,
+            "fetch_cna_finance",
+            side_effect=requests.Timeout("RSS timeout"),
+        ):
+            with self.assertRaisesRegex(ValueError, "所有新聞來源都失敗"):
+                news_sources.fetch_all_articles_with_status()
 
 
 if __name__ == "__main__":

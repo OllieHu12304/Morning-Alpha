@@ -24,7 +24,12 @@ class RunPipelineTests(unittest.TestCase):
     def test_run_pipeline_executes_steps_in_order_and_returns_counts(self):
         events = []
 
-        collect_step = self.create_step(events, "collect", 2)
+        collect_result = (
+            2,
+            ["TechNews"],
+            ["中央社財經 RSS"],
+        )
+        collect_step = self.create_step(events, "collect", collect_result)
         export_step = self.create_step(events, "export", 15)
         chart_step = self.create_step(events, "chart", 3)
         keyword_step = self.create_step(events, "keyword", 12)
@@ -41,10 +46,18 @@ class RunPipelineTests(unittest.TestCase):
             "exported_news": 15,
             "chart_groups": 3,
             "exported_keywords": 12,
+            "successful_sources": ["TechNews"],
+            "failed_sources": ["中央社財經 RSS"],
         })
 
     def test_run_pipeline_stops_when_a_step_fails(self):
-        with patch.object(run_pipeline, "collect_and_store_news", return_value=2):
+        collect_result = (2, ["TechNews"], [])
+
+        with patch.object(
+            run_pipeline,
+            "collect_and_store_news",
+            return_value=collect_result,
+        ):
             with patch.object(
                 run_pipeline,
                 "export_dashboard_news",
@@ -67,6 +80,22 @@ class RunPipelineTests(unittest.TestCase):
             result = run_pipeline.main()
 
         self.assertEqual(result, 1)
+
+    def test_print_summary_reports_successful_and_failed_sources(self):
+        summary = {
+            "inserted_news": 5,
+            "exported_news": 10,
+            "chart_groups": 3,
+            "exported_keywords": 20,
+            "successful_sources": ["中央社財經 RSS"],
+            "failed_sources": ["TechNews"],
+        }
+
+        with patch("builtins.print") as print_message:
+            run_pipeline.print_summary(summary)
+
+        print_message.assert_any_call("成功來源：中央社財經 RSS")
+        print_message.assert_any_call("失敗來源：TechNews")
 
 
 if __name__ == "__main__":
