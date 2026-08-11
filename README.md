@@ -90,7 +90,20 @@ Dashboard 目前直接讀取 Flask API 與 MySQL；JSON 是學習、檢查與備
 
 Dashboard 沒有使用 DataTables；搜尋、篩選、排序與分頁由原生 JavaScript 實作。
 
-## 快速開始：Docker
+## 建議日常方式：原生環境
+
+若 Mac 儲存空間有限，建議日常開發使用 `.venv` 與本機 MySQL。這個方式不會建立 Docker images 或 build cache；完整安裝步驟請見下方「快速開始：原生環境」。
+
+日常只需要執行：
+
+```bash
+./.venv/bin/python src/run_pipeline.py
+./.venv/bin/python src/api.py
+```
+
+Docker 主要用於第一次快速安裝、跨電腦重現環境與 CI 驗證，不是每次更新資料前都必須執行的步驟。
+
+## 選用方式：Docker
 
 Docker 方式不需要另外安裝 Python 或 MySQL。
 
@@ -118,6 +131,27 @@ docker compose up -d api
 ```
 
 開啟 [http://127.0.0.1:5050](http://127.0.0.1:5050)。資料保存在 `mysql-data` named volume；`docker compose down` 會保留資料，`docker compose down -v` 會刪除整個 volume，請勿誤用。
+
+`docker compose build api` 只需在第一次安裝，或 `Dockerfile`、Python packages、應用程式程式碼改變後執行。單純更新新聞時不要重複 build：
+
+```bash
+docker compose run --rm api python src/run_pipeline.py
+```
+
+查看 Docker 實際空間：
+
+```bash
+docker system df -v
+docker buildx du
+```
+
+只清除未使用的 build cache，並把保留量限制在 300 MB：
+
+```bash
+docker buildx prune --max-used-space 300mb
+```
+
+這個指令不會刪除 images、containers 或 MySQL volume，但下一次 build 可能需要重新下載或安裝部分內容。不要使用 `docker compose down -v` 或含有 `--volumes` 的 prune 指令，除非已備份並確定要刪除資料庫。
 
 若要啟用本機間隔排程：
 

@@ -2,6 +2,7 @@ __pycache__/
 *.py[cod]
 .DS_Store
 .env
+.conda/
 data/processed/*.log
 data/processed/canonical_url_audit.json
 dashboard/news.json
