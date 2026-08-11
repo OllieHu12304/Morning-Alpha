@@ -119,10 +119,7 @@ Morning-Alpha/
 │   ├── index.html
 │   ├── styles.css
 │   ├── app.js
-│   ├── news.json
-│   ├── chart_data.json
-│   ├── keyword.json
-│   └── metadata.json
+│   └── *.json                   # Pipeline 產生的備援檔案，Git 忽略
 ├── tests/
 │   └── fixtures/                # 固定 crawler 測試資料
 ├── docs/
