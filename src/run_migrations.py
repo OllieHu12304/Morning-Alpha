@@ -22,6 +22,7 @@ MIGRATION_PATHS = {
     "008": MIGRATION_DIRECTORY / "008_create_company_directory.sql",
     "009": MIGRATION_DIRECTORY / "009_create_news_company_links.sql",
     "010": MIGRATION_DIRECTORY / "010_create_market_prices.sql",
+    "011": MIGRATION_DIRECTORY / "011_create_financial_metrics.sql",
 }
 INDEPENDENT_MIGRATIONS = {"005", "006", "007", "008"}
 
@@ -60,6 +61,9 @@ def fetch_schema_state(connection):
         cursor.execute("SHOW TABLES LIKE 'market_prices';")
         market_prices_exists = cursor.fetchone() is not None
 
+        cursor.execute("SHOW TABLES LIKE 'financial_metrics';")
+        financial_metrics_exists = cursor.fetchone() is not None
+
         if not table_exists:
             return {
                 "table_exists": False,
@@ -71,6 +75,7 @@ def fetch_schema_state(connection):
                 "company_directory_exists": company_directory_exists,
                 "news_company_links_exists": news_company_links_exists,
                 "market_prices_exists": market_prices_exists,
+                "financial_metrics_exists": financial_metrics_exists,
             }
 
         cursor.execute("SHOW COLUMNS FROM news_records;")
@@ -89,6 +94,7 @@ def fetch_schema_state(connection):
         "company_directory_exists": company_directory_exists,
         "news_company_links_exists": news_company_links_exists,
         "market_prices_exists": market_prices_exists,
+        "financial_metrics_exists": financial_metrics_exists,
     }
 
 
@@ -115,6 +121,7 @@ def get_migration_status(schema_state):
         "008": schema_state.get("company_directory_exists", False),
         "009": schema_state.get("news_company_links_exists", False),
         "010": schema_state.get("market_prices_exists", False),
+        "011": schema_state.get("financial_metrics_exists", False),
     }
 
 
