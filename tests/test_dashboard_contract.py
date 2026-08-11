@@ -22,11 +22,13 @@ class DashboardContractTests(unittest.TestCase):
         ]:
             self.assertIn(f'id="{element_id}"', html)
 
-    def test_dashboard_loads_keyword_and_metadata_json(self):
+    def test_dashboard_loads_news_and_analytics_api(self):
         javascript = (DASHBOARD_DIRECTORY / "app.js").read_text(encoding="utf-8")
 
-        self.assertIn('const KEYWORD_FILE = "./keyword.json"', javascript)
-        self.assertIn('const METADATA_FILE = "./metadata.json"', javascript)
+        self.assertIn('const NEWS_API = "/api/news"', javascript)
+        self.assertIn('const ANALYTICS_API = "/api/analytics"', javascript)
+        self.assertNotIn('const NEWS_FILE = "./news.json"', javascript)
+        self.assertNotIn('const KEYWORD_FILE = "./keyword.json"', javascript)
         self.assertIn("keywordRecordsToSeries", javascript)
         self.assertIn("formatLastUpdated", javascript)
 

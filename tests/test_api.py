@@ -52,6 +52,26 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.get_json(), {"status": "ok"})
 
+    def test_root_serves_dashboard(self):
+        response = self.client.get("/")
+        self.addCleanup(response.close)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(
+            "Morning Alpha",
+            response.get_data(as_text=True),
+        )
+
+    def test_dashboard_javascript_is_served(self):
+        response = self.client.get("/app.js")
+        self.addCleanup(response.close)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(
+            'const NEWS_API = "/api/news"',
+            response.get_data(as_text=True),
+        )
+
     @patch("api.load_all_news")
     def test_news_returns_grouped_dashboard_records(self, mock_load_news):
         mock_load_news.return_value = create_test_dataframe()

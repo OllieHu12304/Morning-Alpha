@@ -1,5 +1,7 @@
 """提供 Morning Alpha Dashboard 使用的 MySQL API。"""
 
+from pathlib import Path
+
 import pandas as pd
 import pymysql
 from flask import Flask, jsonify
@@ -11,7 +13,13 @@ from generate_chart_data import generate_chart_data
 from read_news import load_all_news
 
 
-app = Flask(__name__)
+DASHBOARD_DIRECTORY = Path(__file__).resolve().parent.parent / "dashboard"
+
+app = Flask(
+    __name__,
+    static_folder=str(DASHBOARD_DIRECTORY),
+    static_url_path="",
+)
 app.json.ensure_ascii = False
 
 
@@ -72,6 +80,12 @@ def health():
     return jsonify({"status": "ok"})
 
 
+@app.get("/")
+def dashboard():
+    """由 Flask 提供 Dashboard 首頁。"""
+    return app.send_static_file("index.html")
+
+
 @app.get("/api/news")
 def news():
     """從 MySQL 讀取並回傳 Dashboard 新聞。"""
@@ -93,4 +107,4 @@ def analytics():
 
 
 if __name__ == "__main__":
-    app.run(host="127.0.0.1", port=5000, debug=False)
+    app.run(host="127.0.0.1", port=5050, debug=False)

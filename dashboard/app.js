@@ -1,7 +1,5 @@
-const NEWS_FILE = "./news.json";
-const CHART_DATA_FILE = "./chart_data.json";
-const KEYWORD_FILE = "./keyword.json";
-const METADATA_FILE = "./metadata.json";
+const NEWS_API = "/api/news";
+const ANALYTICS_API = "/api/analytics";
 const KEYWORD_CHART_LIMIT = 10;
 
 const SOURCE_LABELS = {
@@ -31,8 +29,8 @@ let pageSize = Number(pageSizeSelect.value);
 let eventGroupFilter = null;
 
 
-async function fetchJson(filePath) {
-    const response = await fetch(filePath, { cache: "no-store" });
+async function fetchJson(url) {
+    const response = await fetch(url, { cache: "no-store" });
 
     if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
@@ -44,51 +42,40 @@ async function fetchJson(filePath) {
 
 async function loadNews() {
     try {
-        const data = await fetchJson(NEWS_FILE);
+        const payload = await fetchJson(NEWS_API);
 
-        if (!Array.isArray(data)) {
-            throw new Error("JSON 最外層必須是 array。");
+        if (!payload || !Array.isArray(payload.news)) {
+            throw new Error("news API 格式不正確。");
         }
 
-        newsRecords = data;
+        newsRecords = payload.news;
         populateFilters();
         renderTable();
     } catch (error) {
-        showError(`無法載入 news.json：${error.message}`);
+        showError(`無法載入新聞 API：${error.message}`);
     }
 }
 
 
 async function loadAnalytics() {
     try {
-        const [chartData, keywords] = await Promise.all([
-            fetchJson(CHART_DATA_FILE),
-            fetchJson(KEYWORD_FILE),
-        ]);
+        const payload = await fetchJson(ANALYTICS_API);
 
-        if (!Array.isArray(keywords)) {
-            throw new Error("keyword.json 最外層必須是 array。");
+        if (!payload || !Array.isArray(payload.keywords)) {
+            throw new Error("analytics API 格式不正確。");
         }
 
         const analytics = {
-            sources: validateChartSeries(chartData.sources, "sources"),
-            categories: validateChartSeries(chartData.categories, "categories"),
-            keywords: keywordRecordsToSeries(keywords),
+            sources: validateChartSeries(payload.sources, "sources"),
+            categories: validateChartSeries(payload.categories, "categories"),
+            keywords: keywordRecordsToSeries(payload.keywords),
         };
 
         renderCharts(analytics);
+        lastUpdatedMessage.textContent = formatLastUpdated(payload.last_updated);
     } catch (error) {
-        showChartError(`無法載入統計 JSON：${error.message}`);
-    }
-}
-
-
-async function loadMetadata() {
-    try {
-        const metadata = await fetchJson(METADATA_FILE);
-        lastUpdatedMessage.textContent = formatLastUpdated(metadata.last_updated);
-    } catch (error) {
-        lastUpdatedMessage.textContent = `資料最後更新：無法載入（${error.message}）`;
+        showChartError(`無法載入統計 API：${error.message}`);
+        lastUpdatedMessage.textContent = `資料庫最後新增：無法載入（${error.message}）`;
     }
 }
 
@@ -100,13 +87,13 @@ function keywordRecordsToSeries(records) {
 
     for (const record of topKeywords) {
         if (!record || typeof record !== "object") {
-            throw new Error("keyword.json 包含無效資料。");
+            throw new Error("keywords 包含無效資料。");
         }
 
         const count = Number(record.count);
 
         if (!record.keyword || !Number.isFinite(count) || count < 0) {
-            throw new Error("keyword.json 的 keyword 或 count 格式不正確。");
+            throw new Error("keywords 的 keyword 或 count 格式不正確。");
         }
 
         labels.push(String(record.keyword));
@@ -413,10 +400,10 @@ function formatPublishTime(value) {
 
 function formatLastUpdated(value) {
     if (!value) {
-        return "資料最後更新：尚未執行 Pipeline";
+        return "資料庫最後新增：目前沒有新聞";
     }
 
-    return `資料最後更新：${formatPublishTime(value)}`;
+    return `資料庫最後新增：${formatPublishTime(value)}`;
 }
 
 
@@ -624,4 +611,3 @@ nextPageButton.addEventListener("click", () => {
 
 loadNews();
 loadAnalytics();
-loadMetadata();

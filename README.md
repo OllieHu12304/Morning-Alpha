@@ -271,36 +271,23 @@ Morning Alpha 資料更新完成。
 
 實際新增與匯出筆數會依網站與 database 內容不同。
 
-### 2. 啟動 Dashboard
+### 2. 啟動 API 與 Dashboard
 
 在另一個 terminal 執行：
-
-```bash
-./.venv/bin/python -m http.server 8000 --directory dashboard
-```
-
-開啟 [http://localhost:8000](http://localhost:8000)。不要直接雙擊 `index.html`，否則瀏覽器可能阻擋 `file://` 載入 JSON。
-
-Dashboard 讀取：
-
-- `dashboard/news.json`：新聞、正式維度與事件分組。
-- `dashboard/chart_data.json`：來源與分類統計。
-- `dashboard/keyword.json`：Top 20 關鍵字；頁面顯示前 10。
-- `dashboard/metadata.json`：最後更新時間。
-
-### 3. 啟動 API backend（Feature 3.3）
 
 ```bash
 ./.venv/bin/python src/api.py
 ```
 
-API 預設位於 `http://127.0.0.1:5000`：
+開啟 [http://127.0.0.1:5050](http://127.0.0.1:5050)。Flask 會同時提供 Dashboard 與 API，不需要另外啟動 port 8000。使用 5050 是為了避開 macOS AirPlay Receiver 常用的 port 5000。
 
+Dashboard 直接讀取：
+
+- `GET /api/news`：從 MySQL 取得新聞與事件分組。
+- `GET /api/analytics`：從 MySQL 計算來源、分類、Top 20 關鍵字與最後新增時間。
 - `GET /api/health`：確認 Flask 服務可回應。
-- `GET /api/news`：直接從 MySQL 取得新聞與事件分組。
-- `GET /api/analytics`：直接從 MySQL 計算來源、分類、Top 20 關鍵字與最後新增時間。
 
-目前 Dashboard 仍讀取本機 JSON；下一個 feature 才會切換為 API。API error response 不會包含 MySQL 帳號、密碼或 SQL 細節。
+Pipeline 目前仍會輸出四個 JSON 作為學習與備援資料，但 Dashboard 已不再依賴它們。API error response 不會包含 MySQL 帳號、密碼或 SQL 細節。
 
 ## 執行測試
 
@@ -329,7 +316,7 @@ tail -n 100 data/processed/morning_alpha.log
 - `ModuleNotFoundError: jieba`：通常是誤用 Anaconda Python；改用 `./.venv/bin/python` 並重新安裝 requirements。
 - `Unknown column 'source'`：既有 MySQL table 尚未完成 migrations。
 - `nan can not be used with MySQL`：請確認程式包含 v0.2 的 Pandas 空值轉換修正。
-- Dashboard `Failed to fetch`：請使用 `http.server`，不要以 `file://` 開啟。
+- Dashboard `Failed to fetch`：請確認 `src/api.py` 正在執行，並從 port 5050 開啟頁面。
 
 ## 目前限制
 
