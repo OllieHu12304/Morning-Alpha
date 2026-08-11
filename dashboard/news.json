@@ -1,1 +1,302 @@
-[]
+[
+  {
+    "source": "cna",
+    "source_category": "產經證券",
+    "analysis_category": "AI 與人工智慧",
+    "title": "美媒：微軟最快9月發表Maia 300　已與台積電洽談產能",
+    "publish_time": "2026-08-10T22:43:01",
+    "url": "https://www.cna.com.tw/news/aopl/202608100331.aspx",
+    "event_group_id": null,
+    "event_group_size": 1
+  },
+  {
+    "source": "cna",
+    "source_category": "產經證券",
+    "analysis_category": "財經",
+    "title": "友達、群創7月電視面板出貨疲弱　營收月減逾1成",
+    "publish_time": "2026-08-10T22:14:54",
+    "url": "https://www.cna.com.tw/news/afe/202608100328.aspx",
+    "event_group_id": null,
+    "event_group_size": 1
+  },
+  {
+    "source": "technews",
+    "source_category": null,
+    "analysis_category": null,
+    "title": "不只探索暗物質，NASA 羅曼太空望遠鏡兼職「小行星獵手」守護地球",
+    "publish_time": "2026-08-10T22:09:00",
+    "url": "https://technews.tw/2026/08/10/nasa-nancy-grace-roman-space-telescope/",
+    "event_group_id": null,
+    "event_group_size": 1
+  },
+  {
+    "source": "cna",
+    "source_category": "產經證券",
+    "analysis_category": "其他",
+    "title": "今彩539第115193期　頭獎1注中獎",
+    "publish_time": "2026-08-10T22:04:48",
+    "url": "https://www.cna.com.tw/news/ahel/202608100325.aspx",
+    "event_group_id": null,
+    "event_group_size": 1
+  },
+  {
+    "source": "cna",
+    "source_category": "產經證券",
+    "analysis_category": "其他",
+    "title": "威力彩第115064期　頭獎槓龜",
+    "publish_time": "2026-08-10T22:02:46",
+    "url": "https://www.cna.com.tw/news/afe/202608100324.aspx",
+    "event_group_id": "event-f390252b6d36",
+    "event_group_size": 2
+  },
+  {
+    "source": "cna",
+    "source_category": "產經證券",
+    "analysis_category": "其他",
+    "title": "立陶宛獲評A+展望穩定　經濟成長居同級國家前列",
+    "publish_time": "2026-08-10T21:51:41",
+    "url": "https://www.cna.com.tw/news/aopl/202608100322.aspx",
+    "event_group_id": null,
+    "event_group_size": 1
+  },
+  {
+    "source": "cna",
+    "source_category": "產經證券",
+    "analysis_category": "半導體",
+    "title": "韓國將啟動5兆韓元半導體基金　扶植具潛力企業",
+    "publish_time": "2026-08-10T21:49:39",
+    "url": "https://www.cna.com.tw/news/aopl/202608100321.aspx",
+    "event_group_id": null,
+    "event_group_size": 1
+  },
+  {
+    "source": "cna",
+    "source_category": "產經證券",
+    "analysis_category": "其他",
+    "title": "SpaceX上市後　散戶首度從淨買入轉為淨賣出",
+    "publish_time": "2026-08-10T21:46:37",
+    "url": "https://www.cna.com.tw/news/afe/202608100320.aspx",
+    "event_group_id": null,
+    "event_group_size": 1
+  },
+  {
+    "source": "cna",
+    "source_category": "產經證券",
+    "analysis_category": "財經",
+    "title": "保瑞寫最強7月營收　美時創同期次高",
+    "publish_time": "2026-08-10T21:25:24",
+    "url": "https://www.cna.com.tw/news/afe/202608100316.aspx",
+    "event_group_id": null,
+    "event_group_size": 1
+  },
+  {
+    "source": "cna",
+    "source_category": "產經證券",
+    "analysis_category": "財經",
+    "title": "金融總會建言：當沖降稅延10年　重啟境外資金專法",
+    "publish_time": "2026-08-10T21:24:21",
+    "url": "https://www.cna.com.tw/news/afe/202608100315.aspx",
+    "event_group_id": null,
+    "event_group_size": 1
+  },
+  {
+    "source": "cna",
+    "source_category": "產經證券",
+    "analysis_category": "財經",
+    "title": "轉型帶動股價漲　英特爾啟動150億美元股票發行計畫",
+    "publish_time": "2026-08-10T21:17:19",
+    "url": "https://www.cna.com.tw/news/aopl/202608100314.aspx",
+    "event_group_id": null,
+    "event_group_size": 1
+  },
+  {
+    "source": "cna",
+    "source_category": "產經證券",
+    "analysis_category": "財經",
+    "title": "寶成7月營收月增3.2%　年減0.6%",
+    "publish_time": "2026-08-10T21:09:13",
+    "url": "https://www.cna.com.tw/news/afe/202608100311.aspx",
+    "event_group_id": null,
+    "event_group_size": 1
+  },
+  {
+    "source": "cna",
+    "source_category": "產經證券",
+    "analysis_category": "交通科技",
+    "title": "中華電打造無人機物流商業化驗證場域　送餐服務亮相",
+    "publish_time": "2026-08-10T21:03:08",
+    "url": "https://www.cna.com.tw/news/afe/202608100309.aspx",
+    "event_group_id": null,
+    "event_group_size": 1
+  },
+  {
+    "source": "cna",
+    "source_category": "產經證券",
+    "analysis_category": "其他",
+    "title": "電信三雄前7月每股盈餘　台灣大蟬聯奪冠",
+    "publish_time": "2026-08-10T21:00:06",
+    "url": "https://www.cna.com.tw/news/afe/202608100308.aspx",
+    "event_group_id": null,
+    "event_group_size": 1
+  },
+  {
+    "source": "cna",
+    "source_category": "產經證券",
+    "analysis_category": "其他",
+    "title": "威力彩第115064期開獎",
+    "publish_time": "2026-08-10T20:53:04",
+    "url": "https://www.cna.com.tw/news/ahel/202608100307.aspx",
+    "event_group_id": "event-f390252b6d36",
+    "event_group_size": 2
+  },
+  {
+    "source": "cna",
+    "source_category": "產經證券",
+    "analysis_category": "財經",
+    "title": "星宇航空7月營收成長43%　虎航看好客運旺到年底",
+    "publish_time": "2026-08-10T20:47:59",
+    "url": "https://www.cna.com.tw/news/afe/202608100305.aspx",
+    "event_group_id": null,
+    "event_group_size": 1
+  },
+  {
+    "source": "cna",
+    "source_category": "產經證券",
+    "analysis_category": "其他",
+    "title": "今彩539第115193期開獎",
+    "publish_time": "2026-08-10T20:43:57",
+    "url": "https://www.cna.com.tw/news/ahel/202608100304.aspx",
+    "event_group_id": null,
+    "event_group_size": 1
+  },
+  {
+    "source": "cna",
+    "source_category": "產經證券",
+    "analysis_category": "財經",
+    "title": "和泰車7月旺季營收創次高　8月銷售轉淡",
+    "publish_time": "2026-08-10T20:40:53",
+    "url": "https://www.cna.com.tw/news/afe/202608100302.aspx",
+    "event_group_id": null,
+    "event_group_size": 1
+  },
+  {
+    "source": "cna",
+    "source_category": "產經證券",
+    "analysis_category": "財經",
+    "title": "巨大前7月營收年減7.4%　美利達減少13%",
+    "publish_time": "2026-08-10T20:31:49",
+    "url": "https://www.cna.com.tw/news/afe/202608100300.aspx",
+    "event_group_id": null,
+    "event_group_size": 1
+  },
+  {
+    "source": "cna",
+    "source_category": "產經證券",
+    "analysis_category": "其他",
+    "title": "饗賓集團談油品風暴　陳毅航：源頭管理最重要",
+    "publish_time": "2026-08-10T20:25:46",
+    "url": "https://www.cna.com.tw/news/afe/202608100299.aspx",
+    "event_group_id": null,
+    "event_group_size": 1
+  },
+  {
+    "source": "cna",
+    "source_category": "產經證券",
+    "analysis_category": "AI 與人工智慧",
+    "title": "億光泰國新製造基地動土　瞄準AI伺服器與車用市場",
+    "publish_time": "2026-08-10T20:20:40",
+    "url": "https://www.cna.com.tw/news/afe/202608100296.aspx",
+    "event_group_id": null,
+    "event_group_size": 1
+  },
+  {
+    "source": "technews",
+    "source_category": null,
+    "analysis_category": null,
+    "title": "美 FCC 擬回溯禁售光達無人機，大疆多款熱門機型恐遭全面封殺",
+    "publish_time": "2026-08-10T18:10:00",
+    "url": "https://infosecu.technews.tw/2026/08/10/the-fcc-wants-to-ban-drones-with-lidar-that-it-previously-approved/",
+    "event_group_id": null,
+    "event_group_size": 1
+  },
+  {
+    "source": "technews",
+    "source_category": null,
+    "analysis_category": null,
+    "title": "打造越南出口基地計畫遇挫，SHEIN 中國供應鏈難取代",
+    "publish_time": "2026-08-10T18:00:00",
+    "url": "https://finance.technews.tw/2026/08/10/shein-vietnam-export-hub-plan-setbacks-china-supply-chain-difficult-replace/",
+    "event_group_id": null,
+    "event_group_size": 1
+  },
+  {
+    "source": "technews",
+    "source_category": null,
+    "analysis_category": null,
+    "title": "熙特爾上半年 EPS 5.8 元，擬發可轉換債、擴大美澳市場",
+    "publish_time": "2026-08-10T17:44:00",
+    "url": "https://technews.tw/2026/08/10/c-tel-h1-eps-5-8-convertible-bond-issuance-us-australia-market-expansion/",
+    "event_group_id": null,
+    "event_group_size": 1
+  },
+  {
+    "source": "technews",
+    "source_category": null,
+    "analysis_category": null,
+    "title": "台灣造車技術進步的新道路：跟著保時捷去賽車",
+    "publish_time": "2026-08-10T17:17:00",
+    "url": "https://technews.tw/2026/08/10/porsche-racing-team-with-ntu-student/",
+    "event_group_id": null,
+    "event_group_size": 1
+  },
+  {
+    "source": "technews",
+    "source_category": null,
+    "analysis_category": null,
+    "title": "打破「藍色彈珠」迷思，NASA 最新 3D 模型揭露地球「坑疤」真面目",
+    "publish_time": "2026-08-08T00:00:00",
+    "url": "https://technews.tw/2026/08/08/nasa-3d-earth-gravity-model/",
+    "event_group_id": null,
+    "event_group_size": 1
+  },
+  {
+    "source": "technews",
+    "source_category": null,
+    "analysis_category": null,
+    "title": "魯賓天文台 LSST 相機首發，32 億畫素震撼捕捉 COSMOS 天區 50 萬星系",
+    "publish_time": "2026-08-08T00:00:00",
+    "url": "https://technews.tw/2026/08/08/nsf-doe-rubin-observatory-opens-deep-window-on-famous-cosmic-field/",
+    "event_group_id": null,
+    "event_group_size": 1
+  },
+  {
+    "source": "technews",
+    "source_category": null,
+    "analysis_category": null,
+    "title": "幹細胞技術突破，給予帕金森氏症療法新希望",
+    "publish_time": "2026-08-08T00:00:00",
+    "url": "https://technews.tw/2026/08/08/human-embryonic-stem-cell-derived-dopaminergic-cells-for-parkinsons-disease-a-phase-12-open-label-trial/",
+    "event_group_id": null,
+    "event_group_size": 1
+  },
+  {
+    "source": "technews",
+    "source_category": null,
+    "analysis_category": null,
+    "title": "中美晶第二季營收創同期新高，受惠多事業同步成長上半年賺逾半個股本",
+    "publish_time": "2026-08-07T20:00:00",
+    "url": "https://finance.technews.tw/2026/08/07/sass-second-quarter-revenue-hit-a-record-high-for-the-same-period/",
+    "event_group_id": null,
+    "event_group_size": 1
+  },
+  {
+    "source": "technews",
+    "source_category": null,
+    "analysis_category": null,
+    "title": "能源管理邁入新時代！鄭平：台達電推微電網整體解方",
+    "publish_time": "2026-08-07T19:29:00",
+    "url": "https://technews.tw/2026/08/07/energy-management-new-era-zheng-ping-delta-comprehensive-microgrid-solutions/",
+    "event_group_id": null,
+    "event_group_size": 1
+  }
+]

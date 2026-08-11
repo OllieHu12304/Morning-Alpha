@@ -1,0 +1,38 @@
+name: morning-alpha
+
+services:
+  db:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_RANDOM_ROOT_PASSWORD: "yes"
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-morning_alpha}
+      MYSQL_USER: ${MYSQL_USER:-morning_alpha_app}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?請先在 .env 設定 MYSQL_PASSWORD}
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "--silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  api:
+    build:
+      context: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      MYSQL_HOST: db
+      MYSQL_PORT: "3306"
+      MYSQL_USER: ${MYSQL_USER:-morning_alpha_app}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?請先在 .env 設定 MYSQL_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-morning_alpha}
+    ports:
+      - "${API_PORT:-5050}:5050"
+
+volumes:
+  mysql-data:
