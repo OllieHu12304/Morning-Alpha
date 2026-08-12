@@ -96,6 +96,7 @@ def build_highlights(records, limit=HIGHLIGHT_LIMIT):
         highlights.append({
             "title": str(record.get("title", "")),
             "source": record.get("source"),
+            "publisher": record.get("publisher") or record.get("source"),
             "analysis_category": record.get("analysis_category"),
             "publish_time": record.get("publish_time"),
             "url": record.get("url"),

@@ -28,6 +28,8 @@ class LtnBusinessAdapterTests(unittest.TestCase):
         self.assertEqual(len(articles), 2)
         self.assertEqual(articles[0], {
             "source": "ltn",
+            "publisher": "ltn",
+            "source_article_id": "5000001",
             "source_category": "財經",
             "title": "國巨公布最新營運消息",
             "publish_time": datetime(2026, 8, 11, 17, 30),

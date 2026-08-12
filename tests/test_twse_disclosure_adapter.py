@@ -28,6 +28,8 @@ class TwseDisclosureAdapterTests(unittest.TestCase):
 
         self.assertEqual(len(articles), 2)
         self.assertEqual(articles[0]["source"], "twse_disclosure")
+        self.assertEqual(articles[0]["publisher"], "twse")
+        self.assertEqual(len(articles[0]["source_article_id"]), 16)
         self.assertEqual(articles[0]["source_category"], "官方重大訊息")
         self.assertEqual(
             articles[0]["title"],

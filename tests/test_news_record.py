@@ -18,6 +18,8 @@ class NewsRecordTests(unittest.TestCase):
 
         record = create_news_record(
             source=" technews ",
+            publisher=" technews ",
+            source_article_id=" article-123 ",
             source_category=" 科技 ",
             title=" 測試新聞 ",
             publish_time=publish_time,
@@ -26,6 +28,8 @@ class NewsRecordTests(unittest.TestCase):
 
         self.assertEqual(record, {
             "source": "technews",
+            "publisher": "technews",
+            "source_article_id": "article-123",
             "source_category": "科技",
             "title": "測試新聞",
             "publish_time": publish_time,
@@ -35,6 +39,8 @@ class NewsRecordTests(unittest.TestCase):
     def test_create_news_record_allows_missing_source_category(self):
         record = create_news_record(
             source="cna",
+            publisher="cna",
+            source_article_id=None,
             source_category=None,
             title="測試新聞",
             publish_time=datetime(2026, 8, 11, 9, 30),
@@ -47,6 +53,8 @@ class NewsRecordTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "source_category"):
             validate_news_record({
                 "source": "technews",
+                "publisher": "technews",
+                "source_article_id": None,
                 "title": "測試新聞",
                 "publish_time": datetime(2026, 8, 11, 9, 30),
                 "url": "https://technews.tw/example/",
@@ -56,6 +64,8 @@ class NewsRecordTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "datetime"):
             create_news_record(
                 source="technews",
+                publisher="technews",
+                source_article_id=None,
                 source_category="科技",
                 title="測試新聞",
                 publish_time="2026-08-11 09:30",
@@ -66,11 +76,25 @@ class NewsRecordTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "title"):
             create_news_record(
                 source="technews",
+                publisher="technews",
+                source_article_id=None,
                 source_category="科技",
                 title="   ",
                 publish_time=datetime(2026, 8, 11, 9, 30),
                 url="https://technews.tw/example/",
             )
+
+    def test_create_news_record_defaults_publisher_to_source(self):
+        record = create_news_record(
+            source="technews",
+            source_category=None,
+            title="測試新聞",
+            publish_time=datetime(2026, 8, 11, 9, 30),
+            url="https://technews.tw/example/",
+        )
+
+        self.assertEqual(record["publisher"], "technews")
+        self.assertIsNone(record["source_article_id"])
 
 
 if __name__ == "__main__":

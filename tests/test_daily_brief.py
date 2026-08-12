@@ -17,6 +17,8 @@ def make_record(title, publish_time, source="cna", category="財經"):
     slug = title.replace(" ", "-")
     return {
         "source": source,
+        "publisher": source,
+        "source_article_id": None,
         "source_category": "產經證券" if source == "cna" else None,
         "analysis_category": category,
         "title": title,
@@ -73,6 +75,7 @@ class DailyBriefTests(unittest.TestCase):
         })
         self.assertLessEqual(len(brief["keywords"]), 5)
         self.assertEqual(len(brief["highlights"]), 3)
+        self.assertEqual(brief["highlights"][0]["publisher"], "cna")
         self.assertIn("本期共收錄 3 篇新聞", brief["summary"])
         self.assertIn("不構成投資建議", brief["limitations"][-1])
 

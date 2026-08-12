@@ -21,6 +21,8 @@ CREATE_TABLE_SQL = """
 CREATE TABLE IF NOT EXISTS news_records (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     source VARCHAR(100) NOT NULL,
+    publisher VARCHAR(100) NOT NULL,
+    source_article_id VARCHAR(255) NULL,
     source_category VARCHAR(100) NULL,
     analysis_category VARCHAR(100) NULL,
     title VARCHAR(500) NOT NULL,
@@ -32,13 +34,17 @@ CREATE TABLE IF NOT EXISTS news_records (
         COLLATE ascii_bin
         NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE KEY unique_canonical_url_hash (canonical_url_hash)
+    UNIQUE KEY unique_canonical_url_hash (canonical_url_hash),
+    UNIQUE KEY unique_source_article (source, source_article_id),
+    INDEX index_news_publisher (publisher)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 """
 
 INSERT_NEWS_SQL = """
 INSERT IGNORE INTO news_records (
     source,
+    publisher,
+    source_article_id,
     source_category,
     analysis_category,
     title,
@@ -47,7 +53,7 @@ INSERT IGNORE INTO news_records (
     canonical_url,
     canonical_url_hash
 )
-VALUES (%s, %s, %s, %s, %s, %s, %s, %s);
+VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s);
 """
 
 
@@ -109,6 +115,8 @@ def prepare_news_records(dataframe):
 
     for _, row in dataframe.iterrows():
         source = row["source"]
+        publisher = row["publisher"]
+        source_article_id = row["source_article_id"]
         source_category = row["source_category"]
         title = row["title"]
         publish_time = row["publish_time"]
@@ -123,10 +131,18 @@ def prepare_news_records(dataframe):
         if pd.isna(source_category):
             source_category = None
 
+        if pd.isna(source_article_id):
+            source_article_id = None
+
+        if pd.isna(publisher) or not publisher:
+            raise ValueError("新聞資料缺少 publisher，無法寫入 MySQL。")
+
         canonical_url = normalize_url(url)
 
         record = (
             source,
+            publisher,
+            source_article_id,
             source_category,
             infer_category(title),
             title,

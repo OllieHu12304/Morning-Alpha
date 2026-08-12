@@ -2,6 +2,8 @@
 
 from email.utils import parsedate_to_datetime
 import logging
+from pathlib import PurePosixPath
+from urllib.parse import urlparse
 from xml.etree import ElementTree
 from zoneinfo import ZoneInfo
 
@@ -17,6 +19,16 @@ REQUEST_TIMEOUT = 10
 TAIPEI_TIMEZONE = ZoneInfo("Asia/Taipei")
 
 logger = logging.getLogger(__name__)
+
+
+def get_source_article_id(url):
+    """從自由時報原文網址取得文章編號。"""
+    article_id = PurePosixPath(urlparse(url).path).name
+
+    if article_id.isdigit():
+        return article_id
+
+    return None
 
 
 def fetch_feed():
@@ -74,6 +86,8 @@ def parse_articles(xml_text):
 
         articles.append(create_news_record(
             source=SOURCE,
+            publisher=SOURCE,
+            source_article_id=get_source_article_id(url),
             source_category=SOURCE_CATEGORY,
             title=title,
             publish_time=parse_publish_time(publish_time_text),

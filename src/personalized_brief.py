@@ -17,6 +17,8 @@ READ_WATCHLIST_NEWS_SQL = """
 SELECT
     news_records.id,
     news_records.source,
+    news_records.publisher,
+    news_records.source_article_id,
     news_records.source_category,
     news_records.analysis_category,
     news_records.title,
@@ -53,6 +55,8 @@ def build_related_news_records(rows, column_names):
             records_by_id[news_id] = {
                 "id": news_id,
                 "source": source_record["source"],
+                "publisher": source_record["publisher"],
+                "source_article_id": source_record["source_article_id"],
                 "source_category": source_record["source_category"],
                 "analysis_category": source_record["analysis_category"],
                 "title": source_record["title"],

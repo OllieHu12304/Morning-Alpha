@@ -23,6 +23,8 @@ def create_test_dataframe():
         {
             "id": 1,
             "source": "technews",
+            "publisher": "technews",
+            "source_article_id": None,
             "source_category": None,
             "analysis_category": "人工智慧",
             "title": "人工智慧晶片市場持續成長",
@@ -33,6 +35,8 @@ def create_test_dataframe():
         {
             "id": 2,
             "source": "cna",
+            "publisher": "cna",
+            "source_article_id": "1",
             "source_category": "產經證券",
             "analysis_category": "金融市場",
             "title": "金融市場今日交易整理",
@@ -101,6 +105,8 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(payload["count"], 2)
         self.assertEqual(payload["news"][0]["source"], "technews")
+        self.assertEqual(payload["news"][0]["publisher"], "technews")
+        self.assertIsNone(payload["news"][0]["source_article_id"])
         self.assertIn("event_group_id", payload["news"][0])
         self.assertNotIn("id", payload["news"][0])
         self.assertEqual(payload["news"][0]["companies"][0]["ticker"], "2330")

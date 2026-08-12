@@ -14,6 +14,7 @@ const SOURCE_LABELS = {
     cna: "中央通訊社",
     ltn: "自由時報財經",
     technews: "TechNews 科技新報",
+    twse: "TWSE 官方重大訊息",
     twse_disclosure: "TWSE 官方重大訊息",
 };
 
@@ -1420,8 +1421,10 @@ function showChartError(message) {
 
 
 function getSourceName(record) {
-    if (record.source) {
-        return SOURCE_LABELS[record.source] || String(record.source);
+    const publisher = record.publisher || record.source;
+
+    if (publisher) {
+        return SOURCE_LABELS[publisher] || String(publisher);
     }
 
     try {

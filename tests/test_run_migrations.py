@@ -22,6 +22,8 @@ class RunMigrationsTests(unittest.TestCase):
             "columns": {
                 "id",
                 "source",
+                "publisher",
+                "source_article_id",
                 "source_category",
                 "analysis_category",
                 "canonical_url",
@@ -30,6 +32,8 @@ class RunMigrationsTests(unittest.TestCase):
             "indexes": {
                 "PRIMARY",
                 "unique_canonical_url_hash",
+                "unique_source_article",
+                "index_news_publisher",
             },
             "source_health_exists": True,
             "pipeline_runs_exists": True,
@@ -54,6 +58,7 @@ class RunMigrationsTests(unittest.TestCase):
             "010": True,
             "011": True,
             "012": True,
+            "013": True,
         })
 
     def test_get_migration_status_detects_partially_updated_schema(self):
@@ -89,6 +94,7 @@ class RunMigrationsTests(unittest.TestCase):
             "010": False,
             "011": False,
             "012": False,
+            "013": False,
         })
 
     def test_split_sql_statements_removes_comment_lines(self):
@@ -113,6 +119,23 @@ class RunMigrationsTests(unittest.TestCase):
         }
 
         with self.assertRaisesRegex(ValueError, "部分"):
+            validate_schema_state(schema_state)
+
+    def test_validate_schema_state_rejects_partial_article_identity(self):
+        schema_state = {
+            "table_exists": True,
+            "columns": {
+                "id",
+                "source",
+                "source_category",
+                "analysis_category",
+                "canonical_url",
+                "publisher",
+            },
+            "indexes": {"PRIMARY", "unique_canonical_url_hash"},
+        }
+
+        with self.assertRaisesRegex(ValueError, "article identity"):
             validate_schema_state(schema_state)
 
 

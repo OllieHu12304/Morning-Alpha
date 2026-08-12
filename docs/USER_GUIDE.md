@@ -25,7 +25,7 @@ Morning Alpha 解決的問題是：科技與財經資訊分散在不同來源，
 | --- | --- | --- |
 | 多來源資訊 | TechNews HTML 最多 5 篇；中央社與自由時報財經 RSS；TWSE 上市公司每日重大訊息 | Requests、BeautifulSoup、XML／JSON parser |
 | 共同資料格式 | adapter 轉成相同 News Record，再交給 Pandas | Python、Pandas |
-| 新聞去重 | canonical URL 的 SHA-256 在 MySQL 使用 UNIQUE index | Python、MySQL |
+| 新聞身分與去重 | 分開保存取得來源、原始發布媒體與來源文章 ID；canonical URL 與來源文章 ID 使用 UNIQUE index | Python、MySQL |
 | 分類與事件分組 | 標題規則分類；72 小時內用共同關鍵字與 Jaccard similarity 分組 | Python |
 | 中文關鍵字 | `jieba-py` 斷詞、Pandas 統計 Top 20 | jieba、Pandas |
 | 公司資料 | TWSE 上市公司、產業、股票代號及別名 | TWSE OpenAPI、MySQL |
@@ -75,6 +75,8 @@ flowchart TD
 
 關鍵觀念：MySQL 是目前 Dashboard 的正式資料來源；`news.json`、`chart_data.json`、`keyword.json`、`metadata.json` 仍由 Pipeline 產生，但主要用於學習、檢查與備援。
 
+新聞的 `source` 是 Morning Alpha 取得資料的 adapter／管道，`publisher` 是原始發布媒體。直接 RSS 或網站來源通常兩者相同；未來若透過聚合服務取得中央社文章，則可保存成 `source=聚合服務`、`publisher=cna`。Dashboard 優先顯示 `publisher`。
+
 ## 4. 專案結構
 
 ```text
@@ -97,7 +99,7 @@ Morning-Alpha/
 │   ├── DATA_SOURCES.md
 │   └── USER_GUIDE.md
 ├── sql/
-│   └── 001 ... 012 migrations
+│   └── 001 ... 013 migrations
 ├── src/
 │   ├── run_pipeline.py
 │   ├── api.py
@@ -124,7 +126,7 @@ Morning-Alpha/
 | `src/run_pipeline.py` | 日常更新 | 所有 adapters、Pandas、MySQL stores、JSON exporters |
 | `src/api.py` | 使用 Dashboard 前 | MySQL 與 `dashboard/` |
 | `src/scheduler.py` | 選用 Docker 排程 | 定期呼叫 `run_pipeline.py` |
-| `src/run_migrations.py` | 既有 database 升級前 | `sql/001`～`012` |
+| `src/run_migrations.py` | 既有 database 升級前 | `sql/001`～`013` |
 | `src/news_sources.py` | Pipeline 第 1 步 | TechNews、中央社、自由時報、TWSE 重大訊息 adapters |
 | `src/twse_*_adapter.py` | Pipeline 第 2、4、5 步 | TWSE 官方 OpenAPI |
 | `src/company_matching.py` | Pipeline 第 3 步 | 公司候選資料與新聞標題 |
@@ -213,7 +215,7 @@ COLLATE utf8mb4_unicode_ci;
 CREATE USER 'morning_alpha_app'@'localhost'
 IDENTIFIED BY '請換成安全密碼';
 
-GRANT CREATE, ALTER, INDEX, SELECT, INSERT, UPDATE, DELETE
+GRANT CREATE, ALTER, INDEX, REFERENCES, SELECT, INSERT, UPDATE, DELETE
 ON morning_alpha.*
 TO 'morning_alpha_app'@'localhost';
 ```
@@ -233,7 +235,7 @@ cp .env.example .env
 ./.venv/bin/python src/run_migrations.py --apply
 ```
 
-目前最新為 Migration 012：`watchlist_items`。全新 database 可直接跑 Pipeline；各 store 會建立最新 tables。
+目前最新為 Migration 013：為新聞增加 `publisher`、`source_article_id` 與對應 indexes。全新 database 可直接跑 Pipeline；各 store 會建立最新 tables。
 
 ## 7. 如何執行 Morning Alpha
 
@@ -315,7 +317,7 @@ Database 名稱預設是 `morning_alpha`。以下是目前實際 tables。
 
 | Table | 欄位與 datatype | 用途 |
 | --- | --- | --- |
-| `news_records` | `id BIGINT`、`source VARCHAR(100)`、`source_category VARCHAR(100)`、`analysis_category VARCHAR(100)`、`title VARCHAR(500)`、`publish_time DATETIME`、`url/canonical_url VARCHAR(1000)`、`canonical_url_hash CHAR(64)`、`created_at TIMESTAMP` | 正式新聞；hash 是 UNIQUE |
+| `news_records` | `id BIGINT`、`source/publisher VARCHAR(100)`、`source_article_id VARCHAR(255)`、`source_category VARCHAR(100)`、`analysis_category VARCHAR(100)`、`title VARCHAR(500)`、`publish_time DATETIME`、`url/canonical_url VARCHAR(1000)`、`canonical_url_hash CHAR(64)`、`created_at TIMESTAMP` | 正式新聞；canonical hash 與 `source + source_article_id` 是 UNIQUE |
 | `source_health_events` | `id BIGINT`、`source VARCHAR(100)`、`status VARCHAR(20)`、`article_count INT`、`error_message VARCHAR(500)`、`attempted_at TIMESTAMP` | 每次來源成功／失敗事件 |
 | `pipeline_runs` | `id BIGINT`、`status VARCHAR(20)`、`started_at/finished_at DATETIME(6)`、`duration_ms BIGINT`、`failed_step VARCHAR(100)`、`step_results JSON`、`error_message VARCHAR(500)` | 完整九步執行歷史；也能讀舊四步紀錄 |
 | `daily_briefs` | `id BIGINT`、`brief_date DATE`、`window_start/window_end DATETIME`、`article_count INT`、`brief_payload JSON`、`created_at/updated_at TIMESTAMP` | 每日一份結構化晨報 |
@@ -389,7 +391,7 @@ LIMIT 20;
 - 沒有文章全文、生成式 AI 摘要、情緒分析或投資評分。
 - 只有 TWSE 上市範圍；沒有 TPEx、海外股票、即時行情或完整歷史回補。
 - 公司辨識、事件分組及分類是規則式推論。
-- 不同平台同事件只分組、不刪除；canonical URL 只能阻止相同正規化網址。
+- 不同平台同事件只分組、不刪除；canonical URL 阻止相同正規化網址，`source + source_article_id` 阻止同一取得管道重複匯入相同文章。
 - 事件與價格分析沒有控制大盤、產業、財報或其他同時因素，不能推論因果。
 - 追蹤清單沒有帳號與多使用者隔離；個人化晨報沒有 email／推播發送。
 - API 無 authentication、rate limiting、HTTPS 與 production server。

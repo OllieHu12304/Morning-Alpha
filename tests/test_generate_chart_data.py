@@ -46,6 +46,18 @@ class GenerateChartDataTests(unittest.TestCase):
             "自由時報財經",
         )
 
+    def test_record_source_label_prefers_original_publisher(self):
+        record = {
+            "source": "future_aggregator",
+            "publisher": "cna",
+            "url": "https://aggregator.example/news/1",
+        }
+
+        self.assertEqual(
+            get_record_source_label(record),
+            "中央通訊社",
+        )
+
     def test_count_keywords_uses_top_twenty_pandas_rules(self):
         records = [{
             "title": "NVIDIA 推出 AI 晶片，nvidia 股價上漲",

@@ -20,6 +20,8 @@ class TechNewsAdapterTests(unittest.TestCase):
 
         self.assertEqual(articles[0], {
             "source": "technews",
+            "publisher": "technews",
+            "source_article_id": None,
             "source_category": None,
             "title": "測試科技新聞一",
             "publish_time": datetime(2026, 8, 11, 9, 30),

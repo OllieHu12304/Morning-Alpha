@@ -81,6 +81,8 @@ Pipeline 依序執行：
 
 Dashboard 目前直接讀取 Flask API 與 MySQL；JSON 是學習、檢查與備援輸出，不是 Dashboard 的主要資料來源。新版 Pipeline history 保存九步結果，API 仍可讀取舊版四步歷史。
 
+新聞身分中，`source` 代表 Morning Alpha 實際使用的 adapter／取得管道，`publisher` 代表原始發布媒體。直接來源兩者通常相同；未來聚合來源則可能不同。`source_article_id` 與 canonical URL 共同阻止確定的重複匯入，相似新聞仍只分組、不刪除。
+
 ## 技術
 
 - Python 3.13
@@ -187,14 +189,14 @@ COLLATE utf8mb4_unicode_ci;
 CREATE USER 'morning_alpha_app'@'localhost'
 IDENTIFIED BY '請換成安全密碼';
 
-GRANT CREATE, ALTER, INDEX, SELECT, INSERT, UPDATE, DELETE
+GRANT CREATE, ALTER, INDEX, REFERENCES, SELECT, INSERT, UPDATE, DELETE
 ON morning_alpha.*
 TO 'morning_alpha_app'@'localhost';
 ```
 
 將同一組 app user 與密碼填入 `.env`。不要填 Mac 密碼，也不要 commit `.env`。
 
-既有 database 先備份，再套用最新 Migration 012：
+既有 database 先備份，再套用最新 Migration 013：
 
 ```bash
 ./.venv/bin/python src/run_migrations.py

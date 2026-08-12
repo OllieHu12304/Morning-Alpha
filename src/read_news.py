@@ -11,6 +11,8 @@ READ_ALL_NEWS_SQL = """
 SELECT
     id,
     source,
+    publisher,
+    source_article_id,
     source_category,
     analysis_category,
     title,

@@ -86,10 +86,15 @@ def get_test_database_config():
     }
 
 
-def create_news_dataframe(title, url):
+def create_news_dataframe(title, url, source_article_id=None):
     """建立一筆 integration test 使用的新聞。"""
+    if source_article_id is None:
+        source_article_id = url.rsplit("/", 2)[-2]
+
     return pd.DataFrame([{
         "source": "integration_test",
+        "publisher": "integration_publisher",
+        "source_article_id": source_article_id,
         "source_category": None,
         "title": title,
         "publish_time": pd.Timestamp("2026-08-11 10:00:00"),
@@ -182,7 +187,13 @@ class MySQLIntegrationTests(unittest.TestCase):
         with self.connection.cursor() as cursor:
             cursor.execute(
                 """
-                SELECT source, analysis_category, title, canonical_url
+                SELECT
+                    source,
+                    publisher,
+                    source_article_id,
+                    analysis_category,
+                    title,
+                    canonical_url
                 FROM news_records;
                 """
             )
@@ -191,6 +202,8 @@ class MySQLIntegrationTests(unittest.TestCase):
         self.assertEqual(inserted_count, 1)
         self.assertEqual(record, (
             "integration_test",
+            "integration_publisher",
+            "integration-news",
             "AI 與人工智慧",
             "人工智慧 integration test 新聞",
             "https://example.com/integration-news/",
@@ -204,6 +217,36 @@ class MySQLIntegrationTests(unittest.TestCase):
         second_dataframe = create_news_dataframe(
             "標題不同但網址相同",
             "https://example.com/same-news/?utm_source=second",
+        )
+
+        first_count = insert_news_records(
+            self.connection,
+            first_dataframe,
+        )
+        second_count = insert_news_records(
+            self.connection,
+            second_dataframe,
+        )
+        self.connection.commit()
+
+        with self.connection.cursor() as cursor:
+            cursor.execute("SELECT COUNT(*) FROM news_records;")
+            record_count = cursor.fetchone()[0]
+
+        self.assertEqual(first_count, 1)
+        self.assertEqual(second_count, 0)
+        self.assertEqual(record_count, 1)
+
+    def test_source_article_id_unique_index_ignores_duplicate(self):
+        first_dataframe = create_news_dataframe(
+            "第一篇來源文章",
+            "https://example.com/first-url/",
+            source_article_id="shared-source-id",
+        )
+        second_dataframe = create_news_dataframe(
+            "第二篇來源文章",
+            "https://example.com/second-url/",
+            source_article_id="shared-source-id",
         )
 
         first_count = insert_news_records(

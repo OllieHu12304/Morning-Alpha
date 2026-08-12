@@ -147,6 +147,7 @@ class DashboardContractTests(unittest.TestCase):
             javascript,
         )
         self.assertIn('ltn: "自由時報財經"', javascript)
+        self.assertIn("record.publisher || record.source", javascript)
 
 
 if __name__ == "__main__":

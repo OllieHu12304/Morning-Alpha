@@ -24,6 +24,8 @@ class ExportNewsJsonTests(unittest.TestCase):
     def test_prepare_dashboard_records_includes_news_dimensions(self):
         dataframe = pd.DataFrame([{
             "source": "cna",
+            "publisher": "cna",
+            "source_article_id": "example",
             "source_category": "產經證券",
             "analysis_category": "半導體",
             "title": "測試新聞",
@@ -35,6 +37,8 @@ class ExportNewsJsonTests(unittest.TestCase):
 
         self.assertEqual(records, [{
             "source": "cna",
+            "publisher": "cna",
+            "source_article_id": "example",
             "source_category": "產經證券",
             "analysis_category": "半導體",
             "title": "測試新聞",
@@ -45,6 +49,8 @@ class ExportNewsJsonTests(unittest.TestCase):
     def test_prepare_dashboard_records_exports_null_categories(self):
         dataframe = pd.DataFrame([{
             "source": "technews",
+            "publisher": "technews",
+            "source_article_id": None,
             "source_category": None,
             "analysis_category": None,
             "title": "測試新聞",
@@ -56,11 +62,14 @@ class ExportNewsJsonTests(unittest.TestCase):
 
         self.assertIsNone(record["source_category"])
         self.assertIsNone(record["analysis_category"])
+        self.assertIsNone(record["source_article_id"])
 
     def test_prepare_dashboard_records_can_include_internal_id(self):
         dataframe = pd.DataFrame([{
             "id": 7,
             "source": "technews",
+            "publisher": "technews",
+            "source_article_id": None,
             "source_category": None,
             "analysis_category": "半導體",
             "title": "測試新聞",

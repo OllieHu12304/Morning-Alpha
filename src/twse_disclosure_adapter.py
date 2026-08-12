@@ -74,12 +74,17 @@ def parse_publish_time(date_text, time_text):
         ) from error
 
 
-def build_mops_url(ticker, publish_time, subject):
-    """建立可去重且能開啟公司重大訊息查詢頁的官方 URL。"""
+def create_disclosure_id(ticker, publish_time, subject):
+    """使用公司、時間與主旨建立穩定的重大訊息 ID。"""
     identity = f"{ticker}|{publish_time.isoformat()}|{subject}"
-    disclosure_id = hashlib.sha256(
+    return hashlib.sha256(
         identity.encode("utf-8")
     ).hexdigest()[:16]
+
+
+def build_mops_url(ticker, publish_time, subject):
+    """建立可開啟公司重大訊息查詢頁的官方 URL。"""
+    disclosure_id = create_disclosure_id(ticker, publish_time, subject)
     query = urlencode({
         "TYPEK": "sii",
         "co_id": ticker,
@@ -147,6 +152,12 @@ def parse_disclosures(json_text):
         title = f"{ticker} {company_name}｜{fields['主旨']}"
         articles.append(create_news_record(
             source=SOURCE,
+            publisher="twse",
+            source_article_id=create_disclosure_id(
+                ticker,
+                publish_time,
+                fields["主旨"],
+            ),
             source_category=SOURCE_CATEGORY,
             title=title,
             publish_time=publish_time,

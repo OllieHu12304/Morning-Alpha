@@ -83,6 +83,8 @@ def parse_articles(html):
 
         article = create_news_record(
             source=SOURCE,
+            publisher=SOURCE,
+            source_article_id=None,
             source_category=None,
             title=title_link.get_text(strip=True),
             publish_time=parse_publish_time(

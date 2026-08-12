@@ -61,6 +61,8 @@ class StoreNewsTests(unittest.TestCase):
     def test_prepare_news_records_adds_source_and_canonical_url(self):
         dataframe = pd.DataFrame([{
             "source": "technews",
+            "publisher": "technews",
+            "source_article_id": None,
             "source_category": None,
             "title": "測試新聞",
             "publish_time": pd.Timestamp("2026-08-11 09:30:00"),
@@ -74,6 +76,8 @@ class StoreNewsTests(unittest.TestCase):
 
         self.assertEqual(records, [(
             "technews",
+            "technews",
+            None,
             None,
             "其他",
             "測試新聞",
@@ -86,6 +90,8 @@ class StoreNewsTests(unittest.TestCase):
     def test_prepare_news_records_rejects_missing_title(self):
         dataframe = pd.DataFrame([{
             "source": "technews",
+            "publisher": "technews",
+            "source_article_id": None,
             "source_category": None,
             "title": "",
             "publish_time": pd.Timestamp("2026-08-11 09:30:00"),
@@ -99,6 +105,8 @@ class StoreNewsTests(unittest.TestCase):
         dataframe = pd.DataFrame([
             {
                 "source": "technews",
+                "publisher": "technews",
+                "source_article_id": None,
                 "source_category": None,
                 "title": "科技新聞",
                 "publish_time": pd.Timestamp("2026-08-11 09:30:00"),
@@ -106,6 +114,8 @@ class StoreNewsTests(unittest.TestCase):
             },
             {
                 "source": "cna",
+                "publisher": "cna",
+                "source_article_id": "1",
                 "source_category": "產經證券",
                 "title": "財經新聞",
                 "publish_time": pd.Timestamp("2026-08-11 09:00:00"),
@@ -115,12 +125,14 @@ class StoreNewsTests(unittest.TestCase):
 
         records = store_news.prepare_news_records(dataframe)
 
-        self.assertIsNone(records[0][1])
-        self.assertEqual(records[1][1], "產經證券")
+        self.assertIsNone(records[0][3])
+        self.assertEqual(records[1][3], "產經證券")
 
     def test_prepare_news_records_rejects_invalid_publish_time(self):
         dataframe = pd.DataFrame([{
             "source": "technews",
+            "publisher": "technews",
+            "source_article_id": None,
             "source_category": None,
             "title": "測試新聞",
             "publish_time": pd.NaT,
@@ -134,22 +146,41 @@ class StoreNewsTests(unittest.TestCase):
         sql = store_news.CREATE_TABLE_SQL
 
         self.assertIn("source VARCHAR(100) NOT NULL", sql)
+        self.assertIn("publisher VARCHAR(100) NOT NULL", sql)
+        self.assertIn("source_article_id VARCHAR(255) NULL", sql)
         self.assertIn("source_category VARCHAR(100) NULL", sql)
         self.assertIn("analysis_category VARCHAR(100) NULL", sql)
         self.assertIn("canonical_url VARCHAR(1000) NOT NULL", sql)
         self.assertIn("canonical_url_hash CHAR(64)", sql)
         self.assertIn("unique_canonical_url_hash", sql)
+        self.assertIn("unique_source_article", sql)
+        self.assertIn("index_news_publisher", sql)
         self.assertNotIn("unique_news_title", sql)
 
     def test_insert_sql_writes_source_and_canonical_url(self):
         sql = store_news.INSERT_NEWS_SQL
 
         self.assertIn("source", sql)
+        self.assertIn("publisher", sql)
+        self.assertIn("source_article_id", sql)
         self.assertIn("source_category", sql)
         self.assertIn("analysis_category", sql)
         self.assertIn("canonical_url", sql)
         self.assertIn("canonical_url_hash", sql)
-        self.assertEqual(sql.count("%s"), 8)
+        self.assertEqual(sql.count("%s"), 10)
+
+    def test_article_identity_migration_backfills_publisher(self):
+        migration_path = (
+            PROJECT_DIRECTORY
+            / "sql"
+            / "013_add_article_identity.sql"
+        )
+        migration_sql = migration_path.read_text(encoding="utf-8")
+
+        self.assertIn("ADD COLUMN publisher", migration_sql)
+        self.assertIn("SET publisher = source", migration_sql)
+        self.assertIn("unique_source_article", migration_sql)
+        self.assertIn("index_news_publisher", migration_sql)
 
     def test_migration_backfills_existing_rows(self):
         migration_path = (

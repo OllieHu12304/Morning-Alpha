@@ -29,6 +29,8 @@ class PersonalizedBriefTests(unittest.TestCase):
         columns = [
             "id",
             "source",
+            "publisher",
+            "source_article_id",
             "source_category",
             "analysis_category",
             "title",
@@ -42,6 +44,8 @@ class PersonalizedBriefTests(unittest.TestCase):
         shared_news = [
             1,
             "cna",
+            "cna",
+            "example-1",
             "產經證券",
             "半導體",
             "兩家公司合作測試新聞",
@@ -62,6 +66,8 @@ class PersonalizedBriefTests(unittest.TestCase):
         records = [{
             "id": 1,
             "source": "cna",
+            "publisher": "cna",
+            "source_article_id": "example-1",
             "source_category": "產經證券",
             "analysis_category": "半導體",
             "title": "台積電測試新聞",

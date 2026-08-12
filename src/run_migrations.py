@@ -24,6 +24,7 @@ MIGRATION_PATHS = {
     "010": MIGRATION_DIRECTORY / "010_create_market_prices.sql",
     "011": MIGRATION_DIRECTORY / "011_create_financial_metrics.sql",
     "012": MIGRATION_DIRECTORY / "012_create_watchlist_items.sql",
+    "013": MIGRATION_DIRECTORY / "013_add_article_identity.sql",
 }
 INDEPENDENT_MIGRATIONS = {"005", "006", "007", "008"}
 
@@ -105,7 +106,7 @@ def fetch_schema_state(connection):
 
 
 def get_migration_status(schema_state):
-    """將目前 schema 轉成 001 到 012 的完成狀態。"""
+    """將目前 schema 轉成 001 到 013 的完成狀態。"""
     columns = schema_state["columns"]
     indexes = schema_state["indexes"]
     quality_columns = {
@@ -129,6 +130,11 @@ def get_migration_status(schema_state):
         "010": schema_state.get("market_prices_exists", False),
         "011": schema_state.get("financial_metrics_exists", False),
         "012": schema_state.get("watchlist_items_exists", False),
+        "013": (
+            {"publisher", "source_article_id"}.issubset(columns)
+            and "unique_source_article" in indexes
+            and "index_news_publisher" in indexes
+        ),
     }
 
 
@@ -145,6 +151,30 @@ def validate_schema_state(schema_state):
     if existing_quality_columns and existing_quality_columns != quality_columns:
         raise ValueError(
             "偵測到部分 news quality 欄位，請先人工檢查 schema。"
+        )
+
+    identity_columns = {"publisher", "source_article_id"}
+    existing_identity_columns = identity_columns & schema_state["columns"]
+    identity_indexes = {
+        "unique_source_article",
+        "index_news_publisher",
+    }
+    existing_identity_indexes = identity_indexes & schema_state["indexes"]
+
+    if (
+        existing_identity_columns
+        and existing_identity_columns != identity_columns
+    ):
+        raise ValueError(
+            "偵測到部分 article identity 欄位，請先人工檢查 schema。"
+        )
+
+    if (
+        existing_identity_columns == identity_columns
+        and existing_identity_indexes != identity_indexes
+    ):
+        raise ValueError(
+            "偵測到部分 article identity indexes，請先人工檢查 schema。"
         )
 
 

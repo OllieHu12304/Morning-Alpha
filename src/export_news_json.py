@@ -48,6 +48,8 @@ def prepare_dashboard_records(dataframe, include_id=False):
 
         record = {
             "source": row["source"],
+            "publisher": row["publisher"],
+            "source_article_id": optional_text(row["source_article_id"]),
             "source_category": optional_text(row["source_category"]),
             "analysis_category": optional_text(row["analysis_category"]),
             "title": row["title"],

@@ -26,6 +26,7 @@ SOURCE_CODE_LABELS = {
     "cna": "中央通訊社",
     "ltn": "自由時報財經",
     "technews": "TechNews 科技新報",
+    "twse": "TWSE 官方重大訊息",
     "twse_disclosure": "TWSE 官方重大訊息",
 }
 
@@ -52,8 +53,8 @@ def get_source_label(url):
 
 
 def get_record_source_label(record):
-    """優先使用正式 source 欄位，舊資料才由 URL 推導。"""
-    source = record.get("source")
+    """優先顯示原始發布媒體，舊資料才使用取得來源。"""
+    source = record.get("publisher") or record.get("source")
 
     if source:
         return SOURCE_CODE_LABELS.get(source, str(source))

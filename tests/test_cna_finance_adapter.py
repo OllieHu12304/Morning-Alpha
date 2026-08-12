@@ -20,6 +20,8 @@ class CnaFinanceAdapterTests(unittest.TestCase):
 
         self.assertEqual(articles[0], {
             "source": "cna",
+            "publisher": "cna",
+            "source_article_id": "202608110001",
             "source_category": "產經證券",
             "title": "測試財經新聞一",
             "publish_time": datetime(2026, 8, 11, 9, 30),

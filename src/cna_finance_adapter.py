@@ -3,6 +3,7 @@
 from email.utils import parsedate_to_datetime
 import logging
 from urllib.parse import urlparse
+from pathlib import PurePosixPath
 from xml.etree import ElementTree
 from zoneinfo import ZoneInfo
 
@@ -25,6 +26,12 @@ logger = logging.getLogger(__name__)
 def is_finance_article_url(url):
     """只接受中央社產經證券分類的文章 URL。"""
     return urlparse(url).path.startswith("/news/afe/")
+
+
+def get_source_article_id(url):
+    """從中央社文章網址取得不含副檔名的文章編號。"""
+    article_id = PurePosixPath(urlparse(url).path).stem
+    return article_id or None
 
 
 def fetch_feed():
@@ -89,6 +96,8 @@ def parse_articles(xml_text):
 
         article = create_news_record(
             source=SOURCE,
+            publisher=SOURCE,
+            source_article_id=get_source_article_id(url),
             source_category=SOURCE_CATEGORY,
             title=title,
             publish_time=parse_publish_time(publish_time_text),
