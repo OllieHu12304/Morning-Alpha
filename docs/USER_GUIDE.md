@@ -88,6 +88,7 @@ Morning-Alpha/
 ├── requirements.txt
 ├── package.json
 ├── playwright.config.js
+├── start.py
 ├── dashboard/
 │   ├── index.html
 │   ├── styles.css
@@ -124,6 +125,7 @@ Morning-Alpha/
 
 | 檔案 | 何時執行 | 互動對象 |
 | --- | --- | --- |
+| `start.py` | 日常啟動專案 | `.venv`、`src/api.py`、5050、預設瀏覽器 |
 | `src/run_pipeline.py` | 日常更新 | 所有 adapters、Pandas、MySQL stores、JSON exporters |
 | `src/pipeline_process.py` | Dashboard 按下更新時 | 使用 API 當下的 Python 環境啟動並追蹤 Pipeline |
 | `src/api.py` | 使用 Dashboard 前 | MySQL 與 `dashboard/` |
@@ -241,15 +243,21 @@ cp .env.example .env
 
 ## 7. 如何執行 Morning Alpha
 
-請在 repository 根目錄依序執行。
-
-### Step 1：更新全部資料
+請在 repository 根目錄執行：
 
 ```bash
-./.venv/bin/python src/run_pipeline.py
+python3 start.py
 ```
 
-九個步驟依序為：
+啟動器會自動尋找 `.venv`、確認 MySQL 設定、啟動 API、等待 5050 就緒並開啟瀏覽器。按 `Control + C` 可以停止 API；如果 Morning Alpha 已經在 5050 執行，只會開啟現有頁面，不會重複啟動。
+
+### Step 1：啟動 API 與 Dashboard
+
+正常情況不需要再手動執行 `src/api.py`。瀏覽器會開啟 [http://127.0.0.1:5050](http://127.0.0.1:5050)；不要直接雙擊 `dashboard/index.html`，因為頁面需要 Flask API。
+
+### Step 2：更新全部資料
+
+到 Dashboard 的「Pipeline 執行紀錄」區按下「立即更新資料」。九個步驟依序為：
 
 1. 新聞擷取、Pandas 整理、MySQL 寫入。
 2. TWSE 公司目錄同步。
@@ -263,17 +271,13 @@ cp .env.example .env
 
 九步是相依順序：例如先有公司，才能把新聞連到公司；先有股票代號，價格與財務資料才知道要寫到哪家公司。必要步驟失敗時 Pipeline 會停止，後續步驟保持 `pending`，並盡力保存失敗歷史。
 
-### Step 2：啟動 API 與 Dashboard
+### 終端除錯方式
+
+需要查看完整 Pipeline 輸出，或 Dashboard 尚未啟動時，仍可執行：
 
 ```bash
-./.venv/bin/python src/api.py
+./.venv/bin/python src/run_pipeline.py
 ```
-
-開啟 [http://127.0.0.1:5050](http://127.0.0.1:5050)。不要直接雙擊 `dashboard/index.html`，因為頁面需要 Flask API。
-
-### Step 3：日後更新
-
-API 可以保持執行。需要更新時，到 Dashboard 的「Pipeline 執行紀錄」區按下「立即更新資料」即可；執行期間按鈕會鎖定，成功後頁面會自動重新載入最新資料。
 
 這個按鈕會使用 API 當下的 Python 與 MySQL 環境，因此本機 API 更新本機 MySQL，Docker API 更新 Docker MySQL，不會再發生兩個環境交叉讀寫。終端指令 `./.venv/bin/python src/run_pipeline.py` 仍保留給除錯與觀察完整 log 使用。
 

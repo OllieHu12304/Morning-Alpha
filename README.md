@@ -105,9 +105,10 @@ Dashboard 沒有使用 DataTables；搜尋、篩選、排序與分頁由原生 J
 日常只需要執行：
 
 ```bash
-./.venv/bin/python src/run_pipeline.py
-./.venv/bin/python src/api.py
+python3 start.py
 ```
+
+啟動器會自動使用專案 `.venv`、啟動 API、等待 5050 就緒並開啟瀏覽器。進入 Dashboard 後，按「立即更新資料」即可執行完整 Pipeline；按 `Control + C` 可停止 API。
 
 Docker 主要用於第一次快速安裝、跨電腦重現環境與 CI 驗證，不是每次更新資料前都必須執行的步驟。
 
@@ -205,12 +206,13 @@ TO 'morning_alpha_app'@'localhost';
 ./.venv/bin/python src/run_migrations.py --apply
 ```
 
-全新 database 可直接執行 Pipeline；各 store 會建立需要的最新 tables。完成後啟動 API：
+全新 database 完成設定後，可用一個指令啟動 Morning Alpha：
 
 ```bash
-./.venv/bin/python src/run_pipeline.py
-./.venv/bin/python src/api.py
+python3 start.py
 ```
+
+瀏覽器會自動開啟 [http://127.0.0.1:5050](http://127.0.0.1:5050)。第一次使用時，在「Pipeline 執行紀錄」按下「立即更新資料」建立所需資料；需要觀察完整終端流程時，仍可直接執行 `./.venv/bin/python src/run_pipeline.py`。
 
 ## API
 
