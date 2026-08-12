@@ -1,8 +1,8 @@
-# Morning Alpha v0.3.0
+# Morning Alpha v0.3.2
 
 Morning Alpha 是一個在本機執行的繁體中文科技與財經資訊整理系統。它把分散的新聞、TWSE 公司資料、盤後價格與季度財務摘要整合到同一個 Dashboard，並提供規則式晨報、公司關聯、事件分組及自選公司追蹤。
 
-`v0.3.0` 是目前正式穩定版本。專案定位是個人資料整理、程式學習與作品展示；所有新聞與市場觀察均不構成投資建議。
+`v0.3.2` 是目前正式穩定版本。這個修正版改善追蹤晨報、TWSE 缺漏交易日回補、事件市場觀察的空狀態，以及來源文章數量的一致性。專案定位是個人資料整理、程式學習與作品展示；所有新聞與市場觀察均不構成投資建議。
 
 ## 使用者可以完成的任務
 
@@ -11,7 +11,7 @@ Morning Alpha 是一個在本機執行的繁體中文科技與財經資訊整理
 - 查看來源比重、分析分類、Top 20 中文關鍵字與資料來源健康狀態。
 - 閱讀每日 07:00（Asia/Taipei）時間窗產生的規則式晨報。
 - 查看新聞標題辨識出的上市公司、產業及股票代號。
-- 查看 TWSE 每日盤後價格、季度財務摘要與非因果事件價格觀察。
+- 查看 TWSE 每日盤後價格、近期缺漏交易日回補、季度財務摘要與非因果事件價格觀察。
 - 以股票代號、公司名稱或簡稱搜尋並管理本機自選公司。
 - 從網頁按鈕執行完整 Pipeline，完成後自動刷新資料。
 
@@ -161,7 +161,7 @@ Dashboard 的「立即更新資料」與下列終端指令執行相同流程：
 1. 下載、整理並寫入五個新聞來源。
 2. 同步 TWSE 上市公司、產業、股票代號與別名。
 3. 以預先整理的 matching context 建立新聞公司關聯。
-4. 同步 TWSE 每日盤後價格。
+4. 同步 TWSE 最新盤後價格，並回補最近 14 個日曆日範圍內缺少的平日資料；休市日會安全略過。
 5. 同步 TWSE 季度財務摘要。
 6. 產生並保存每日晨報。
 7. 匯出 `news.json` 與 `metadata.json`。
@@ -200,6 +200,8 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
+`v0.3.2` 發佈前驗證結果為 317 項 Python tests 通過（其中 10 項依環境跳過），Playwright 共載入 6 項 Dashboard tests。實際 MySQL integration 與完整瀏覽器測試仍應在本機或 CI 執行。
+
 MySQL integration tests 只允許使用 `morning_alpha_test`：
 
 ```bash
@@ -216,7 +218,9 @@ GitHub Actions 會在獨立 MySQL service 執行 Python、MySQL integration 與 
 - TechNews 只解析首頁，不翻頁或自動回補歷史；TWSE 重大訊息只保存公告主旨等目前 adapter 欄位。
 - Yahoo股市 RSS 沒有原始 publisher 欄位，目前誠實保存為 `Yahoo股市`。
 - 自由時報 RSS 目前只適用個人／非商業情境；商業使用前必須重新確認授權。
-- 市場價格是 TWSE 每日盤後資料，財務資料是摘要，不是即時行情或完整財報。
+- 市場價格是 TWSE 每日盤後資料；Pipeline 只回補最近 14 個日曆日範圍內的缺漏平日，不是完整歷史行情。財務資料是摘要，不是即時行情或完整財報。
+- Event Observation 需要新聞已成功連結公司，且至少具有事件附近兩個可用交易日；資料不足時 Dashboard 會說明缺少的條件。
+- 「資料來源狀態」的「新聞列表篇數」採用與 Latest News 相同的每來源最新 60 篇平衡樣本，不代表爬蟲當次下載或 MySQL 累積總數。
 - 事件與價格只呈現時間關聯，沒有控制其他市場因素，不能推論因果。
 - 只涵蓋 TWSE 上市公司；沒有 TPEx、海外市場、帳號、多使用者隔離或主動推播。
 - Flask API 沒有 authentication、rate limiting、HTTPS 或 production server，不可直接公開到 Internet。

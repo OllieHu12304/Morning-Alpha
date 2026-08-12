@@ -4,11 +4,11 @@
 
 | 📦 Commit 數量 | 🗓️ 紀錄範圍 | 🕐 時區 | ↕️ 排列方式 |
 |:---:|:---:|:---:|:---:|
-| **86（含 v0.3.0 發佈文件）** | **2026-08-07 ～ 2026-08-13** | **UTC+8** | **由新到舊** |
+| **92（含 v0.3.2 發佈文件）** | **2026-08-07 ～ 2026-08-13** | **UTC+8** | **由新到舊** |
 
 ## 快速導覽
 
-[**v0.3.0（2026-08-13）**](#v030-正式版本摘要2026-08-13) · [**2026-08-12**](#2026-08-12) · [**2026-08-11**](#2026-08-11) · [**2026-08-10**](#2026-08-10) · [**2026-08-08**](#2026-08-08) · [**2026-08-07**](#2026-08-07)
+[**v0.3.2（2026-08-13）**](#v032-正式版本摘要2026-08-13) · [**2026-08-13**](#2026-08-13) · [**v0.3.0**](#v030-正式版本摘要2026-08-13) · [**2026-08-12**](#2026-08-12) · [**2026-08-11**](#2026-08-11) · [**2026-08-10**](#2026-08-10) · [**2026-08-08**](#2026-08-08) · [**2026-08-07**](#2026-08-07)
 
 ### 變更類型
 
@@ -17,6 +17,83 @@
 | 新功能 | 問題修正 | 效能改善 | 文件更新 | 測試 | 環境與維護 | 專案起點 |
 
 <sub>點擊每一筆 commit 標題即可展開完整說明；最新一筆預設展開。</sub>
+
+---
+
+## v0.3.2 正式版本摘要（2026-08-13）
+
+`v0.3.2` 是功能凍結後的資料正確性修正版：穩定 Dashboard Pipeline 測試、讓追蹤晨報納入近期已連結新聞、回報 TWSE 資料延遲、回補最近 14 個日曆日範圍內的缺漏平日、改善 Event Observation 的資料準備與空狀態，並讓來源卡片使用與 Latest News 相同的文章計數口徑。`v0.3.1` tag 位於前三項修正完成處；後續兩項修正與本文件共同收斂為 `v0.3.2`。
+
+> 發佈文件 commit 會成為 `v0.3.2` annotated tag 的錨點。下方逐筆紀錄列到發佈文件前一筆 commit，避免為了記錄自身 hash 而永久改變該 hash。
+
+---
+
+## 2026-08-13
+
+<details open>
+<summary>🔴 <strong><code>fix: build event observations from backfilled prices</code></strong> · <sub>2026-08-13 00:32:16（UTC+8）</sub></summary>
+
+<br>
+
+<strong>Commit：</strong> [`a3a3069`](https://github.com/OllieHu12304/Morning-Alpha/commit/a3a3069becc308558d6851d570e6816b83c09454)
+
+解決 Event Observation 無資料卻無法判斷原因，以及來源狀態筆數與新聞列表不一致：擴大事件候選搜尋並回傳公司關聯／交易日 readiness；Dashboard 會說明缺少條件，來源卡片則改用與 Latest News 相同的平衡資料計數。
+
+> 💡 <strong>學習重點：</strong> 空結果也需要可觀測性；同一個數字必須先定義資料集合與計算口徑。
+
+</details>
+
+<details>
+<summary>🔴 <strong><code>fix: backfill missing TWSE daily market prices</code></strong> · <sub>2026-08-13 00:31:54（UTC+8）</sub></summary>
+
+<br>
+
+<strong>Commit：</strong> [`48f47af`](https://github.com/OllieHu12304/Morning-Alpha/commit/48f47afc876535b8901f1d46cce72fa3e4e7fda2)
+
+解決 TWSE 最新快照延遲時交易日永久缺漏：Pipeline 先比較資料庫日期，再用 TWSE 指定日期資料回補最近 14 個日曆日範圍內缺少的平日；週末與休市日無資料時安全略過。
+
+> 💡 <strong>學習重點：</strong> 最新快照只回答「現在提供什麼」，歷史完整性還需要缺口偵測與可重複執行的回補機制。
+
+</details>
+
+<details>
+<summary>🔴 <strong><code>fix: report stale TWSE market price data</code></strong> · <sub>2026-08-13 00:17:08（UTC+8）</sub></summary>
+
+<br>
+
+<strong>Commit：</strong> [`a2f4e99`](https://github.com/OllieHu12304/Morning-Alpha/commit/a2f4e991e82d9ea4a948e8585d407f102207d211)
+
+解決 Pipeline 成功卻容易讓人誤以為價格一定是最新交易日：同步結果加入預期日期、實際最新日期與 freshness warning，Dashboard 公司價格區也會提示資料延遲。
+
+> 💡 <strong>學習重點：</strong> 成功收到 API 回應不等於資料足夠新鮮；資料日期必須成為可觀測的驗收條件。
+
+</details>
+
+<details>
+<summary>🔴 <strong><code>fix: show recent linked news in personalized watchlist brief</code></strong> · <sub>2026-08-13 00:17:02（UTC+8）</sub></summary>
+
+<br>
+
+<strong>Commit：</strong> [`a9e1426`](https://github.com/OllieHu12304/Morning-Alpha/commit/a9e1426e77d81bfe9201e2b7a1134859e82efef0)
+
+解決 Latest News 已有自選公司新聞，但固定晨報時間窗內沒有文章時追蹤晨報完全空白：保留時間窗摘要，並補充近期已成功建立公司關聯的新聞。
+
+> 💡 <strong>學習重點：</strong> 個人化結果的時間範圍要符合使用者心智模型，也要清楚區分本期資料與近期補充資料。
+
+</details>
+
+<details>
+<summary>🟠 <strong><code>test: stabilize pipeline dashboard refresh test</code></strong> · <sub>2026-08-13 00:16:39（UTC+8）</sub></summary>
+
+<br>
+
+<strong>Commit：</strong> [`32d07f5`](https://github.com/OllieHu12304/Morning-Alpha/commit/32d07f5222726dcc15d16581bdab6ce60ff44ccb)
+
+修正 Playwright 在按鈕文字切換為背景執行狀態後找不到原 locator 的問題，改用穩定元素定位驗證 disabled 與更新完成狀態。
+
+> 💡 <strong>學習重點：</strong> E2E locator 應鎖定穩定身分，不應依賴互動過程會改變的顯示文字。
+
+</details>
 
 ---
 

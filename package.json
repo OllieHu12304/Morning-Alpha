@@ -1,5 +1,6 @@
 {
   "name": "morning-alpha",
+  "version": "0.3.2",
   "private": true,
   "scripts": {
     "test:e2e": "playwright test"

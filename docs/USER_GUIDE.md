@@ -1,6 +1,6 @@
 # Morning Alpha 使用手冊
 
-本手冊只描述 repository 在 `v0.3.0` 實際完成的功能。Morning Alpha 可以在本機或 Docker 中安裝、執行、學習及展示，但尚未達到可直接公開營運的投資產品等級。
+本手冊只描述 repository 在 `v0.3.2` 實際完成的功能。Morning Alpha 可以在本機或 Docker 中安裝、執行、學習及展示，但尚未達到可直接公開營運的投資產品等級。
 
 ## 1. 專案概覽
 
@@ -13,7 +13,7 @@ Morning Alpha 解決的問題是：科技與財經資訊分散在不同來源，
 3. 查看來源、分類、中文關鍵字、來源健康與 Pipeline 歷史。
 4. 閱讀每日 07:00（Asia/Taipei）固定時間窗的規則式晨報。
 5. 查看新聞標題辨識出的 TWSE 公司、產業與股票代號。
-6. 查看 TWSE 每日盤後價格及季度財務摘要。
+6. 查看 TWSE 每日盤後價格、近期缺漏交易日回補及季度財務摘要。
 7. 觀察新聞前後交易日價格變化，但不把時間關聯說成因果。
 8. 建立本機公司追蹤清單，閱讀個人化追蹤晨報。
 
@@ -31,10 +31,10 @@ Morning Alpha 解決的問題是：科技與財經資訊分散在不同來源，
 | 中文關鍵字 | `jieba-py` 斷詞、Pandas 統計 Top 20 | jieba、Pandas |
 | 公司資料 | TWSE 上市公司、產業、股票代號及別名 | TWSE OpenAPI、MySQL |
 | 公司辨識 | 以公司名、簡稱、ticker 與 alias 比對新聞標題 | Python 規則式 matching |
-| 市場價格 | TWSE 上市個股每日盤後價格 | TWSE OpenAPI、PyMySQL |
+| 市場價格 | TWSE 上市個股最新盤後價格，並回補最近 14 個日曆日範圍內缺少的平日資料 | TWSE 官方 JSON、PyMySQL |
 | 財務摘要 | TWSE 上市公司季度 EPS、營收、利益與淨利 | TWSE OpenAPI、PyMySQL |
 | 每日晨報 | 固定時間窗內的來源、分類、關鍵字與最多 5 篇 highlights | Python、MySQL JSON |
-| 事件市場觀察 | 找新聞前後可用交易日收盤價並計算變化 | Python、MySQL；標示非因果 |
+| 事件市場觀察 | 找新聞前後可用交易日收盤價並計算變化；不足時顯示公司關聯或交易日缺口 | Python、MySQL；標示非因果 |
 | 追蹤清單 | 本機單一使用者加入／移除公司 | Flask POST/DELETE、MySQL |
 | 個人化晨報 | 只計入追蹤公司且公司比對成功的新聞 | Flask、Python |
 | Dashboard | 新聞、圖表、晨報、公司資料、追蹤清單與狀態 | HTML、CSS、JavaScript、Chart.js |
@@ -61,7 +61,7 @@ flowchart TD
     I --> J
     J --> K[("news_company_links")]
 
-    L["TWSE 每日價格 OpenAPI"] --> M[("market_prices")]
+    L["TWSE 最新與指定日期盤後資料"] --> M[("market_prices")]
     N["TWSE 財務 OpenAPI"] --> O[("financial_metrics")]
 
     G --> P["每日晨報與資料分析"]
@@ -143,6 +143,7 @@ Morning-Alpha/
 | `src/run_migrations.py` | 既有 database 升級前 | `sql/001`～`013` |
 | `src/news_sources.py` | Pipeline 第 1 步 | TechNews、中央社、自由時報、Yahoo股市、TWSE 重大訊息 adapters |
 | `src/twse_*_adapter.py` | Pipeline 第 2、4、5 步 | TWSE 官方 OpenAPI |
+| `src/sync_market_prices.py` | Pipeline 第 4 步 | 最新價格、近期缺漏日期偵測與歷史價格回補 |
 | `src/company_matching.py` | Pipeline 第 3 步 | 公司候選資料與新聞標題 |
 | `src/daily_brief.py` | Pipeline 第 6 步 | 新聞 records、固定時間窗 |
 | `src/watchlist.py` | API 讀寫追蹤清單 | `watchlist_items`、公司資料 |
@@ -273,7 +274,7 @@ python3 start.py
 1. 新聞擷取、Pandas 整理、MySQL 寫入。
 2. TWSE 公司目錄同步。
 3. 新聞標題與公司關聯重建。
-4. TWSE 每日盤後價格同步。
+4. TWSE 最新盤後價格同步，並回補最近 14 個日曆日範圍內缺少的平日；週末或官方無資料的休市日會略過。
 5. TWSE 季度財務摘要同步。
 6. 每日晨報產生與保存。
 7. 新聞／metadata JSON 匯出。
@@ -304,6 +305,8 @@ Morning Alpha 資料更新完成。
 MySQL 新增新聞：[實際筆數] 筆
 TWSE 公司資料：[實際筆數] 筆
 新聞公司關聯：[實際筆數] 筆
+TWSE 最新交易日：[實際日期]
+歷史價格回補：[有缺漏時顯示日期]
 ```
 
 JSON 格式範例：
@@ -326,7 +329,7 @@ JSON 格式範例：
 ]
 ```
 
-Dashboard 應顯示晨報、追蹤晨報、來源健康、Pipeline 歷史、新聞統計、公司市場資料、事件觀察及新聞列表。若某區沒有足夠資料，應顯示空狀態，而不是偽造結果。
+Dashboard 應顯示晨報、追蹤晨報、來源健康、Pipeline 歷史、新聞統計、公司市場資料、事件觀察及新聞列表。若 Event Observation 沒有結果，頁面會區分「沒有公司新聞關聯」、「交易日不足」或「事件附近缺少價格」，而不是偽造結果。
 
 ## 9. Database
 
@@ -383,7 +386,8 @@ LIMIT 20;
 - 每日晨報：顯示固定時間窗、摘要、來源／分類／關鍵字及 highlights。
 - 我的追蹤晨報：可用股票代號、公司名稱或簡稱搜尋並加入公司；追蹤 chips 可直接移除，晨報顯示本期相關新聞。
 - 公司市場資料：選公司後顯示最近收盤價、價差、EPS、價格圖與季度 table；按「加入追蹤」或「移除追蹤」管理清單。
-- 新聞事件與市場變化：只讀時間關聯觀察；不能當成買賣訊號。
+- 新聞事件與市場變化：只讀時間關聯觀察；不能當成買賣訊號。空白時會顯示目前公司關聯與價格日期是否足夠。
+- 資料來源狀態：「新聞列表篇數」與 Latest News 使用同一份每來源最新 60 篇平衡資料；它不是當次 crawler 原始筆數，也不是 MySQL 累積總數。
 - 新聞列表：搜尋標題／來源／分類／公司，使用 select 篩選、點欄位排序及前後頁按鈕。
 - 同事件：只有分組成功且多篇的事件才會出現「查看同事件」。文章不會因事件相同而刪除。
 
@@ -400,6 +404,9 @@ LIMIT 20;
 | JSON 找不到 | 從 repository 根目錄跑完整 Pipeline；但 Dashboard 本身使用 API，不依賴 JSON |
 | 追蹤清單載入失敗 | 確認 Migration 012 已套用，或重新完成九步 Pipeline |
 | Pipeline 在 TWSE 步驟停止 | 市場／財務官方 API 是必要步驟；查看 log，來源恢復後重跑 |
+| 股價停在較早交易日 | 查看 Pipeline Step 4 的「TWSE 最新交易日」與 freshness warning；程式會嘗試回補最近 14 個日曆日內的缺漏平日，但不會補齊完整歷史 |
+| Event Observation 沒有資料 | 依頁面提示確認 Step 3 是否建立公司關聯，以及 `market_prices` 是否至少有事件附近兩個交易日 |
+| 來源狀態數量與 crawler log 不同 | 這是不同口徑：來源卡片以 Latest News 平衡樣本為準；crawler log 顯示當次來源解析量 |
 | Docker 修改密碼後仍失敗 | 既有 volume 不會因 `.env` 改密碼；需使用原密碼，或明確刪除不需要的 volume 後重建 |
 
 ## 12. 目前限制
@@ -410,7 +417,7 @@ LIMIT 20;
 - [自由時報官方 RSS](https://service.ltn.com.tw/RSS) 的免費使用限個人或非營利機構網站之非商業用途，並須標示新聞出處；本專案若改為商業用途，必須重新確認授權。
 - TWSE 重大訊息目前只保存主旨、公司與發言時間，沒有把完整「說明」欄位寫入資料庫。
 - 沒有文章全文、生成式 AI 摘要、情緒分析或投資評分。
-- 只有 TWSE 上市範圍；沒有 TPEx、海外股票、即時行情或完整歷史回補。
+- 只有 TWSE 上市範圍；沒有 TPEx、海外股票或即時行情。價格只回補最近 14 個日曆日內的缺漏平日，沒有完整歷史回補。
 - 公司辨識、事件分組及分類是規則式推論。
 - 不同平台同事件只分組、不刪除；canonical URL 阻止相同正規化網址，`source + source_article_id` 阻止同一取得管道重複匯入相同文章。
 - 事件與價格分析沒有控制大盤、產業、財報或其他同時因素，不能推論因果。
@@ -419,9 +426,9 @@ LIMIT 20;
 - 本機 scheduler 需要電腦和 Docker 持續運作。
 - 外部網站或官方 API 改版時，adapter 仍需人工修改。
 
-## 13. v0.3.0 發佈邊界與後續方向
+## 13. v0.3.2 發佈邊界與後續方向
 
-`v0.3.0` 已完成目前四階段範圍，正式進入功能凍結與維護狀態。接下來不預設增加功能；優先處理實際使用中發現的資料正確性、來源相容性、安全與文件問題。
+`v0.3.2` 已完成目前四階段範圍，並收斂追蹤晨報、價格新鮮度、缺漏交易日回補、事件觀察診斷及來源計數問題，正式進入功能凍結與維護狀態。接下來不預設增加功能；優先處理實際使用中發現的資料正確性、來源相容性、安全與文件問題。
 
 若未來重新啟動開發，可先評估歷史資料回補、公司辨識準確率量測、合法授權的新增來源，以及 production authentication／部署。這些只是候選方向，不是目前已完成的功能或既定承諾。
 
