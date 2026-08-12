@@ -6,7 +6,7 @@ Morning Alpha 是一個繁體中文科技與財經資訊整理學習專案。它
 
 ## 使用者可以做什麼
 
-- 閱讀 TechNews、中央社財經、自由時報財經與 TWSE 上市公司官方重大訊息。
+- 閱讀 TechNews、中央社財經、自由時報財經、Yahoo股市聚合 RSS 與 TWSE 上市公司官方重大訊息。
 - 搜尋、排序、分頁，並依來源、分析分類、公司或同事件篩選新聞。
 - 查看來源、分類與中文斷詞關鍵字統計。
 - 查看資料來源健康狀態與最近 Pipeline 執行紀錄。
@@ -18,8 +18,9 @@ Morning Alpha 是一個繁體中文科技與財經資訊整理學習專案。它
 
 ## 重要限制
 
-- 媒體新聞目前有 TechNews、中央社財經與自由時報財經；TWSE 來源是每日官方重大訊息，不等同媒體報導，也不含公告全文。
+- 媒體新聞目前有 TechNews、中央社財經、自由時報財經與 Yahoo股市聚合 RSS；TWSE 來源是每日官方重大訊息，不等同媒體報導，也不含公告全文。
 - TechNews 每次解析首頁所有符合結構的文章；中央社另以 URL 與彩券標題規則排除非目標文章；自由時報使用官方財經 RSS。
+- Yahoo股市正式 RSS 沒有提供原始 publisher，程式會誠實標記為 `Yahoo股市`，不會從標題猜測媒體。
 - [自由時報官方 RSS](https://service.ltn.com.tw/RSS) 僅在目前個人、非商業用途下使用並標示出處；若改為商業用途，必須重新確認授權。
 - 新聞摘要只使用標題與結構化欄位，沒有讀取文章全文，也不是 AI 摘要。
 - 公司辨識、分類、事件分組及關鍵字分析都是規則式方法，可能漏判或誤判。
@@ -36,6 +37,7 @@ flowchart LR
     A["TechNews HTML"] --> C["新聞來源 adapters"]
     B["中央社財經 RSS"] --> C
     V["自由時報財經 RSS"] --> C
+    Y["Yahoo股市聚合 RSS"] --> C
     S["TWSE 每日重大訊息 OpenAPI"] --> C
     C --> D["Pandas 整理與資料品質規則"]
     D --> E[("MySQL 新聞與健康紀錄")]
@@ -83,7 +85,7 @@ Dashboard 目前直接讀取 Flask API 與 MySQL；JSON 是學習、檢查與備
 
 API 啟動後，也可以在 Dashboard 的「Pipeline 執行紀錄」區按下「立即更新資料」。Pipeline 會在同一個 Python 與 MySQL 環境中背景執行，執行期間按鈕會鎖定，成功後頁面會自動重新載入最新資料。
 
-新聞身分中，`source` 代表 Morning Alpha 實際使用的 adapter／取得管道，`publisher` 代表原始發布媒體。直接來源兩者通常相同；未來聚合來源則可能不同。`source_article_id` 與 canonical URL 共同阻止確定的重複匯入，相似新聞仍只分組、不刪除。
+新聞身分中，`source` 代表 Morning Alpha 實際使用的 adapter／取得管道，`publisher` 通常代表原始發布媒體。Yahoo股市 RSS 未提供原始 publisher，因此目前明確保存為 `Yahoo股市`。`source_article_id` 與 canonical URL 共同阻止確定的重複匯入，相似新聞仍只分組、不刪除。
 
 ## 技術
 

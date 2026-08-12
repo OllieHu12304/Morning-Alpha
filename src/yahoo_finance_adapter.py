@@ -15,6 +15,7 @@ from news_record import create_news_record
 SOURCE = "yahoo_tw_finance"
 SOURCE_CATEGORY = "台股動態"
 SOURCE_NAME = "Yahoo股市台股動態 RSS"
+DEFAULT_PUBLISHER = "Yahoo股市"
 RSS_URL = "https://tw.stock.yahoo.com/rss?category=tw-market"
 REQUEST_TIMEOUT = 10
 TAIPEI_TIMEZONE = ZoneInfo("Asia/Taipei")
@@ -47,18 +48,14 @@ def get_source_article_id(guid, url):
     return extract_article_id(url)
 
 
-def get_publisher(item, title):
-    """讀取 RSS source；缺少時從標題最後的出處文字取得 publisher。"""
+def get_publisher(item):
+    """讀取 RSS source；正式 feed 未提供時明確標記為 Yahoo股市。"""
     source_element = item.findtext("source")
 
     if source_element and source_element.strip():
         return source_element.strip()
 
-    if " - " not in title:
-        return None
-
-    publisher = title.rsplit(" - ", 1)[1].strip()
-    return publisher or None
+    return DEFAULT_PUBLISHER
 
 
 def fetch_feed():
@@ -92,7 +89,7 @@ def parse_publish_time(publish_time_text):
 
 
 def parse_articles(xml_text):
-    """解析 Yahoo RSS，並保留聚合管道、原始 publisher 與文章 ID。"""
+    """解析 Yahoo RSS，並保留聚合管道、可得 publisher 與文章 ID。"""
     try:
         root = ElementTree.fromstring(xml_text)
     except ElementTree.ParseError as error:
@@ -116,10 +113,10 @@ def parse_articles(xml_text):
             skipped_count += 1
             continue
 
-        publisher = get_publisher(item, title)
+        publisher = get_publisher(item)
         source_article_id = get_source_article_id(guid, url)
 
-        if not publisher or not source_article_id:
+        if not source_article_id:
             skipped_count += 1
             continue
 
@@ -135,7 +132,7 @@ def parse_articles(xml_text):
 
     if skipped_count:
         logger.warning(
-            "Yahoo股市 RSS 有 %s 筆 item 缺少必要欄位、publisher 或文章 ID。",
+            "Yahoo股市 RSS 有 %s 筆 item 缺少必要欄位或文章 ID。",
             skipped_count,
         )
 

@@ -28,21 +28,21 @@ class YahooFinanceAdapterTests(unittest.TestCase):
         self.assertEqual(len(articles), 2)
         self.assertEqual(articles[0], {
             "source": "yahoo_tw_finance",
-            "publisher": "中央社財經",
+            "publisher": "Yahoo股市",
             "source_article_id": "021600898",
             "source_category": "台股動態",
-            "title": "國巨公布七月營收 AI 需求持續成長 - 中央社財經",
-            "publish_time": datetime(2026, 8, 11, 10, 20),
+            "title": "國巨公布七月營收 AI 需求持續成長",
+            "publish_time": datetime(2026, 8, 12, 15, 24, 20),
             "url": (
                 "https://tw.stock.yahoo.com/news/"
                 "yageo-revenue-021600898.html"
             ),
         })
 
-    def test_title_suffix_is_used_when_source_element_is_missing(self):
+    def test_live_feed_without_source_or_guid_uses_safe_fallbacks(self):
         articles = parse_articles(FIXTURE_PATH.read_text(encoding="utf-8"))
 
-        self.assertEqual(articles[1]["publisher"], "MoneyDJ理財網")
+        self.assertEqual(articles[1]["publisher"], "Yahoo股市")
         self.assertEqual(articles[1]["source_article_id"], "071900087")
 
     def test_guid_text_is_kept_when_it_is_not_a_yahoo_url(self):

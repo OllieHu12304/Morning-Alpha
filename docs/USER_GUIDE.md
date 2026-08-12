@@ -8,7 +8,7 @@ Morning Alpha 解決的問題是：科技與財經資訊分散在不同來源，
 
 使用者執行一個 Pipeline 後，可以在 Dashboard 完成以下任務：
 
-1. 集中閱讀 TechNews、中央社財經、自由時報財經與 TWSE 官方重大訊息。
+1. 集中閱讀 TechNews、中央社財經、自由時報財經、Yahoo股市聚合 RSS 與 TWSE 官方重大訊息。
 2. 搜尋、排序、分頁，並依來源、分類、公司及同事件篩選。
 3. 查看來源、分類、中文關鍵字、來源健康與 Pipeline 歷史。
 4. 閱讀每日 07:00（Asia/Taipei）固定時間窗的規則式晨報。
@@ -23,7 +23,7 @@ Morning Alpha 解決的問題是：科技與財經資訊分散在不同來源，
 
 | 功能 | 實際內容 | 主要技術 |
 | --- | --- | --- |
-| 多來源資訊 | TechNews 首頁所有符合結構的文章；中央社與自由時報財經 RSS；TWSE 上市公司每日重大訊息 | Requests、BeautifulSoup、XML／JSON parser |
+| 多來源資訊 | TechNews 首頁文章；中央社、自由時報與 Yahoo股市 RSS；TWSE 上市公司每日重大訊息 | Requests、BeautifulSoup、XML／JSON parser |
 | 共同資料格式 | adapter 轉成相同 News Record，再交給 Pandas | Python、Pandas |
 | 新聞身分與去重 | 分開保存取得來源、原始發布媒體與來源文章 ID；canonical URL 與來源文章 ID 使用 UNIQUE index | Python、MySQL |
 | 分類與事件分組 | 標題規則分類；72 小時內用共同關鍵字與 Jaccard similarity 分組 | Python |
@@ -48,6 +48,7 @@ flowchart TD
     A["TechNews HTML"] --> C["新聞 adapters"]
     B["中央社財經 RSS"] --> C
     V["自由時報財經 RSS"] --> C
+    Y["Yahoo股市聚合 RSS"] --> C
     U["TWSE 每日重大訊息 OpenAPI"] --> C
     C --> D["BeautifulSoup / XML 解析"]
     D --> E["共同 News Record"]
@@ -75,7 +76,7 @@ flowchart TD
 
 關鍵觀念：MySQL 是目前 Dashboard 的正式資料來源；`news.json`、`chart_data.json`、`keyword.json`、`metadata.json` 仍由 Pipeline 產生，但主要用於學習、檢查與備援。
 
-新聞的 `source` 是 Morning Alpha 取得資料的 adapter／管道，`publisher` 是原始發布媒體。直接 RSS 或網站來源通常兩者相同；未來若透過聚合服務取得中央社文章，則可保存成 `source=聚合服務`、`publisher=cna`。Dashboard 優先顯示 `publisher`。
+新聞的 `source` 是 Morning Alpha 取得資料的 adapter／管道，`publisher` 通常是原始發布媒體。Yahoo股市正式 RSS 沒有提供原始 publisher，因此保存為 `source=yahoo_tw_finance`、`publisher=Yahoo股市`，不使用標題猜測媒體。Dashboard 優先顯示 `publisher`。
 
 ## 4. 專案結構
 
@@ -394,6 +395,7 @@ LIMIT 20;
 ## 12. 目前限制
 
 - TechNews 目前解析首頁所有符合結構的文章，但不會自動翻閱分類頁或回補歷史文章；TWSE 重大訊息是官方公告，不是媒體新聞。
+- Yahoo股市 RSS 沒有提供原始 publisher，聚合文章目前統一顯示為 `Yahoo股市`。
 - [自由時報官方 RSS](https://service.ltn.com.tw/RSS) 的免費使用限個人或非營利機構網站之非商業用途，並須標示新聞出處；本專案若改為商業用途，必須重新確認授權。
 - TWSE 重大訊息目前只保存主旨、公司與發言時間，沒有把完整「說明」欄位寫入資料庫。
 - 沒有文章全文、生成式 AI 摘要、情緒分析或投資評分。

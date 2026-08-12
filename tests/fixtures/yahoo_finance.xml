@@ -3,20 +3,23 @@
     <channel>
         <title>Yahoo股市台股動態</title>
         <item>
-            <title><![CDATA[國巨公布七月營收 AI 需求持續成長 - 中央社財經]]></title>
+            <title><![CDATA[國巨公布七月營收 AI 需求持續成長]]></title>
             <link>https://tw.stock.yahoo.com/news/yageo-revenue-021600898.html</link>
-            <guid isPermaLink="true">https://tw.stock.yahoo.com/news/yageo-revenue-021600898.html</guid>
-            <source>中央社財經</source>
-            <pubDate>Tue, 11 Aug 2026 10:20:00 +0800</pubDate>
+            <guid isPermaLink="false"></guid>
+            <description><![CDATA[國巨公布最新營運資訊。]]></description>
+            <pubDate>Wed, 12 Aug 2026 07:24:20 GMT</pubDate>
         </item>
         <item>
-            <title><![CDATA[台積電先進製程帶動營運成長 - MoneyDJ理財網]]></title>
+            <title><![CDATA[台積電先進製程帶動營運成長]]></title>
             <link>https://tw.stock.yahoo.com/news/tsmc-growth-071900087.html</link>
+            <guid isPermaLink="false"></guid>
+            <description><![CDATA[台積電先進製程需求持續增加。]]></description>
             <pubDate>Tue, 11 Aug 2026 09:10:00 +0800</pubDate>
         </item>
         <item>
-            <title>缺少原始 publisher 的測試資料</title>
-            <link>https://tw.stock.yahoo.com/news/missing-publisher-090400556.html</link>
+            <title>缺少文章 ID 的測試資料</title>
+            <link>https://tw.stock.yahoo.com/news/missing-article-id.html</link>
+            <guid isPermaLink="false"></guid>
             <pubDate>Tue, 11 Aug 2026 08:00:00 +0800</pubDate>
         </item>
     </channel>
