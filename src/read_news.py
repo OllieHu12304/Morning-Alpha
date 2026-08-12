@@ -23,6 +23,7 @@ FROM news_records;
 """
 
 DISPLAY_LIMIT = 20
+DASHBOARD_SOURCE_LIMIT = 60
 
 
 def fetch_all_news(connection):
@@ -72,6 +73,57 @@ def get_latest_news(dataframe):
     ).head(DISPLAY_LIMIT)
 
     return latest_news.reset_index(drop=True)
+
+
+def get_balanced_recent_news(
+    dataframe,
+    per_source_limit=DASHBOARD_SOURCE_LIMIT,
+):
+    """每個取得來源保留發布時間最新的固定筆數，再合併排序。"""
+    if (
+        not isinstance(per_source_limit, int)
+        or isinstance(per_source_limit, bool)
+        or per_source_limit < 1
+    ):
+        raise ValueError("每個來源的新聞上限必須是正整數。")
+
+    if dataframe.empty:
+        return dataframe.copy()
+
+    required_columns = {"source", "publish_time"}
+
+    if not required_columns.issubset(dataframe.columns):
+        raise ValueError("平衡新聞資料需要 source 與 publish_time 欄位。")
+
+    prepared_dataframe = dataframe.copy()
+    prepared_dataframe["publish_time"] = pd.to_datetime(
+        prepared_dataframe["publish_time"],
+        errors="coerce",
+    )
+    source_dataframes = []
+
+    for source in prepared_dataframe["source"].dropna().unique():
+        source_dataframe = prepared_dataframe.loc[
+            prepared_dataframe["source"] == source
+        ]
+        source_dataframe = source_dataframe.sort_values(
+            by="publish_time",
+            ascending=False,
+        ).head(per_source_limit)
+        source_dataframes.append(source_dataframe)
+
+    if not source_dataframes:
+        return prepared_dataframe.iloc[0:0].copy()
+
+    balanced_dataframe = pd.concat(
+        source_dataframes,
+        ignore_index=True,
+    )
+    balanced_dataframe = balanced_dataframe.sort_values(
+        by="publish_time",
+        ascending=False,
+    )
+    return balanced_dataframe.reset_index(drop=True)
 
 
 def load_all_news():

@@ -28,6 +28,7 @@ SOURCE_CODE_LABELS = {
     "technews": "TechNews 科技新報",
     "twse": "TWSE 官方重大訊息",
     "twse_disclosure": "TWSE 官方重大訊息",
+    "yahoo_tw_finance": "Yahoo股市聚合 RSS",
 }
 
 def load_news_records(input_path=NEWS_JSON_PATH):
@@ -53,8 +54,8 @@ def get_source_label(url):
 
 
 def get_record_source_label(record):
-    """優先顯示原始發布媒體，舊資料才使用取得來源。"""
-    source = record.get("publisher") or record.get("source")
+    """使用取得管道統計五個來源，缺少時才退回 publisher。"""
+    source = record.get("source") or record.get("publisher")
 
     if source:
         return SOURCE_CODE_LABELS.get(source, str(source))

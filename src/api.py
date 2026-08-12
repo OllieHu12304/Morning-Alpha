@@ -27,7 +27,7 @@ from news_company_links import load_news_company_links
 from pipeline_history import build_pipeline_run_records, load_pipeline_runs
 from pipeline_process import get_pipeline_status, start_pipeline
 from personalized_brief import load_personalized_brief
-from read_news import load_all_news
+from read_news import get_balanced_recent_news, load_all_news
 from source_health import build_source_health_summary, load_source_health_events
 from watchlist import (
     add_watchlist_company,
@@ -104,7 +104,11 @@ def build_news_payload(dataframe, company_links=None):
     if company_links is None:
         company_links = []
 
-    records = prepare_dashboard_records(dataframe, include_id=True)
+    balanced_dataframe = get_balanced_recent_news(dataframe)
+    records = prepare_dashboard_records(
+        balanced_dataframe,
+        include_id=True,
+    )
     records = attach_companies_to_news(records, company_links)
     records = group_similar_events(records)
 
@@ -116,7 +120,8 @@ def build_news_payload(dataframe, company_links=None):
 
 def build_analytics_payload(dataframe):
     """使用現有分析函式建立 Dashboard 統計 response。"""
-    records = prepare_dashboard_records(dataframe)
+    balanced_dataframe = get_balanced_recent_news(dataframe)
+    records = prepare_dashboard_records(balanced_dataframe)
     chart_data = generate_chart_data(records)
     title_dataframe = create_title_dataframe(records)
     keyword_dataframe = count_top_keywords(title_dataframe)

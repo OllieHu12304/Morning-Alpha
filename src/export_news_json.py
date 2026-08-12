@@ -8,7 +8,7 @@ import pandas as pd
 import pymysql
 
 from event_grouping import group_similar_events
-from read_news import load_all_news
+from read_news import get_balanced_recent_news, load_all_news
 
 
 JSON_OUTPUT_PATH = (
@@ -112,6 +112,7 @@ def main():
     """從 MySQL 讀取全部新聞並匯出 dashboard JSON。"""
     try:
         dataframe = load_all_news()
+        dataframe = get_balanced_recent_news(dataframe)
         records = prepare_dashboard_records(dataframe)
         records = group_similar_events(records)
         export_json(records)

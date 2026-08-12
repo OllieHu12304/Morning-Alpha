@@ -40,7 +40,7 @@ from pipeline_history import (
     utc_now,
     update_step_result,
 )
-from read_news import load_all_news
+from read_news import get_balanced_recent_news, load_all_news
 from source_health import save_source_health_events
 from store_news import save_news
 from sync_company_directory import run as sync_company_directory
@@ -83,6 +83,7 @@ def collect_and_store_news():
 def export_dashboard_news():
     """從 MySQL 匯出 dashboard/news.json。"""
     dataframe = load_all_news()
+    dataframe = get_balanced_recent_news(dataframe)
     records = prepare_dashboard_records(dataframe)
     records = group_similar_events(records)
     export_json(records)

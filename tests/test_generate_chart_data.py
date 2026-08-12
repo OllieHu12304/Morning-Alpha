@@ -46,7 +46,7 @@ class GenerateChartDataTests(unittest.TestCase):
             "自由時報財經",
         )
 
-    def test_record_source_label_prefers_original_publisher(self):
+    def test_record_source_label_uses_aggregator_as_acquisition_source(self):
         record = {
             "source": "future_aggregator",
             "publisher": "cna",
@@ -55,7 +55,19 @@ class GenerateChartDataTests(unittest.TestCase):
 
         self.assertEqual(
             get_record_source_label(record),
-            "中央通訊社",
+            "future_aggregator",
+        )
+
+    def test_record_source_label_maps_yahoo_aggregator(self):
+        record = {
+            "source": "yahoo_tw_finance",
+            "publisher": "Yahoo股市",
+            "url": "https://tw.stock.yahoo.com/news/example.html",
+        }
+
+        self.assertEqual(
+            get_record_source_label(record),
+            "Yahoo股市聚合 RSS",
         )
 
     def test_count_keywords_uses_top_twenty_pandas_rules(self):

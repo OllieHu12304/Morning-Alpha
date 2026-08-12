@@ -24,6 +24,7 @@ Morning Alpha 解決的問題是：科技與財經資訊分散在不同來源，
 | 功能 | 實際內容 | 主要技術 |
 | --- | --- | --- |
 | 多來源資訊 | TechNews 首頁文章；中央社、自由時報與 Yahoo股市 RSS；TWSE 上市公司每日重大訊息 | Requests、BeautifulSoup、XML／JSON parser |
+| 平衡近期樣本 | MySQL 保存全部文章；Dashboard 按每個取得來源採用最新 60 篇 | Pandas |
 | 共同資料格式 | adapter 轉成相同 News Record，再交給 Pandas | Python、Pandas |
 | 新聞身分與去重 | 分開保存取得來源、原始發布媒體與來源文章 ID；canonical URL 與來源文章 ID 使用 UNIQUE index | Python、MySQL |
 | 分類與事件分組 | 標題規則分類；72 小時內用共同關鍵字與 Jaccard similarity 分組 | Python |
@@ -396,6 +397,7 @@ LIMIT 20;
 
 - TechNews 目前解析首頁所有符合結構的文章，但不會自動翻閱分類頁或回補歷史文章；TWSE 重大訊息是官方公告，不是媒體新聞。
 - Yahoo股市 RSS 沒有提供原始 publisher，聚合文章目前統一顯示為 `Yahoo股市`。
+- Dashboard 與備援新聞 JSON 每個取得來源最多採用發布時間最新 60 篇；這只限制分析／顯示樣本，不會刪除 MySQL 的完整資料。
 - [自由時報官方 RSS](https://service.ltn.com.tw/RSS) 的免費使用限個人或非營利機構網站之非商業用途，並須標示新聞出處；本專案若改為商業用途，必須重新確認授權。
 - TWSE 重大訊息目前只保存主旨、公司與發言時間，沒有把完整「說明」欄位寫入資料庫。
 - 沒有文章全文、生成式 AI 摘要、情緒分析或投資評分。
