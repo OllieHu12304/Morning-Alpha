@@ -19,6 +19,7 @@ class NewsSourcesTests(unittest.TestCase):
         technews_articles = [{"source": "technews"}]
         cna_articles = [{"source": "cna"}]
         ltn_articles = [{"source": "ltn"}]
+        yahoo_articles = [{"source": "yahoo_tw_finance"}]
         disclosure_articles = [{"source": "twse_disclosure"}]
 
         with patch.object(
@@ -35,6 +36,10 @@ class NewsSourcesTests(unittest.TestCase):
             return_value=ltn_articles,
         ), patch.object(
             news_sources,
+            "fetch_yahoo_finance",
+            return_value=yahoo_articles,
+        ), patch.object(
+            news_sources,
             "fetch_twse_disclosures",
             return_value=disclosure_articles,
         ):
@@ -45,6 +50,7 @@ class NewsSourcesTests(unittest.TestCase):
             technews_articles
             + cna_articles
             + ltn_articles
+            + yahoo_articles
             + disclosure_articles,
         )
 
@@ -62,6 +68,10 @@ class NewsSourcesTests(unittest.TestCase):
         ), patch.object(
             news_sources,
             "fetch_ltn_business",
+            return_value=[],
+        ), patch.object(
+            news_sources,
+            "fetch_yahoo_finance",
             return_value=[],
         ), patch.object(
             news_sources,
@@ -96,6 +106,10 @@ class NewsSourcesTests(unittest.TestCase):
             return_value=[],
         ), patch.object(
             news_sources,
+            "fetch_yahoo_finance",
+            return_value=[],
+        ), patch.object(
+            news_sources,
             "fetch_twse_disclosures",
             return_value=[],
         ):
@@ -121,6 +135,10 @@ class NewsSourcesTests(unittest.TestCase):
             news_sources,
             "fetch_ltn_business",
             side_effect=requests.HTTPError("LTN 503"),
+        ), patch.object(
+            news_sources,
+            "fetch_yahoo_finance",
+            side_effect=requests.HTTPError("Yahoo 503"),
         ), patch.object(
             news_sources,
             "fetch_twse_disclosures",
