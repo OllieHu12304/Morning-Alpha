@@ -3,7 +3,10 @@
 import pymysql
 
 from company_directory import fetch_company_candidates
-from company_matching import match_title_companies
+from company_matching import (
+    build_matching_context,
+    match_title_companies_with_context,
+)
 from store_news import connect_to_database, get_database_config
 
 
@@ -115,14 +118,15 @@ def sync_news_company_links(connection):
     """重新分析全部新聞並回傳新聞數與關聯數。"""
     create_news_company_links_table(connection)
     candidates = fetch_company_candidates(connection)
+    matching_context = build_matching_context(candidates)
     news_records = fetch_news_titles(connection)
     link_count = 0
 
     with connection.cursor() as cursor:
         for news_record in news_records:
-            matches = match_title_companies(
+            matches = match_title_companies_with_context(
                 news_record["title"],
-                candidates,
+                matching_context,
             )
             replace_news_links(
                 cursor,

@@ -9,8 +9,10 @@ SOURCE_DIRECTORY = Path(__file__).resolve().parent.parent / "src"
 sys.path.insert(0, str(SOURCE_DIRECTORY))
 
 from company_matching import (  # noqa: E402
+    build_matching_context,
     match_news_records,
     match_title_companies,
+    match_title_companies_with_context,
 )
 
 
@@ -157,6 +159,30 @@ class CompanyMatchingTests(unittest.TestCase):
 
         self.assertNotIn("company_matches", records[0])
         self.assertEqual(len(matched_records[0]["company_matches"]), 1)
+
+    def test_prepared_context_keeps_the_same_matching_result(self):
+        candidates = [make_candidate()]
+        matching_context = build_matching_context(candidates)
+
+        direct_matches = match_title_companies(
+            "台積電（2330）公布最新營收",
+            candidates,
+        )
+        context_matches = match_title_companies_with_context(
+            "台積電（2330）公布最新營收",
+            matching_context,
+        )
+
+        self.assertEqual(context_matches, direct_matches)
+
+    def test_build_matching_context_does_not_modify_candidates(self):
+        candidates = [make_candidate()]
+        original_candidates = [dict(candidates[0])]
+        original_candidates[0]["aliases"] = list(candidates[0]["aliases"])
+
+        build_matching_context(candidates)
+
+        self.assertEqual(candidates, original_candidates)
 
 
 if __name__ == "__main__":

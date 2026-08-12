@@ -68,6 +68,38 @@ class NewsCompanyLinksTests(unittest.TestCase):
         self.assertEqual(cursor.execute.call_count, 3)
         mock_create_table.assert_called_once_with(connection)
 
+    @patch("news_company_links.match_title_companies_with_context")
+    @patch("news_company_links.build_matching_context")
+    @patch("news_company_links.fetch_news_titles")
+    @patch("news_company_links.fetch_company_candidates")
+    @patch("news_company_links.create_news_company_links_table")
+    def test_sync_reuses_one_matching_context_for_all_news(
+        self,
+        mock_create_table,
+        mock_fetch_candidates,
+        mock_fetch_news,
+        mock_build_context,
+        mock_match_title,
+    ):
+        connection = MagicMock()
+        connection.cursor.return_value.__enter__.return_value = MagicMock()
+        candidates = [{"company_id": 9}]
+        matching_context = object()
+        mock_fetch_candidates.return_value = candidates
+        mock_fetch_news.return_value = [
+            {"news_id": 3, "title": "第一則新聞"},
+            {"news_id": 4, "title": "第二則新聞"},
+        ]
+        mock_build_context.return_value = matching_context
+        mock_match_title.side_effect = [[], []]
+
+        sync_news_company_links(connection)
+
+        mock_build_context.assert_called_once_with(candidates)
+        self.assertEqual(mock_match_title.call_count, 2)
+        mock_match_title.assert_any_call("第一則新聞", matching_context)
+        mock_match_title.assert_any_call("第二則新聞", matching_context)
+
     def test_build_records_converts_decimal_confidence(self):
         rows = [(3, 9, "台積電", Decimal("0.900"))]
         columns = ["news_id", "company_id", "name", "confidence"]

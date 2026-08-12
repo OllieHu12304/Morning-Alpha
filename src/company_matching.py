@@ -21,8 +21,14 @@ def get_alias_confidence(alias, is_official_short_name=False):
 
 def ticker_appears_in_title(title, ticker):
     """只匹配獨立股票代號，避免 2330 誤中 12330。"""
+    pattern = create_ticker_pattern(ticker)
+    return pattern.search(str(title)) is not None
+
+
+def create_ticker_pattern(ticker):
+    """預先編譯股票代號邊界規則，供多篇新聞重複使用。"""
     pattern = rf"(?<![0-9A-Za-z]){re.escape(str(ticker))}(?![0-9A-Za-z])"
-    return re.search(pattern, str(title), flags=re.IGNORECASE) is not None
+    return re.compile(pattern, flags=re.IGNORECASE)
 
 
 def build_ambiguous_aliases(candidates):
@@ -47,6 +53,62 @@ def build_ambiguous_aliases(candidates):
         for alias, company_ids in company_ids_by_alias.items()
         if len(company_ids) > 1
     }
+
+
+def prepare_candidate(candidate, ambiguous_aliases):
+    """預先整理一家公司不會因新聞標題改變的比對資料。"""
+    company_name = str(candidate.get("name") or "").strip()
+    short_name = str(candidate.get("short_name") or "").strip()
+    ticker = str(candidate.get("ticker") or "").strip()
+    normalized_short_name = normalize_text(short_name)
+    aliases = []
+
+    for alias_value in candidate.get("aliases", []):
+        alias = str(alias_value).strip()
+        normalized_alias = normalize_text(alias)
+
+        if (
+            len(normalized_alias) < MIN_ALIAS_LENGTH
+            or normalized_alias in ambiguous_aliases
+        ):
+            continue
+
+        aliases.append({
+            "text": alias,
+            "normalized_text": normalized_alias,
+            "confidence": get_alias_confidence(
+                normalized_alias,
+                is_official_short_name=(
+                    normalized_alias == normalized_short_name
+                ),
+            ),
+        })
+
+    return {
+        "candidate": candidate,
+        "company_name": company_name,
+        "normalized_name": normalize_text(company_name),
+        "ticker": ticker,
+        "normalized_ticker": normalize_text(ticker),
+        "ticker_pattern": create_ticker_pattern(ticker) if ticker else None,
+        "aliases": aliases,
+    }
+
+
+def build_matching_context(candidates):
+    """建立可供多篇新聞共同使用的公司比對 context。"""
+    if not isinstance(candidates, list):
+        raise ValueError("candidates 必須是 list。")
+
+    for candidate in candidates:
+        if not isinstance(candidate, dict) or not candidate.get("company_id"):
+            raise ValueError("公司候選資料格式不正確。")
+
+    ambiguous_aliases = build_ambiguous_aliases(candidates)
+    return [
+        prepare_candidate(candidate, ambiguous_aliases)
+        for candidate in candidates
+    ]
 
 
 def create_match(candidate, matched_text, match_method, confidence):
@@ -141,11 +203,12 @@ def remove_overlapping_matches(normalized_title, matches):
     return kept_matches
 
 
-def match_candidate(title, normalized_title, candidate, ambiguous_aliases):
-    """找出標題對一個公司候選的最佳 match。"""
+def match_prepared_candidate(title, normalized_title, prepared_candidate):
+    """使用預先整理的公司資料找出最佳 match。"""
     matches = []
-    company_name = str(candidate.get("name") or "").strip()
-    normalized_name = normalize_text(company_name)
+    candidate = prepared_candidate["candidate"]
+    company_name = prepared_candidate["company_name"]
+    normalized_name = prepared_candidate["normalized_name"]
 
     if normalized_name and normalized_name in normalized_title:
         matches.append(create_match(
@@ -155,9 +218,14 @@ def match_candidate(title, normalized_title, candidate, ambiguous_aliases):
             1.0,
         ))
 
-    ticker = str(candidate.get("ticker") or "").strip()
+    ticker = prepared_candidate["ticker"]
+    ticker_pattern = prepared_candidate["ticker_pattern"]
 
-    if ticker and ticker_appears_in_title(title, ticker):
+    if (
+        ticker_pattern is not None
+        and prepared_candidate["normalized_ticker"] in normalized_title
+        and ticker_pattern.search(title) is not None
+    ):
         matches.append(create_match(
             candidate,
             ticker,
@@ -165,28 +233,15 @@ def match_candidate(title, normalized_title, candidate, ambiguous_aliases):
             1.0,
         ))
 
-    for alias_value in candidate.get("aliases", []):
-        alias = str(alias_value).strip()
-        normalized_alias = normalize_text(alias)
-        normalized_short_name = normalize_text(candidate.get("short_name"))
-
-        if (
-            len(normalized_alias) < MIN_ALIAS_LENGTH
-            or normalized_alias in ambiguous_aliases
-            or normalized_alias not in normalized_title
-        ):
+    for alias in prepared_candidate["aliases"]:
+        if alias["normalized_text"] not in normalized_title:
             continue
 
         matches.append(create_match(
             candidate,
-            alias,
+            alias["text"],
             "alias",
-            get_alias_confidence(
-                normalized_alias,
-                is_official_short_name=(
-                    normalized_alias == normalized_short_name
-                ),
-            ),
+            alias["confidence"],
         ))
 
     if not matches:
@@ -203,28 +258,20 @@ def match_candidate(title, normalized_title, candidate, ambiguous_aliases):
     )
 
 
-def match_title_companies(title, candidates):
-    """回傳標題中所有可解釋且不模糊的公司 matches。"""
-    if not isinstance(candidates, list):
-        raise ValueError("candidates 必須是 list。")
-
+def match_title_companies_with_context(title, matching_context):
+    """使用同一份 context 比對一篇新聞標題。"""
     normalized_title = normalize_text(title)
 
     if not normalized_title:
         return []
 
-    ambiguous_aliases = build_ambiguous_aliases(candidates)
     matches = []
 
-    for candidate in candidates:
-        if not isinstance(candidate, dict) or not candidate.get("company_id"):
-            raise ValueError("公司候選資料格式不正確。")
-
-        match = match_candidate(
+    for prepared_candidate in matching_context:
+        match = match_prepared_candidate(
             str(title),
             normalized_title,
-            candidate,
-            ambiguous_aliases,
+            prepared_candidate,
         )
 
         if match is not None:
@@ -238,11 +285,21 @@ def match_title_companies(title, candidates):
     )
 
 
+def match_title_companies(title, candidates):
+    """建立單次 context，回傳標題中的公司 matches。"""
+    if not normalize_text(title):
+        return []
+
+    matching_context = build_matching_context(candidates)
+    return match_title_companies_with_context(title, matching_context)
+
+
 def match_news_records(records, candidates):
     """為新聞副本加入 company_matches，不改變原始 records。"""
     if not isinstance(records, list):
         raise ValueError("records 必須是 list。")
 
+    matching_context = build_matching_context(candidates)
     matched_records = []
 
     for record in records:
@@ -250,9 +307,9 @@ def match_news_records(records, candidates):
             raise ValueError("每一筆新聞資料都必須是 object。")
 
         matched_record = dict(record)
-        matched_record["company_matches"] = match_title_companies(
+        matched_record["company_matches"] = match_title_companies_with_context(
             record.get("title", ""),
-            candidates,
+            matching_context,
         )
         matched_records.append(matched_record)
 
