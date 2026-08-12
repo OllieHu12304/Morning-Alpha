@@ -19,6 +19,7 @@ const SOURCE_LABELS = {
     technews: "TechNews 科技新報",
     twse: "TWSE 官方重大訊息",
     twse_disclosure: "TWSE 官方重大訊息",
+    yahoo_tw_finance: "Yahoo股市聚合 RSS",
 };
 
 const tableBody = document.querySelector("#news-table-body");
@@ -833,12 +834,12 @@ function createSourceHealthCard(record) {
     details.className = "source-health-details";
     appendSourceHealthDetail(
         details,
-        "最近嘗試",
+        "最近擷取",
         formatHealthTime(record.last_attempt_at),
     );
     appendSourceHealthDetail(
         details,
-        "最近成功",
+        "最近成功擷取",
         formatHealthTime(record.last_success_at),
     );
     appendSourceHealthDetail(

@@ -221,6 +221,7 @@ class ApiTests(unittest.TestCase):
                     0,
                     "HTTP 503",
                     datetime(2026, 8, 11, 10, 0),
+                    1786442400,
                 ),
                 (
                     "technews",
@@ -228,6 +229,7 @@ class ApiTests(unittest.TestCase):
                     5,
                     None,
                     datetime(2026, 8, 11, 9, 0),
+                    1786438800,
                 ),
             ],
             [
@@ -236,6 +238,7 @@ class ApiTests(unittest.TestCase):
                 "article_count",
                 "error_message",
                 "attempted_at",
+                "attempted_at_epoch",
             ],
         )
 

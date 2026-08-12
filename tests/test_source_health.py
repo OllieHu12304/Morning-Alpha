@@ -82,6 +82,7 @@ class SourceHealthTests(unittest.TestCase):
             "article_count",
             "error_message",
             "attempted_at",
+            "attempted_at_epoch",
         ]
         rows = [
             (
@@ -90,6 +91,7 @@ class SourceHealthTests(unittest.TestCase):
                 0,
                 "503 Server Error",
                 datetime(2026, 8, 11, 12, 0, 0),
+                1786449600,
             ),
             (
                 "technews",
@@ -97,6 +99,7 @@ class SourceHealthTests(unittest.TestCase):
                 5,
                 None,
                 datetime(2026, 8, 10, 12, 0, 0),
+                1786363200,
             ),
             (
                 "cna",
@@ -104,6 +107,7 @@ class SourceHealthTests(unittest.TestCase):
                 15,
                 None,
                 datetime(2026, 8, 11, 12, 1, 0),
+                1786449660,
             ),
         ]
 
@@ -130,6 +134,18 @@ class SourceHealthTests(unittest.TestCase):
                 "last_success_at": "2026-08-10T12:00:00+00:00",
             },
         ])
+
+    def test_epoch_time_does_not_double_apply_local_timezone(self):
+        self.assertEqual(
+            source_health.format_timestamp(1786433340),
+            "2026-08-11T07:29:00+00:00",
+        )
+
+    def test_read_query_uses_timezone_independent_epoch(self):
+        self.assertIn(
+            "UNIX_TIMESTAMP(attempted_at)",
+            source_health.READ_SOURCE_HEALTH_SQL,
+        )
 
     def test_migration_defines_append_only_table(self):
         migration_sql = (

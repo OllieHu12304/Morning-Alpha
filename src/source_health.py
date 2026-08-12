@@ -38,7 +38,8 @@ SELECT
     status,
     article_count,
     error_message,
-    attempted_at
+    attempted_at,
+    UNIX_TIMESTAMP(attempted_at) AS attempted_at_epoch
 FROM source_health_events
 ORDER BY attempted_at DESC, id DESC;
 """
@@ -136,10 +137,13 @@ def load_source_health_events():
         connection.close()
 
 
-def format_datetime(value):
-    """將 MySQL UTC datetime 轉成帶有 UTC offset 的 ISO 文字。"""
-    if isinstance(value, datetime):
-        utc_value = value.replace(tzinfo=timezone.utc)
+def format_timestamp(epoch_seconds):
+    """使用不受 MySQL session timezone 影響的 epoch 建立 UTC 時間。"""
+    if isinstance(epoch_seconds, (int, float)):
+        utc_value = datetime.fromtimestamp(
+            epoch_seconds,
+            tz=timezone.utc,
+        )
         return utc_value.isoformat(timespec="seconds")
 
     return None
@@ -162,7 +166,7 @@ def build_source_health_summary(rows, column_names):
             latest_by_source[source] = event
 
         if event["status"] == "success" and source not in last_success_by_source:
-            last_success_by_source[source] = event["attempted_at"]
+            last_success_by_source[source] = event["attempted_at_epoch"]
 
     summaries = []
 
@@ -173,8 +177,10 @@ def build_source_health_summary(rows, column_names):
             "status": latest["status"],
             "article_count": latest["article_count"],
             "error_message": latest["error_message"],
-            "last_attempt_at": format_datetime(latest["attempted_at"]),
-            "last_success_at": format_datetime(
+            "last_attempt_at": format_timestamp(
+                latest["attempted_at_epoch"]
+            ),
+            "last_success_at": format_timestamp(
                 last_success_by_source.get(source)
             ),
         })
