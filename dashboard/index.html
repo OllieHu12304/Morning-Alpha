@@ -126,13 +126,33 @@
                     <p class="section-label">Pipeline History</p>
                     <h2 id="pipeline-history-heading">Pipeline 執行紀錄</h2>
                 </div>
-                <p
-                    id="pipeline-history-message"
-                    class="status-message"
-                    role="status"
-                >
-                    正在載入執行紀錄…
-                </p>
+                <div class="pipeline-heading-actions">
+                    <div class="pipeline-control">
+                        <button
+                            id="pipeline-run-button"
+                            class="pipeline-run-button"
+                            type="button"
+                            disabled
+                        >
+                            正在確認狀態…
+                        </button>
+                        <p
+                            id="pipeline-control-message"
+                            class="pipeline-control-message"
+                            role="status"
+                            aria-live="polite"
+                        >
+                            正在確認 Pipeline 狀態…
+                        </p>
+                    </div>
+                    <p
+                        id="pipeline-history-message"
+                        class="status-message"
+                        role="status"
+                    >
+                        正在載入執行紀錄…
+                    </p>
+                </div>
             </div>
             <div id="pipeline-runs-list" class="pipeline-runs-list"></div>
         </section>

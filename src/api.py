@@ -25,6 +25,7 @@ from export_news_json import prepare_dashboard_records
 from generate_chart_data import generate_chart_data
 from news_company_links import load_news_company_links
 from pipeline_history import build_pipeline_run_records, load_pipeline_runs
+from pipeline_process import get_pipeline_status, start_pipeline
 from personalized_brief import load_personalized_brief
 from read_news import load_all_news
 from source_health import build_source_health_summary, load_source_health_events
@@ -36,6 +37,8 @@ from watchlist import (
 
 
 DASHBOARD_DIRECTORY = Path(__file__).resolve().parent.parent / "dashboard"
+DASHBOARD_REQUEST_HEADER = "X-Morning-Alpha-Request"
+DASHBOARD_REQUEST_VALUE = "dashboard"
 
 app = Flask(
     __name__,
@@ -195,6 +198,28 @@ def pipeline_runs():
         return jsonify({"runs": runs})
     except (json.JSONDecodeError, pymysql.MySQLError, ValueError) as error:
         return database_error_response(error)
+
+
+@app.get("/api/pipeline/status")
+def pipeline_status():
+    """回傳由 Dashboard 啟動的 Pipeline subprocess 狀態。"""
+    return jsonify({"pipeline": get_pipeline_status()})
+
+
+@app.post("/api/pipeline/run")
+def run_pipeline_from_dashboard():
+    """在 API 所在環境啟動 Pipeline，並阻止重複執行。"""
+    if request.headers.get(DASHBOARD_REQUEST_HEADER) != DASHBOARD_REQUEST_VALUE:
+        return jsonify({"error": "只接受 Morning Alpha Dashboard 的請求。"}), 403
+
+    try:
+        started, status = start_pipeline()
+    except OSError as error:
+        app.logger.error("Dashboard 無法啟動 Pipeline：%s", error)
+        return jsonify({"error": "無法啟動 Morning Alpha Pipeline。"}), 500
+
+    response_status = 202 if started else 409
+    return jsonify({"pipeline": status}), response_status
 
 
 @app.get("/api/daily-briefs/latest")

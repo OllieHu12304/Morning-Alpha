@@ -16,6 +16,16 @@ class DockerConfigurationTests(unittest.TestCase):
         self.assertIn(".venv", dockerignore)
         self.assertIn(".conda", dockerignore)
 
+    def test_dashboard_api_port_is_bound_to_localhost(self):
+        compose = (PROJECT_DIRECTORY / "compose.yaml").read_text(
+            encoding="utf-8",
+        )
+
+        self.assertIn(
+            '"127.0.0.1:${API_PORT:-5050}:5050"',
+            compose,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

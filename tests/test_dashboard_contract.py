@@ -57,6 +57,23 @@ class DashboardContractTests(unittest.TestCase):
         self.assertIn(".pipeline-run-badge-success", styles)
         self.assertIn(".pipeline-run-badge-failure", styles)
 
+    def test_dashboard_can_run_pipeline_and_refresh_data(self):
+        html = (DASHBOARD_DIRECTORY / "index.html").read_text(encoding="utf-8")
+        javascript = (DASHBOARD_DIRECTORY / "app.js").read_text(encoding="utf-8")
+        styles = (DASHBOARD_DIRECTORY / "styles.css").read_text(encoding="utf-8")
+
+        self.assertIn('id="pipeline-run-button"', html)
+        self.assertIn('id="pipeline-control-message"', html)
+        self.assertIn('const PIPELINE_RUN_API = "/api/pipeline/run"', javascript)
+        self.assertIn(
+            'const PIPELINE_STATUS_API = "/api/pipeline/status"',
+            javascript,
+        )
+        self.assertIn("runPipelineFromDashboard", javascript)
+        self.assertIn("refreshDashboardData", javascript)
+        self.assertIn(".pipeline-run-button", styles)
+        self.assertIn(".pipeline-control-message-running", styles)
+
     def test_dashboard_loads_and_renders_daily_brief(self):
         html = (DASHBOARD_DIRECTORY / "index.html").read_text(encoding="utf-8")
         javascript = (DASHBOARD_DIRECTORY / "app.js").read_text(encoding="utf-8")

@@ -58,6 +58,83 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.get_json(), {"status": "ok"})
 
+    @patch("api.get_pipeline_status")
+    def test_pipeline_status_returns_current_process_state(self, mock_status):
+        mock_status.return_value = {
+            "status": "running",
+            "started_at": "2026-08-12T04:00:00+00:00",
+            "finished_at": None,
+            "exit_code": None,
+        }
+
+        response = self.client.get("/api/pipeline/status")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json()["pipeline"]["status"], "running")
+        mock_status.assert_called_once_with()
+
+    @patch("api.start_pipeline")
+    def test_pipeline_run_starts_background_process(self, mock_start):
+        mock_start.return_value = (True, {
+            "status": "running",
+            "started_at": "2026-08-12T04:00:00+00:00",
+            "finished_at": None,
+            "exit_code": None,
+        })
+
+        response = self.client.post(
+            "/api/pipeline/run",
+            headers={"X-Morning-Alpha-Request": "dashboard"},
+        )
+
+        self.assertEqual(response.status_code, 202)
+        self.assertEqual(response.get_json()["pipeline"]["status"], "running")
+        mock_start.assert_called_once_with()
+
+    @patch("api.start_pipeline")
+    def test_pipeline_run_rejects_duplicate_process(self, mock_start):
+        mock_start.return_value = (False, {
+            "status": "running",
+            "started_at": "2026-08-12T04:00:00+00:00",
+            "finished_at": None,
+            "exit_code": None,
+        })
+
+        response = self.client.post(
+            "/api/pipeline/run",
+            headers={"X-Morning-Alpha-Request": "dashboard"},
+        )
+
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.get_json()["pipeline"]["status"], "running")
+
+    @patch("api.start_pipeline", side_effect=OSError("missing script"))
+    def test_pipeline_run_hides_internal_start_error(self, mock_start):
+        response = self.client.post(
+            "/api/pipeline/run",
+            headers={"X-Morning-Alpha-Request": "dashboard"},
+        )
+
+        self.assertEqual(response.status_code, 500)
+        self.assertEqual(
+            response.get_json(),
+            {"error": "無法啟動 Morning Alpha Pipeline。"},
+        )
+
+    @patch("api.start_pipeline")
+    def test_pipeline_run_rejects_request_without_dashboard_header(
+        self,
+        mock_start,
+    ):
+        response = self.client.post("/api/pipeline/run")
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(
+            response.get_json(),
+            {"error": "只接受 Morning Alpha Dashboard 的請求。"},
+        )
+        mock_start.assert_not_called()
+
     def test_root_serves_dashboard(self):
         response = self.client.get("/")
         self.addCleanup(response.close)

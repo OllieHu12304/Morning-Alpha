@@ -81,6 +81,8 @@ Pipeline 依序執行：
 
 Dashboard 目前直接讀取 Flask API 與 MySQL；JSON 是學習、檢查與備援輸出，不是 Dashboard 的主要資料來源。新版 Pipeline history 保存九步結果，API 仍可讀取舊版四步歷史。
 
+API 啟動後，也可以在 Dashboard 的「Pipeline 執行紀錄」區按下「立即更新資料」。Pipeline 會在同一個 Python 與 MySQL 環境中背景執行，執行期間按鈕會鎖定，成功後頁面會自動重新載入最新資料。
+
 新聞身分中，`source` 代表 Morning Alpha 實際使用的 adapter／取得管道，`publisher` 代表原始發布媒體。直接來源兩者通常相同；未來聚合來源則可能不同。`source_article_id` 與 canonical URL 共同阻止確定的重複匯入，相似新聞仍只分組、不刪除。
 
 ## 技術
@@ -219,6 +221,8 @@ TO 'morning_alpha_app'@'localhost';
 | GET | `/api/analytics` | 來源、分類、關鍵字與更新時間 |
 | GET | `/api/source-health` | 來源最近成功／失敗狀態 |
 | GET | `/api/pipeline-runs` | 最近十次 Pipeline |
+| GET | `/api/pipeline/status` | Dashboard 啟動的 Pipeline 狀態 |
+| POST | `/api/pipeline/run` | 從 Dashboard 啟動完整 Pipeline |
 | GET | `/api/daily-briefs/latest` | 最新每日晨報 |
 | GET | `/api/market-companies` | 有市場／財務資料的公司 |
 | GET | `/api/companies/<id>/market-prices` | 最近 90 筆每日價格 |

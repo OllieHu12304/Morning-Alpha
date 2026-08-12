@@ -140,6 +140,9 @@ const marketCompaniesPayload = {
 };
 
 let trackedCompanies = [];
+let pipelineStarted = false;
+let pipelineStatusChecks = 0;
+let newsRequestCount = 0;
 
 
 function createPersonalizedBriefPayload() {
@@ -164,12 +167,17 @@ function createPersonalizedBriefPayload() {
 
 test.beforeEach(async ({ page }) => {
     trackedCompanies = [];
+    pipelineStarted = false;
+    pipelineStatusChecks = 0;
+    newsRequestCount = 0;
     await page.route("**/api/news", (route) => route.fulfill({
         contentType: "application/json",
         body: JSON.stringify({
             count: newsRecords.length,
             news: newsRecords,
         }),
+    }).then(() => {
+        newsRequestCount += 1;
     }));
     await page.route("**/api/analytics", (route) => route.fulfill({
         contentType: "application/json",
@@ -183,6 +191,47 @@ test.beforeEach(async ({ page }) => {
         contentType: "application/json",
         body: JSON.stringify(pipelineRunsPayload),
     }));
+    await page.route("**/api/pipeline/status", (route) => {
+        let status = "idle";
+
+        if (pipelineStarted) {
+            pipelineStatusChecks += 1;
+            status = pipelineStatusChecks === 1 ? "running" : "success";
+        }
+
+        return route.fulfill({
+            contentType: "application/json",
+            body: JSON.stringify({
+                pipeline: {
+                    status,
+                    started_at: pipelineStarted
+                        ? "2026-08-12T04:00:00+00:00"
+                        : null,
+                    finished_at: status === "success"
+                        ? "2026-08-12T04:01:00+00:00"
+                        : null,
+                    exit_code: status === "success" ? 0 : null,
+                },
+            }),
+        });
+    });
+    await page.route("**/api/pipeline/run", (route) => {
+        pipelineStarted = true;
+        pipelineStatusChecks = 0;
+
+        return route.fulfill({
+            status: 202,
+            contentType: "application/json",
+            body: JSON.stringify({
+                pipeline: {
+                    status: "running",
+                    started_at: "2026-08-12T04:00:00+00:00",
+                    finished_at: null,
+                    exit_code: null,
+                },
+            }),
+        });
+    });
     await page.route("**/api/daily-briefs/latest", (route) => route.fulfill({
         contentType: "application/json",
         body: JSON.stringify(dailyBriefPayload),
@@ -314,6 +363,24 @@ test("moves between Dashboard pages", async ({ page }) => {
 
     await expect(page.locator("#page-status")).toHaveText("第 2 / 2 頁");
     await expect(page.locator("#news-table-body tr")).toHaveCount(2);
+});
+
+
+test("runs Pipeline and refreshes Dashboard data", async ({ page }) => {
+    const runButton = page.getByRole("button", { name: "立即更新資料" });
+
+    await expect(runButton).toBeEnabled();
+    await runButton.click();
+
+    await expect(page.locator("#pipeline-control-message")).toContainText(
+        "背景執行",
+    );
+    await expect(runButton).toBeDisabled();
+    await expect(page.locator("#pipeline-control-message")).toHaveText(
+        "資料更新完成，Dashboard 已重新載入。",
+        { timeout: 5000 },
+    );
+    await expect.poll(() => newsRequestCount).toBeGreaterThanOrEqual(2);
 });
 
 

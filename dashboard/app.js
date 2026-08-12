@@ -2,6 +2,8 @@ const NEWS_API = "/api/news";
 const ANALYTICS_API = "/api/analytics";
 const SOURCE_HEALTH_API = "/api/source-health";
 const PIPELINE_RUNS_API = "/api/pipeline-runs";
+const PIPELINE_RUN_API = "/api/pipeline/run";
+const PIPELINE_STATUS_API = "/api/pipeline/status";
 const LATEST_DAILY_BRIEF_API = "/api/daily-briefs/latest";
 const MARKET_COMPANIES_API = "/api/market-companies";
 const EVENT_MARKET_API = "/api/event-market-observations";
@@ -9,6 +11,7 @@ const WATCHLIST_API = "/api/watchlist";
 const PERSONALIZED_BRIEF_API = "/api/personalized-brief";
 const KEYWORD_CHART_LIMIT = 10;
 const PIPELINE_RUN_DISPLAY_LIMIT = 5;
+const PIPELINE_STATUS_POLL_MS = 1500;
 
 const SOURCE_LABELS = {
     cna: "中央通訊社",
@@ -25,6 +28,8 @@ const sourceHealthMessage = document.querySelector("#source-health-message");
 const sourceHealthGrid = document.querySelector("#source-health-grid");
 const pipelineHistoryMessage = document.querySelector("#pipeline-history-message");
 const pipelineRunsList = document.querySelector("#pipeline-runs-list");
+const pipelineRunButton = document.querySelector("#pipeline-run-button");
+const pipelineControlMessage = document.querySelector("#pipeline-control-message");
 const dailyBriefMessage = document.querySelector("#daily-brief-message");
 const dailyBriefContent = document.querySelector("#daily-brief-content");
 const personalizedBriefMessage = document.querySelector("#personalized-brief-message");
@@ -69,6 +74,8 @@ let companyPriceChart = null;
 let watchlistCompanyIds = new Set();
 let marketCompanies = [];
 let watchlistUpdateInProgress = false;
+let pipelineWasRunning = false;
+let pipelineStatusTimer = null;
 
 
 async function fetchJson(url, options = {}) {
@@ -1064,6 +1071,146 @@ function showDailyBriefError(message) {
 }
 
 
+function validatePipelineStatus(statusValue) {
+    if (
+        !statusValue
+        || typeof statusValue !== "object"
+        || !["idle", "running", "success", "failure"].includes(
+            statusValue.status,
+        )
+    ) {
+        throw new Error("pipeline status API 格式不正確。");
+    }
+
+    return statusValue;
+}
+
+
+function renderPipelineControl(status) {
+    pipelineControlMessage.classList.remove(
+        "pipeline-control-message-running",
+        "pipeline-control-message-success",
+        "pipeline-control-message-failure",
+    );
+
+    if (status.status === "running") {
+        pipelineRunButton.disabled = true;
+        pipelineRunButton.textContent = "資料更新中…";
+        pipelineControlMessage.textContent = "Pipeline 正在背景執行，完成後會自動刷新。";
+        pipelineControlMessage.classList.add("pipeline-control-message-running");
+        return;
+    }
+
+    pipelineRunButton.disabled = false;
+
+    if (status.status === "success") {
+        pipelineRunButton.textContent = "再次更新資料";
+        pipelineControlMessage.textContent = "最近一次 Dashboard 更新成功。";
+        pipelineControlMessage.classList.add("pipeline-control-message-success");
+        return;
+    }
+
+    if (status.status === "failure") {
+        pipelineRunButton.textContent = "重新執行 Pipeline";
+        pipelineControlMessage.textContent = "最近一次 Dashboard 更新失敗，請查看執行紀錄與終端 log。";
+        pipelineControlMessage.classList.add("pipeline-control-message-failure");
+        return;
+    }
+
+    pipelineRunButton.textContent = "立即更新資料";
+    pipelineControlMessage.textContent = "可從此頁執行完整九步 Pipeline。";
+}
+
+
+function schedulePipelineStatusCheck() {
+    window.clearTimeout(pipelineStatusTimer);
+    pipelineStatusTimer = window.setTimeout(
+        loadPipelineStatus,
+        PIPELINE_STATUS_POLL_MS,
+    );
+}
+
+
+async function loadPipelineStatus() {
+    try {
+        const payload = await fetchJson(PIPELINE_STATUS_API);
+
+        if (!payload || !("pipeline" in payload)) {
+            throw new Error("pipeline status API 格式不正確。");
+        }
+
+        const status = validatePipelineStatus(payload.pipeline);
+        const justFinished = pipelineWasRunning && status.status !== "running";
+        renderPipelineControl(status);
+
+        if (status.status === "running") {
+            pipelineWasRunning = true;
+            schedulePipelineStatusCheck();
+            return;
+        }
+
+        pipelineWasRunning = false;
+        window.clearTimeout(pipelineStatusTimer);
+
+        if (justFinished && status.status === "success") {
+            pipelineControlMessage.textContent = "資料更新完成，正在重新載入 Dashboard…";
+            await refreshDashboardData();
+            pipelineControlMessage.textContent = "資料更新完成，Dashboard 已重新載入。";
+        }
+    } catch (error) {
+        pipelineRunButton.disabled = false;
+        pipelineRunButton.textContent = "重試更新資料";
+        pipelineControlMessage.textContent = `無法確認 Pipeline 狀態：${error.message}`;
+        pipelineControlMessage.classList.remove(
+            "pipeline-control-message-running",
+            "pipeline-control-message-success",
+        );
+        pipelineControlMessage.classList.add("pipeline-control-message-failure");
+    }
+}
+
+
+async function runPipelineFromDashboard() {
+    pipelineRunButton.disabled = true;
+    pipelineRunButton.textContent = "正在啟動…";
+    pipelineControlMessage.textContent = "正在要求 API 啟動 Pipeline…";
+    pipelineControlMessage.classList.remove("pipeline-control-message-failure");
+    pipelineControlMessage.classList.add("pipeline-control-message-running");
+
+    try {
+        const payload = await fetchJson(PIPELINE_RUN_API, {
+            method: "POST",
+            headers: {
+                "X-Morning-Alpha-Request": "dashboard",
+            },
+        });
+
+        if (!payload || !("pipeline" in payload)) {
+            throw new Error("pipeline run API 格式不正確。");
+        }
+
+        const status = validatePipelineStatus(payload.pipeline);
+        pipelineWasRunning = status.status === "running";
+        renderPipelineControl(status);
+
+        if (pipelineWasRunning) {
+            schedulePipelineStatusCheck();
+        }
+    } catch (error) {
+        if (error.message === "HTTP 409") {
+            await loadPipelineStatus();
+            return;
+        }
+
+        pipelineRunButton.disabled = false;
+        pipelineRunButton.textContent = "重新執行 Pipeline";
+        pipelineControlMessage.textContent = `無法啟動 Pipeline：${error.message}`;
+        pipelineControlMessage.classList.remove("pipeline-control-message-running");
+        pipelineControlMessage.classList.add("pipeline-control-message-failure");
+    }
+}
+
+
 async function loadPipelineRuns() {
     try {
         const payload = await fetchJson(PIPELINE_RUNS_API);
@@ -1824,6 +1971,25 @@ function showError(message) {
 }
 
 
+async function refreshDashboardData() {
+    await Promise.all([
+        loadNews(),
+        loadAnalytics(),
+        loadSourceHealth(),
+        loadPipelineRuns(),
+        loadDailyBrief(),
+        loadMarketCompanies(),
+        loadEventMarketObservations(),
+    ]);
+
+    const watchlistLoaded = await loadWatchlist();
+
+    if (watchlistLoaded) {
+        await loadPersonalizedBrief();
+    }
+}
+
+
 for (const header of tableHeaders) {
     const button = header.querySelector(".sort-button");
     button.addEventListener("click", () => {
@@ -1858,6 +2024,7 @@ pageSizeSelect.addEventListener("change", () => {
 });
 
 clearFiltersButton.addEventListener("click", clearFilters);
+pipelineRunButton.addEventListener("click", runPipelineFromDashboard);
 
 marketCompanySelect.addEventListener("change", loadSelectedCompanyMarketData);
 watchlistToggle.addEventListener("click", toggleSelectedCompanyWatchlist);
@@ -1880,15 +2047,5 @@ nextPageButton.addEventListener("click", () => {
     renderTable();
 });
 
-loadNews();
-loadAnalytics();
-loadSourceHealth();
-loadPipelineRuns();
-loadDailyBrief();
-loadMarketCompanies();
-loadEventMarketObservations();
-loadWatchlist().then((loaded) => {
-    if (loaded) {
-        loadPersonalizedBrief();
-    }
-});
+refreshDashboardData();
+loadPipelineStatus();

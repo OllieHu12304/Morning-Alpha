@@ -102,6 +102,7 @@ Morning-Alpha/
 │   └── 001 ... 013 migrations
 ├── src/
 │   ├── run_pipeline.py
+│   ├── pipeline_process.py
 │   ├── api.py
 │   ├── scheduler.py
 │   ├── run_migrations.py
@@ -124,6 +125,7 @@ Morning-Alpha/
 | 檔案 | 何時執行 | 互動對象 |
 | --- | --- | --- |
 | `src/run_pipeline.py` | 日常更新 | 所有 adapters、Pandas、MySQL stores、JSON exporters |
+| `src/pipeline_process.py` | Dashboard 按下更新時 | 使用 API 當下的 Python 環境啟動並追蹤 Pipeline |
 | `src/api.py` | 使用 Dashboard 前 | MySQL 與 `dashboard/` |
 | `src/scheduler.py` | 選用 Docker 排程 | 定期呼叫 `run_pipeline.py` |
 | `src/run_migrations.py` | 既有 database 升級前 | `sql/001`～`013` |
@@ -271,7 +273,9 @@ cp .env.example .env
 
 ### Step 3：日後更新
 
-API 可以保持執行；需要更新時在另一個 terminal 重跑 `run_pipeline.py`，重新整理 Dashboard 即可。
+API 可以保持執行。需要更新時，到 Dashboard 的「Pipeline 執行紀錄」區按下「立即更新資料」即可；執行期間按鈕會鎖定，成功後頁面會自動重新載入最新資料。
+
+這個按鈕會使用 API 當下的 Python 與 MySQL 環境，因此本機 API 更新本機 MySQL，Docker API 更新 Docker MySQL，不會再發生兩個環境交叉讀寫。終端指令 `./.venv/bin/python src/run_pipeline.py` 仍保留給除錯與觀察完整 log 使用。
 
 ## 8. 預期結果
 
