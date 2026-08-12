@@ -155,7 +155,7 @@ function createPersonalizedBriefPayload() {
             watchlist_count: trackedCompanies.length,
             watched_companies: trackedCompanies,
             summary: hasWatchlist
-                ? `目前追蹤 ${trackedCompanies.length} 家公司，本期找到 1 篇相關新聞。`
+                ? `目前追蹤 ${trackedCompanies.length} 家公司，找到 1 篇近期相關新聞。`
                 : "尚未加入追蹤公司，請先搜尋公司並加入追蹤。",
             highlights: hasWatchlist
                 ? dailyBriefPayload.brief.highlights
@@ -379,7 +379,7 @@ test("moves between Dashboard pages", async ({ page }) => {
 
 
 test("runs Pipeline and refreshes Dashboard data", async ({ page }) => {
-    const runButton = page.getByRole("button", { name: "立即更新資料" });
+    const runButton = page.locator("#pipeline-run-button");
 
     await expect(runButton).toBeEnabled();
     await runButton.click();
@@ -407,7 +407,7 @@ test("adds and removes a company from the local watchlist", async ({ page }) => 
     await expect(page.locator("#watchlist-toggle")).toHaveText("移除追蹤");
     await expect(page.locator("#watchlist-items")).toContainText("2330 台積電");
     await expect(page.locator("#personalized-brief-result")).toContainText(
-        "本期找到 1 篇相關新聞",
+        "找到 1 篇近期相關新聞",
     );
 
     await page.locator("#watchlist-toggle").click();
