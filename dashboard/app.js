@@ -71,6 +71,7 @@ let currentPage = 1;
 let pageSize = Number(pageSizeSelect.value);
 let eventGroupFilter = null;
 let companyPriceChart = null;
+const analyticsCharts = {};
 let watchlistCompanyIds = new Set();
 let marketCompanies = [];
 let watchlistUpdateInProgress = false;
@@ -1450,6 +1451,8 @@ function renderCharts(chartData) {
         return;
     }
 
+    chartStatusMessage.classList.remove("error-message");
+
     const chartDefinitions = [
         {
             canvasId: "source-chart",
@@ -1494,6 +1497,10 @@ function renderCharts(chartData) {
 
 function createChart({ canvasId, series, type, label, colors, horizontal = false }) {
     const canvas = document.querySelector(`#${canvasId}`);
+    const emptyMessage = canvas.parentElement.querySelector(".chart-empty-message");
+    destroyAnalyticsChart(canvasId);
+    canvas.hidden = false;
+    emptyMessage.hidden = true;
     canvas.setAttribute(
         "aria-label",
         series.labels.map((item, index) => `${item} ${series.values[index]} 次`).join("、"),
@@ -1530,7 +1537,7 @@ function createChart({ canvasId, series, type, label, colors, horizontal = false
         };
     }
 
-    new Chart(canvas, {
+    analyticsCharts[canvasId] = new Chart(canvas, {
         type,
         data: {
             labels: series.labels,
@@ -1548,9 +1555,20 @@ function createChart({ canvasId, series, type, label, colors, horizontal = false
 }
 
 
+function destroyAnalyticsChart(canvasId) {
+    const chart = analyticsCharts[canvasId];
+
+    if (chart) {
+        chart.destroy();
+        delete analyticsCharts[canvasId];
+    }
+}
+
+
 function showEmptyChart(canvasId, message) {
     const canvas = document.querySelector(`#${canvasId}`);
     const emptyMessage = canvas.parentElement.querySelector(".chart-empty-message");
+    destroyAnalyticsChart(canvasId);
     canvas.hidden = true;
     emptyMessage.textContent = message;
     emptyMessage.hidden = false;

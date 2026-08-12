@@ -74,6 +74,14 @@ class DashboardContractTests(unittest.TestCase):
         self.assertIn(".pipeline-run-button", styles)
         self.assertIn(".pipeline-control-message-running", styles)
 
+    def test_dashboard_destroys_old_analytics_charts_before_refresh(self):
+        javascript = (DASHBOARD_DIRECTORY / "app.js").read_text(encoding="utf-8")
+
+        self.assertIn("const analyticsCharts = {}", javascript)
+        self.assertIn("destroyAnalyticsChart(canvasId)", javascript)
+        self.assertIn("chart.destroy()", javascript)
+        self.assertIn("analyticsCharts[canvasId] = new Chart", javascript)
+
     def test_dashboard_loads_and_renders_daily_brief(self):
         html = (DASHBOARD_DIRECTORY / "index.html").read_text(encoding="utf-8")
         javascript = (DASHBOARD_DIRECTORY / "app.js").read_text(encoding="utf-8")

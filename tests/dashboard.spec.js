@@ -296,7 +296,19 @@ test.beforeEach(async ({ page }) => {
     }));
     await page.route("https://cdn.jsdelivr.net/**", (route) => route.fulfill({
         contentType: "application/javascript",
-        body: "window.Chart = class { constructor() {} };",
+        body: `
+            window.analyticsChartCreateCount = 0;
+            window.analyticsChartDestroyCount = 0;
+            window.Chart = class {
+                constructor() {
+                    window.analyticsChartCreateCount += 1;
+                }
+
+                destroy() {
+                    window.analyticsChartDestroyCount += 1;
+                }
+            };
+        `,
     }));
 
     await page.goto("/");
@@ -381,6 +393,9 @@ test("runs Pipeline and refreshes Dashboard data", async ({ page }) => {
         { timeout: 5000 },
     );
     await expect.poll(() => newsRequestCount).toBeGreaterThanOrEqual(2);
+    await expect.poll(() => page.evaluate(
+        () => window.analyticsChartDestroyCount,
+    )).toBeGreaterThanOrEqual(3);
 });
 
 
