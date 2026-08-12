@@ -211,8 +211,14 @@ class ApiTests(unittest.TestCase):
             "2026-08-11T09:35:00",
         )
 
+    @patch("api.load_all_news")
     @patch("api.load_source_health_events")
-    def test_source_health_returns_latest_source_status(self, mock_load_events):
+    def test_source_health_returns_latest_source_status(
+        self,
+        mock_load_events,
+        mock_load_news,
+    ):
+        mock_load_news.return_value = create_test_dataframe()
         mock_load_events.return_value = (
             [
                 (
@@ -249,6 +255,7 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(len(payload["sources"]), 1)
         self.assertEqual(payload["sources"][0]["status"], "failure")
         self.assertEqual(payload["sources"][0]["error_message"], "HTTP 503")
+        self.assertEqual(payload["sources"][0]["article_count"], 1)
         self.assertEqual(
             payload["sources"][0]["last_success_at"],
             "2026-08-11T09:00:00+00:00",
@@ -418,14 +425,20 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(response.get_json()["metrics"][0]["fiscal_quarter"], 2)
         mock_load.assert_called_once_with(8, limit=8)
 
-    @patch("api.load_event_market_observations")
+    @patch("api.load_event_market_analysis")
     def test_event_market_observations_marks_non_causal_analysis(self, mock_load):
-        mock_load.return_value = [{
+        mock_load.return_value = ([{
             "title": "台積電測試新聞",
             "ticker": "2330",
             "change_percent": 1.25,
             "analysis_type": "observational",
-        }]
+        }], {
+            "candidate_count": 1,
+            "price_date_count": 2,
+            "earliest_trade_date": "2026-08-11",
+            "latest_trade_date": "2026-08-12",
+            "observation_count": 1,
+        })
 
         response = self.client.get("/api/event-market-observations")
         payload = response.get_json()
@@ -434,6 +447,7 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(payload["analysis_type"], "observational")
         self.assertIn("不代表", payload["limitations"][0])
         self.assertEqual(len(payload["observations"]), 1)
+        self.assertEqual(payload["readiness"]["price_date_count"], 2)
         mock_load.assert_called_once_with(limit=20)
 
     @patch("api.load_watchlist")

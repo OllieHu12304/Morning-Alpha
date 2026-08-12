@@ -41,6 +41,7 @@ class DashboardContractTests(unittest.TestCase):
         self.assertIn('id="source-health-grid"', html)
         self.assertIn('const SOURCE_HEALTH_API = "/api/source-health"', javascript)
         self.assertIn("renderSourceHealth", javascript)
+        self.assertIn("新聞列表篇數", javascript)
         self.assertIn("createSourceHealthCard", javascript)
         self.assertIn(".source-health-badge-success", styles)
         self.assertIn(".source-health-badge-failure", styles)
@@ -144,6 +145,7 @@ class DashboardContractTests(unittest.TestCase):
         self.assertIn("不構成投資建議", html)
         self.assertIn('const EVENT_MARKET_API = "/api/event-market-observations"', javascript)
         self.assertIn("renderEventMarketObservations", javascript)
+        self.assertIn("getEventMarketEmptyMessage", javascript)
         self.assertIn('observation.analysis_type !== "observational"', javascript)
         self.assertIn(".observation-badge", styles)
 

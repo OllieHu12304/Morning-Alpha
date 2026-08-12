@@ -37,7 +37,7 @@ const sourceHealthPayload = {
         {
             source: "cna",
             status: "success",
-            article_count: 8,
+            article_count: 6,
             error_message: null,
             last_attempt_at: "2026-08-11T12:35:00",
             last_success_at: "2026-08-11T12:35:00",
@@ -45,7 +45,7 @@ const sourceHealthPayload = {
         {
             source: "technews",
             status: "failure",
-            article_count: 0,
+            article_count: 6,
             error_message: "HTTP 503",
             last_attempt_at: "2026-08-11T12:34:00",
             last_success_at: "2026-08-11T10:00:00",
@@ -255,6 +255,13 @@ test.beforeEach(async ({ page }) => {
             methodology: "固定測試方法",
             limitations: ["測試資料不代表因果。"],
             observations: [],
+            readiness: {
+                candidate_count: 1,
+                price_date_count: 1,
+                earliest_trade_date: "2026-08-11",
+                latest_trade_date: "2026-08-11",
+                observation_count: 0,
+            },
         }),
     }));
     await page.route(/\/api\/watchlist(?:\/\d+)?$/, async (route) => {
@@ -333,6 +340,9 @@ test("loads Dashboard data from mocked APIs", async ({ page }) => {
     await expect(page.locator("#source-health-grid")).toContainText("正常");
     await expect(page.locator("#source-health-grid")).toContainText("失敗");
     await expect(page.locator("#source-health-grid")).toContainText("HTTP 503");
+    await expect(page.locator("#source-health-grid")).toContainText(
+        "新聞列表篇數",
+    );
     await expect(page.locator(".pipeline-run-card")).toHaveCount(1);
     await expect(page.locator("#pipeline-runs-list")).toContainText("最近一次執行");
     await expect(page.locator("#pipeline-runs-list")).toContainText("JSON 格式錯誤");

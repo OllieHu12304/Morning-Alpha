@@ -9,6 +9,7 @@ from store_news import connect_to_database, get_database_config
 MARKET_CLOSE_TIME = time(13, 30)
 DEFAULT_OBSERVATION_LIMIT = 20
 MAX_OBSERVATION_LIMIT = 100
+MAX_EVENT_CANDIDATES = 1000
 
 ANALYSIS_TYPE = "observational"
 METHODOLOGY = (
@@ -52,6 +53,14 @@ ORDER BY trade_date DESC
 LIMIT 365;
 """
 
+READ_EVENT_READINESS_SQL = """
+SELECT
+    (SELECT COUNT(*) FROM news_company_links) AS candidate_count,
+    (SELECT COUNT(DISTINCT trade_date) FROM market_prices) AS price_date_count,
+    (SELECT MIN(trade_date) FROM market_prices) AS earliest_trade_date,
+    (SELECT MAX(trade_date) FROM market_prices) AS latest_trade_date;
+"""
+
 
 def validate_observation_limit(limit):
     """限制單次分析筆數，避免無界線查詢。"""
@@ -73,7 +82,12 @@ def rows_to_records(rows, column_names):
 
 def fetch_event_candidates(connection, limit):
     """讀取最近且已匹配公司的新聞。"""
-    validate_observation_limit(limit)
+    if (
+        not isinstance(limit, int)
+        or limit < 1
+        or limit > MAX_EVENT_CANDIDATES
+    ):
+        raise ValueError("候選新聞 limit 必須是 1 到 1000 的整數。")
 
     with connection.cursor() as cursor:
         cursor.execute(READ_EVENT_CANDIDATES_SQL, (limit,))
@@ -93,6 +107,20 @@ def fetch_security_prices(connection, security_id):
         {"trade_date": row[0], "close_price": row[1]}
         for row in rows
     ]
+
+
+def fetch_event_market_readiness(connection):
+    """回報事件觀察所需的公司關聯與價格日期涵蓋狀態。"""
+    with connection.cursor() as cursor:
+        cursor.execute(READ_EVENT_READINESS_SQL)
+        row = cursor.fetchone()
+
+    return {
+        "candidate_count": int(row[0]),
+        "price_date_count": int(row[1]),
+        "earliest_trade_date": row[2].isoformat() if row[2] else None,
+        "latest_trade_date": row[3].isoformat() if row[3] else None,
+    }
 
 
 def parse_publish_time(value):
@@ -190,7 +218,7 @@ def build_event_market_observation(candidate, prices):
 def create_event_market_observations(connection, limit=DEFAULT_OBSERVATION_LIMIT):
     """建立最近可計算的觀察，並快取同一證券的價格。"""
     validate_observation_limit(limit)
-    candidate_limit = min(limit * 5, MAX_OBSERVATION_LIMIT)
+    candidate_limit = min(limit * 20, MAX_EVENT_CANDIDATES)
     candidates = fetch_event_candidates(connection, candidate_limit)
     prices_by_security = {}
     observations = []
@@ -225,5 +253,22 @@ def load_event_market_observations(limit=DEFAULT_OBSERVATION_LIMIT):
 
     try:
         return create_event_market_observations(connection, limit=limit)
+    finally:
+        connection.close()
+
+
+def load_event_market_analysis(limit=DEFAULT_OBSERVATION_LIMIT):
+    """以同一連線回傳觀察結果與資料就緒狀態。"""
+    config = get_database_config()
+    connection = connect_to_database(config)
+
+    try:
+        observations = create_event_market_observations(
+            connection,
+            limit=limit,
+        )
+        readiness = fetch_event_market_readiness(connection)
+        readiness["observation_count"] = len(observations)
+        return observations, readiness
     finally:
         connection.close()

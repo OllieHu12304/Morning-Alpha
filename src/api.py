@@ -19,7 +19,7 @@ from event_market_analysis import (
     ANALYSIS_TYPE,
     LIMITATIONS as EVENT_MARKET_LIMITATIONS,
     METHODOLOGY as EVENT_MARKET_METHODOLOGY,
-    load_event_market_observations,
+    load_event_market_analysis,
 )
 from export_news_json import prepare_dashboard_records
 from generate_chart_data import generate_chart_data
@@ -134,6 +134,19 @@ def build_analytics_payload(dataframe):
     }
 
 
+def attach_dashboard_source_counts(source_summaries, dataframe):
+    """以新聞列表的平衡資料集合取代來源原始解析筆數。"""
+    balanced_dataframe = get_balanced_recent_news(dataframe)
+    source_counts = balanced_dataframe["source"].value_counts().to_dict()
+
+    for summary in source_summaries:
+        summary["article_count"] = int(
+            source_counts.get(summary["source"], 0)
+        )
+
+    return source_summaries
+
+
 def database_error_response(error):
     """記錄內部錯誤，回傳不包含帳密與 SQL 的安全訊息。"""
     app.logger.error("Dashboard API 無法讀取資料：%s", error)
@@ -189,6 +202,7 @@ def source_health():
     try:
         rows, columns = load_source_health_events()
         sources = build_source_health_summary(rows, columns)
+        sources = attach_dashboard_source_counts(sources, load_all_news())
         return jsonify({"sources": sources})
     except (pymysql.MySQLError, ValueError) as error:
         return database_error_response(error)
@@ -306,12 +320,13 @@ def company_financial_metrics(company_id):
 def event_market_observations():
     """回傳新聞事件附近的收盤價時間關聯，不宣稱因果。"""
     try:
-        observations = load_event_market_observations(limit=20)
+        observations, readiness = load_event_market_analysis(limit=20)
         return jsonify({
             "analysis_type": ANALYSIS_TYPE,
             "methodology": EVENT_MARKET_METHODOLOGY,
             "limitations": EVENT_MARKET_LIMITATIONS,
             "observations": observations,
+            "readiness": readiness,
         })
     except (KeyError, pymysql.MySQLError, ValueError) as error:
         return company_data_error_response(error)

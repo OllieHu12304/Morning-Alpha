@@ -16,6 +16,8 @@ from event_market_analysis import (  # noqa: E402
     LIMITATIONS,
     build_event_market_observation,
     create_event_market_observations,
+    fetch_event_candidates,
+    fetch_event_market_readiness,
     select_observation_window,
 )
 
@@ -45,6 +47,35 @@ def create_prices():
 
 
 class EventMarketAnalysisTests(unittest.TestCase):
+    def test_candidate_query_accepts_expanded_search_limit(self):
+        connection = MagicMock()
+        cursor = MagicMock()
+        connection.cursor.return_value.__enter__.return_value = cursor
+        cursor.fetchall.return_value = []
+        cursor.description = [("title",)]
+
+        records = fetch_event_candidates(connection, 400)
+
+        self.assertEqual(records, [])
+        self.assertEqual(cursor.execute.call_args.args[1], (400,))
+
+    def test_readiness_explains_available_links_and_price_dates(self):
+        connection = MagicMock()
+        cursor = MagicMock()
+        connection.cursor.return_value.__enter__.return_value = cursor
+        cursor.fetchone.return_value = (
+            12,
+            3,
+            date(2026, 8, 10),
+            date(2026, 8, 12),
+        )
+
+        readiness = fetch_event_market_readiness(connection)
+
+        self.assertEqual(readiness["candidate_count"], 12)
+        self.assertEqual(readiness["price_date_count"], 3)
+        self.assertEqual(readiness["latest_trade_date"], "2026-08-12")
+
     def test_before_close_observes_same_trading_day(self):
         window = select_observation_window(
             datetime(2026, 8, 10, 10, 0),
@@ -125,7 +156,7 @@ class EventMarketAnalysisTests(unittest.TestCase):
         mock_fetch_prices.assert_called_once()
         mock_fetch_candidates.assert_called_once_with(
             unittest.mock.ANY,
-            10,
+            40,
         )
 
 

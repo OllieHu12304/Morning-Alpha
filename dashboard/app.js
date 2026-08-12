@@ -458,9 +458,9 @@ function renderEventMarketObservations(payload) {
     eventMarketMessage.classList.remove("error-message");
 
     if (payload.observations.length === 0) {
-        appendEventMarketEmptyRow(
-            "目前沒有足夠的公司新聞與前後交易日價格可供觀察。",
-        );
+        appendEventMarketEmptyRow(getEventMarketEmptyMessage(
+            payload.readiness,
+        ));
     } else {
         for (const observation of payload.observations) {
             eventMarketBody.appendChild(createEventMarketRow(observation));
@@ -474,6 +474,27 @@ function renderEventMarketObservations(payload) {
     }
 
     eventMarketMessage.textContent = `顯示 ${payload.observations.length} 筆時間關聯觀察`;
+}
+
+
+function getEventMarketEmptyMessage(readiness) {
+    if (!readiness || typeof readiness !== "object") {
+        return "目前沒有足夠的公司新聞與前後交易日價格可供觀察。";
+    }
+
+    if (Number(readiness.candidate_count) === 0) {
+        return "目前沒有成功建立公司關聯的新聞，請先完成 Pipeline Step 3。";
+    }
+
+    if (Number(readiness.price_date_count) < 2) {
+        return `目前只有 ${Number(readiness.price_date_count)} 個交易日價格，至少需要 2 個交易日才能計算變化。`;
+    }
+
+    const priceRange = readiness.earliest_trade_date
+        && readiness.latest_trade_date
+        ? `${readiness.earliest_trade_date} 至 ${readiness.latest_trade_date}`
+        : "未知";
+    return `已有公司新聞與 ${Number(readiness.price_date_count)} 個交易日價格（${priceRange}），但近期事件尚缺事件當日或下一交易日收盤價。`;
 }
 
 
@@ -895,7 +916,7 @@ function createSourceHealthCard(record) {
     );
     appendSourceHealthDetail(
         details,
-        "本次文章",
+        "新聞列表篇數",
         `${record.article_count} 篇`,
     );
 
