@@ -12,17 +12,52 @@ SOURCE_DIRECTORY = PROJECT_DIRECTORY / "src"
 FIXTURE_PATH = (
     PROJECT_DIRECTORY / "tests" / "fixtures" / "twse_market_prices.json"
 )
+HISTORY_FIXTURE_PATH = (
+    PROJECT_DIRECTORY / "tests" / "fixtures" / "twse_market_history.json"
+)
 sys.path.insert(0, str(SOURCE_DIRECTORY))
 
 from twse_market_adapter import (  # noqa: E402
     assess_market_data_freshness,
     get_expected_trade_date,
+    parse_historical_market_prices,
     parse_market_prices,
     parse_roc_date,
 )
 
 
 class TwseMarketAdapterTests(unittest.TestCase):
+    def test_parse_historical_prices_finds_stock_table_by_fields(self):
+        fetched_at = datetime(2026, 8, 12, 10, 0, tzinfo=timezone.utc)
+
+        records = parse_historical_market_prices(
+            HISTORY_FIXTURE_PATH.read_text(encoding="utf-8"),
+            date(2026, 8, 12),
+            fetched_at=fetched_at,
+        )
+
+        self.assertEqual(len(records), 2)
+        self.assertEqual(records[0]["ticker"], "2330")
+        self.assertEqual(records[0]["trade_date"], date(2026, 8, 12))
+        self.assertEqual(records[0]["close_price"], Decimal("895.00"))
+        self.assertEqual(records[0]["price_change"], Decimal("10.00"))
+        self.assertEqual(records[1]["price_change"], Decimal("-8.00"))
+
+    def test_historical_no_data_is_treated_as_closed_date(self):
+        records = parse_historical_market_prices(
+            '{"stat": "很抱歉，沒有符合條件的資料!", "tables": []}',
+            date(2026, 8, 9),
+        )
+
+        self.assertEqual(records, [])
+
+    def test_historical_parser_detects_missing_stock_table(self):
+        with self.assertRaisesRegex(ValueError, "找不到個股行情"):
+            parse_historical_market_prices(
+                '{"stat": "OK", "tables": []}',
+                date(2026, 8, 12),
+            )
+
     def test_expected_trade_date_uses_previous_friday_on_monday_morning(self):
         current_time = datetime(2026, 8, 17, 1, 0, tzinfo=timezone.utc)
 

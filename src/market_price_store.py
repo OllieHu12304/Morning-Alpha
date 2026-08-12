@@ -39,6 +39,17 @@ FROM securities
 WHERE is_active = TRUE;
 """
 
+READ_MARKET_DATE_SUMMARY_SQL = """
+SELECT MIN(trade_date), MAX(trade_date), COUNT(DISTINCT trade_date)
+FROM market_prices;
+"""
+
+READ_MARKET_DATES_SQL = """
+SELECT DISTINCT trade_date
+FROM market_prices
+WHERE trade_date BETWEEN %s AND %s;
+"""
+
 UPSERT_MARKET_PRICE_SQL = """
 INSERT INTO market_prices (
     security_id,
@@ -85,6 +96,43 @@ def fetch_security_ids(connection):
         (row[1], row[2]): row[0]
         for row in rows
     }
+
+
+def fetch_market_date_summary(connection):
+    """讀取目前市場價格涵蓋的最早、最晚日期與日期數。"""
+    create_market_prices_table(connection)
+
+    with connection.cursor() as cursor:
+        cursor.execute(READ_MARKET_DATE_SUMMARY_SQL)
+        minimum_date, maximum_date, date_count = cursor.fetchone()
+
+    return {
+        "minimum_date": minimum_date,
+        "maximum_date": maximum_date,
+        "date_count": int(date_count),
+    }
+
+
+def fetch_market_dates(connection, start_date, end_date):
+    """讀取指定範圍內已保存的交易日期。"""
+    with connection.cursor() as cursor:
+        cursor.execute(READ_MARKET_DATES_SQL, (start_date, end_date))
+        rows = cursor.fetchall()
+
+    return {row[0] for row in rows}
+
+
+def load_market_date_state(start_date, end_date):
+    """以短連線取得歷史回補需要的日期狀態。"""
+    config = get_database_config()
+    connection = connect_to_database(config)
+
+    try:
+        summary = fetch_market_date_summary(connection)
+        stored_dates = fetch_market_dates(connection, start_date, end_date)
+        return summary, stored_dates
+    finally:
+        connection.close()
 
 
 def prepare_market_price_rows(records, security_ids):

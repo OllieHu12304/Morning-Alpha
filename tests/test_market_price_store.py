@@ -16,6 +16,8 @@ MIGRATION_PATH = (
 sys.path.insert(0, str(SOURCE_DIRECTORY))
 
 from market_price_store import (  # noqa: E402
+    fetch_market_date_summary,
+    fetch_market_dates,
     prepare_market_price_rows,
     upsert_market_prices,
 )
@@ -40,6 +42,29 @@ def create_record(ticker="2330"):
 
 
 class MarketPriceStoreTests(unittest.TestCase):
+    def test_market_date_queries_return_summary_and_dates(self):
+        connection = MagicMock()
+        cursor = MagicMock()
+        connection.cursor.return_value.__enter__.return_value = cursor
+        cursor.fetchone.return_value = (
+            date(2026, 8, 11),
+            date(2026, 8, 12),
+            2,
+        )
+
+        summary = fetch_market_date_summary(connection)
+
+        self.assertEqual(summary["date_count"], 2)
+        cursor.fetchall.return_value = [
+            (date(2026, 8, 11),),
+            (date(2026, 8, 12),),
+        ]
+        dates = fetch_market_dates(
+            connection,
+            date(2026, 8, 11),
+            date(2026, 8, 12),
+        )
+        self.assertEqual(dates, {date(2026, 8, 11), date(2026, 8, 12)})
     def test_prepare_rows_maps_security_and_converts_utc_time(self):
         rows, skipped_count = prepare_market_price_rows(
             [create_record()],
