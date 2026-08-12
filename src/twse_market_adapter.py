@@ -2,8 +2,9 @@
 
 import json
 import logging
-from datetime import date, datetime, timezone
+from datetime import date, datetime, time, timedelta, timezone
 from decimal import Decimal, InvalidOperation
+from zoneinfo import ZoneInfo
 
 from http_client import fetch_text
 from market_data_contract import (
@@ -14,8 +15,44 @@ from market_data_contract import (
 
 REQUEST_TIMEOUT = 20
 EMPTY_NUMBER_VALUES = {"", "--", "---", "-"}
+TAIPEI_TIMEZONE = ZoneInfo("Asia/Taipei")
+MARKET_DATA_READY_HOUR = 17
 
 logger = logging.getLogger(__name__)
+
+
+def get_expected_trade_date(current_time=None):
+    """估計此刻應可取得的最近平日；國定休市仍以官方資料為準。"""
+    if current_time is None:
+        current_time = datetime.now(TAIPEI_TIMEZONE)
+
+    if current_time.tzinfo is None:
+        raise ValueError("current_time 必須包含 timezone。")
+
+    taipei_time = current_time.astimezone(TAIPEI_TIMEZONE)
+    expected_date = taipei_time.date()
+
+    if taipei_time.time() < time(hour=MARKET_DATA_READY_HOUR):
+        expected_date -= timedelta(days=1)
+
+    while expected_date.weekday() >= 5:
+        expected_date -= timedelta(days=1)
+
+    return expected_date
+
+
+def assess_market_data_freshness(records, current_time=None):
+    """回報官方資料日期，避免只看保存筆數誤以為行情已更新。"""
+    if not records:
+        raise ValueError("無法檢查空白的市場價格資料。")
+
+    latest_trade_date = max(record["trade_date"] for record in records)
+    expected_trade_date = get_expected_trade_date(current_time)
+    return {
+        "latest_trade_date": latest_trade_date.isoformat(),
+        "expected_trade_date": expected_trade_date.isoformat(),
+        "is_stale": latest_trade_date < expected_trade_date,
+    }
 
 
 def fetch_market_price_data():

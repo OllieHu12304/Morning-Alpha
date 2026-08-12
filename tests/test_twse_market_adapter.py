@@ -15,12 +15,32 @@ FIXTURE_PATH = (
 sys.path.insert(0, str(SOURCE_DIRECTORY))
 
 from twse_market_adapter import (  # noqa: E402
+    assess_market_data_freshness,
+    get_expected_trade_date,
     parse_market_prices,
     parse_roc_date,
 )
 
 
 class TwseMarketAdapterTests(unittest.TestCase):
+    def test_expected_trade_date_uses_previous_friday_on_monday_morning(self):
+        current_time = datetime(2026, 8, 17, 1, 0, tzinfo=timezone.utc)
+
+        self.assertEqual(
+            get_expected_trade_date(current_time),
+            date(2026, 8, 14),
+        )
+
+    def test_freshness_reports_official_data_behind_expected_date(self):
+        records = [{"trade_date": date(2026, 8, 11)}]
+        current_time = datetime(2026, 8, 12, 12, 0, tzinfo=timezone.utc)
+
+        status = assess_market_data_freshness(records, current_time)
+
+        self.assertEqual(status["latest_trade_date"], "2026-08-11")
+        self.assertEqual(status["expected_trade_date"], "2026-08-12")
+        self.assertTrue(status["is_stale"])
+
     def test_parse_market_prices_returns_common_records(self):
         fetched_at = datetime(2026, 8, 11, 8, 0, tzinfo=timezone.utc)
 

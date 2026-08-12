@@ -396,6 +396,13 @@ def run_pipeline():
         "imported_companies": imported_companies,
         "company_links": company_link_result["link_count"],
         "market_prices": market_price_result["saved_count"],
+        "market_latest_trade_date": market_price_result.get(
+            "latest_trade_date"
+        ),
+        "market_expected_trade_date": market_price_result.get(
+            "expected_trade_date"
+        ),
+        "market_data_is_stale": market_price_result.get("is_stale", False),
         "financial_metrics": financial_metric_result["saved_count"],
         "daily_brief_date": daily_brief_result["brief_date"],
         "daily_brief_articles": daily_brief_result["article_count"],
@@ -420,6 +427,14 @@ def print_summary(summary):
     print(f"TWSE 公司資料：{summary['imported_companies']} 筆")
     print(f"新聞公司關聯：{summary['company_links']} 筆")
     print(f"每日價格保存：{summary['market_prices']} 筆")
+    if summary.get("market_latest_trade_date"):
+        print(
+            f"TWSE 最新交易日：{summary['market_latest_trade_date']}；"
+            f"預期最近交易日：{summary['market_expected_trade_date']}"
+        )
+
+    if summary.get("market_data_is_stale"):
+        print("市場資料警告：TWSE 盤後資料尚未更新到預期交易日。")
     print(f"財務摘要保存：{summary['financial_metrics']} 筆")
     print(
         f"每日晨報：{summary['daily_brief_date']}，"

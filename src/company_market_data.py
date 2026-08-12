@@ -99,7 +99,12 @@ def build_records(rows, column_names):
         record = {}
 
         for column_name, value in zip(column_names, row):
-            record[column_name] = serialize_database_value(value)
+            serialized_value = serialize_database_value(value)
+
+            if column_name == "fetched_at" and isinstance(value, datetime):
+                serialized_value += "+00:00"
+
+            record[column_name] = serialized_value
 
         records.append(record)
 

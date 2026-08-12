@@ -33,7 +33,7 @@ class CompanyMarketDataTests(unittest.TestCase):
         self.assertEqual(records[0], {
             "trade_date": "2026-08-11",
             "close_price": 885.25,
-            "fetched_at": "2026-08-11T08:30:00",
+            "fetched_at": "2026-08-11T08:30:00+00:00",
         })
 
     def test_fetch_market_companies_converts_flags_to_boolean(self):
