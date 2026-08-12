@@ -128,6 +128,8 @@ class DashboardContractTests(unittest.TestCase):
         self.assertIn('const MARKET_COMPANIES_API = "/api/market-companies"', javascript)
         self.assertIn("loadSelectedCompanyMarketData", javascript)
         self.assertIn("renderCompanyPriceChart", javascript)
+        self.assertIn("renderMarketDataStatus", javascript)
+        self.assertIn("資料落後", javascript)
         self.assertIn("renderFinancialTable", javascript)
         self.assertIn("不構成投資建議", html)
         self.assertIn(".company-market-content", styles)
@@ -154,6 +156,7 @@ class DashboardContractTests(unittest.TestCase):
         self.assertIn('id="watchlist-company-search"', html)
         self.assertIn('id="watchlist-search-results"', html)
         self.assertIn('id="personalized-brief-result"', html)
+        self.assertIn("近期追蹤新聞", html)
         self.assertIn('const WATCHLIST_API = "/api/watchlist"', javascript)
         self.assertIn(
             'const PERSONALIZED_BRIEF_API = "/api/personalized-brief"',

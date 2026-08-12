@@ -62,7 +62,7 @@ class PersonalizedBriefTests(unittest.TestCase):
         self.assertEqual(len(records), 1)
         self.assertEqual(len(records[0]["companies"]), 2)
 
-    def test_build_brief_counts_only_window_records(self):
+    def test_build_brief_includes_recent_news_outside_daily_window(self):
         records = [{
             "id": 1,
             "source": "cna",
@@ -71,7 +71,7 @@ class PersonalizedBriefTests(unittest.TestCase):
             "source_category": "產經證券",
             "analysis_category": "半導體",
             "title": "台積電測試新聞",
-            "publish_time": "2026-08-11T10:00:00",
+            "publish_time": "2026-08-12T10:00:00",
             "url": "https://example.com/1",
             "companies": make_watchlist(),
         }]
@@ -84,9 +84,39 @@ class PersonalizedBriefTests(unittest.TestCase):
 
         self.assertEqual(brief["watchlist_count"], 1)
         self.assertEqual(brief["article_count"], 1)
-        self.assertIn("1 篇相關新聞", brief["summary"])
+        self.assertIn("1 篇近期相關新聞", brief["summary"])
         self.assertEqual(brief["highlights"][0]["companies"][0]["ticker"], "2330")
         self.assertTrue(any("標題規則" in item for item in brief["limitations"]))
+
+    def test_build_brief_keeps_latest_five_news_per_company(self):
+        records = []
+
+        for index in range(7):
+            records.append({
+                "id": index + 1,
+                "source": "cna",
+                "publisher": "cna",
+                "source_article_id": f"example-{index + 1}",
+                "source_category": "產經證券",
+                "analysis_category": "半導體",
+                "title": f"台積電測試新聞 {index + 1}",
+                "publish_time": f"2026-08-{index + 1:02d}T10:00:00",
+                "url": f"https://example.com/{index + 1}",
+                "companies": make_watchlist(),
+            })
+
+        brief = build_personalized_brief(
+            records,
+            date(2026, 8, 12),
+            make_watchlist(),
+        )
+
+        self.assertEqual(brief["article_count"], 5)
+        self.assertEqual(len(brief["highlights"]), 5)
+        self.assertNotIn(
+            "台積電測試新聞 1",
+            [item["title"] for item in brief["highlights"]],
+        )
 
     def test_empty_watchlist_explains_how_to_start(self):
         brief = build_personalized_brief([], date(2026, 8, 12), [])

@@ -240,7 +240,7 @@ async function loadPersonalizedBrief() {
         renderPersonalizedBrief(payload.brief);
     } catch (error) {
         personalizedBriefResult.replaceChildren();
-        personalizedBriefMessage.textContent = `無法載入個人化晨報：${error.message}`;
+        personalizedBriefMessage.textContent = `無法載入近期追蹤新聞：${error.message}`;
         personalizedBriefMessage.classList.add("error-message");
     }
 }
@@ -253,7 +253,7 @@ function renderPersonalizedBrief(brief) {
         !Number.isInteger(Number(brief.watchlist_count))
         || !Array.isArray(brief.watched_companies)
     ) {
-        throw new Error("個人化晨報欄位格式不正確。");
+        throw new Error("近期追蹤新聞欄位格式不正確。");
     }
 
     personalizedBriefResult.replaceChildren();
@@ -273,7 +273,7 @@ function renderPersonalizedBrief(brief) {
 
     if (brief.highlights.length === 0) {
         const item = document.createElement("li");
-        item.textContent = "本期沒有可顯示的追蹤公司新聞。";
+        item.textContent = "目前沒有可顯示的追蹤公司新聞。";
         highlights.appendChild(item);
     }
 
@@ -597,7 +597,7 @@ async function loadSelectedCompanyMarketData() {
             pricePayload.prices,
             financialPayload.metrics,
         );
-        companyMarketMessage.textContent = "公司資料已更新";
+        renderMarketDataStatus(pricePayload.prices);
     } catch (error) {
         showCompanyMarketError(`無法載入公司資料：${error.message}`);
     }
@@ -649,6 +649,57 @@ function renderCompanyMarketData(prices, metrics) {
 
     renderCompanyPriceChart(prices);
     renderFinancialTable(metrics);
+}
+
+
+function getExpectedMarketDate(currentTime = new Date()) {
+    const dateFormatter = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Asia/Taipei",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+    });
+    const taipeiDateText = dateFormatter.format(currentTime);
+    const taipeiHour = Number(new Intl.DateTimeFormat("en-US", {
+        timeZone: "Asia/Taipei",
+        hour: "2-digit",
+        hour12: false,
+    }).format(currentTime));
+    const expectedDate = new Date(`${taipeiDateText}T12:00:00+08:00`);
+
+    if (taipeiHour < 17) {
+        expectedDate.setDate(expectedDate.getDate() - 1);
+    }
+
+    while ([0, 6].includes(expectedDate.getDay())) {
+        expectedDate.setDate(expectedDate.getDate() - 1);
+    }
+
+    return dateFormatter.format(expectedDate);
+}
+
+
+function renderMarketDataStatus(prices) {
+    const latestPrice = prices[0] || null;
+
+    if (!latestPrice) {
+        companyMarketMessage.textContent = "目前沒有每日價格資料";
+        return;
+    }
+
+    const expectedDate = getExpectedMarketDate();
+    const fetchedTime = latestPrice.fetched_at
+        ? formatPublishTime(latestPrice.fetched_at)
+        : "未知";
+
+    if (latestPrice.trade_date < expectedDate) {
+        companyMarketMessage.textContent = `資料落後：最新交易日 ${latestPrice.trade_date}，擷取於 ${fetchedTime}。TWSE 可能尚未更新；國定休市日請以官方日曆為準。`;
+        companyMarketMessage.classList.add("error-message");
+        return;
+    }
+
+    companyMarketMessage.textContent = `最新交易日 ${latestPrice.trade_date}・擷取於 ${fetchedTime}`;
+    companyMarketMessage.classList.remove("error-message");
 }
 
 
