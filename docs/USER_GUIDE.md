@@ -1,6 +1,6 @@
 # Morning Alpha 使用手冊
 
-本手冊只描述目前 repository 已實作的功能。Morning Alpha 已完成四個階段的程式開發，目前適合在本機或 Docker 中學習、展示及測試；尚未達到可公開營運的投資產品等級。
+本手冊只描述 repository 在 `v0.3.0` 實際完成的功能。Morning Alpha 可以在本機或 Docker 中安裝、執行、學習及展示，但尚未達到可直接公開營運的投資產品等級。
 
 ## 1. 專案概覽
 
@@ -26,7 +26,7 @@ Morning Alpha 解決的問題是：科技與財經資訊分散在不同來源，
 | 多來源資訊 | TechNews 首頁文章；中央社、自由時報與 Yahoo股市 RSS；TWSE 上市公司每日重大訊息 | Requests、BeautifulSoup、XML／JSON parser |
 | 平衡近期樣本 | MySQL 保存全部文章；Dashboard 按每個取得來源採用最新 60 篇 | Pandas |
 | 共同資料格式 | adapter 轉成相同 News Record，再交給 Pandas | Python、Pandas |
-| 新聞身分與去重 | 分開保存取得來源、原始發布媒體與來源文章 ID；canonical URL 與來源文章 ID 使用 UNIQUE index | Python、MySQL |
+| 新聞身分與去重 | 分開保存取得來源、原始發布媒體與來源文章 ID；canonical URL 與 `source + source_article_id` 使用 UNIQUE index | Python、MySQL |
 | 分類與事件分組 | 標題規則分類；72 小時內用共同關鍵字與 Jaccard similarity 分組 | Python |
 | 中文關鍵字 | `jieba-py` 斷詞、Pandas 統計 Top 20 | jieba、Pandas |
 | 公司資料 | TWSE 上市公司、產業、股票代號及別名 | TWSE OpenAPI、MySQL |
@@ -77,7 +77,7 @@ flowchart TD
 
 關鍵觀念：MySQL 是目前 Dashboard 的正式資料來源；`news.json`、`chart_data.json`、`keyword.json`、`metadata.json` 仍由 Pipeline 產生，但主要用於學習、檢查與備援。
 
-新聞的 `source` 是 Morning Alpha 取得資料的 adapter／管道，`publisher` 通常是原始發布媒體。Yahoo股市正式 RSS 沒有提供原始 publisher，因此保存為 `source=yahoo_tw_finance`、`publisher=Yahoo股市`，不使用標題猜測媒體。Dashboard 優先顯示 `publisher`。
+新聞的 `source` 是 Morning Alpha 取得資料的 adapter／管道，`publisher` 通常是原始發布媒體。Yahoo股市正式 RSS 沒有提供原始 publisher，因此保存為 `source=yahoo_tw_finance`、`publisher=Yahoo股市`，不使用標題猜測媒體。新聞列表顯示 `publisher`；來源比重與每來源 60 篇的平衡規則使用 `source`。
 
 ## 4. 專案結構
 
@@ -100,6 +100,7 @@ Morning-Alpha/
 │   └── processed/
 ├── docs/
 │   ├── DATA_SOURCES.md
+│   ├── PROJECT_HISTORY.md
 │   └── USER_GUIDE.md
 ├── sql/
 │   └── 001 ... 013 migrations
@@ -109,7 +110,14 @@ Morning-Alpha/
 │   ├── api.py
 │   ├── scheduler.py
 │   ├── run_migrations.py
-│   ├── *_adapter.py
+│   ├── technews_adapter.py
+│   ├── cna_finance_adapter.py
+│   ├── ltn_business_adapter.py
+│   ├── yahoo_finance_adapter.py
+│   ├── twse_disclosure_adapter.py
+│   ├── twse_company_adapter.py
+│   ├── twse_market_adapter.py
+│   ├── twse_financial_adapter.py
 │   ├── *_store.py
 │   ├── daily_brief.py
 │   ├── personalized_brief.py
@@ -133,7 +141,7 @@ Morning-Alpha/
 | `src/api.py` | 使用 Dashboard 前 | MySQL 與 `dashboard/` |
 | `src/scheduler.py` | 選用 Docker 排程 | 定期呼叫 `run_pipeline.py` |
 | `src/run_migrations.py` | 既有 database 升級前 | `sql/001`～`013` |
-| `src/news_sources.py` | Pipeline 第 1 步 | TechNews、中央社、自由時報、TWSE 重大訊息 adapters |
+| `src/news_sources.py` | Pipeline 第 1 步 | TechNews、中央社、自由時報、Yahoo股市、TWSE 重大訊息 adapters |
 | `src/twse_*_adapter.py` | Pipeline 第 2、4、5 步 | TWSE 官方 OpenAPI |
 | `src/company_matching.py` | Pipeline 第 3 步 | 公司候選資料與新聞標題 |
 | `src/daily_brief.py` | Pipeline 第 6 步 | 新聞 records、固定時間窗 |
@@ -141,6 +149,7 @@ Morning-Alpha/
 | `src/personalized_brief.py` | `/api/personalized-brief` | 追蹤清單、公司新聞關聯 |
 | `dashboard/app.js` | 瀏覽器載入首頁 | Flask APIs、DOM、Chart.js |
 | `docs/DATA_SOURCES.md` | 閱讀來源設計時 | TWSE 欄位契約與限制 |
+| `docs/PROJECT_HISTORY.md` | 回顧版本時 | Git commit、設計原因與學習重點 |
 
 ## 5. 系統需求
 
@@ -241,7 +250,7 @@ cp .env.example .env
 ./.venv/bin/python src/run_migrations.py --apply
 ```
 
-目前最新為 Migration 013：為新聞增加 `publisher`、`source_article_id` 與對應 indexes。全新 database 可直接跑 Pipeline；各 store 會建立最新 tables。
+目前共有 Migration 001～013，最新的 013 為新聞增加 `publisher`、`source_article_id` 與對應 indexes。全新 database 可直接跑 Pipeline；各 store 會建立最新 tables。
 
 ## 7. 如何執行 Morning Alpha
 
@@ -410,14 +419,11 @@ LIMIT 20;
 - 本機 scheduler 需要電腦和 Docker 持續運作。
 - 外部網站或官方 API 改版時，adapter 仍需人工修改。
 
-## 13. 短期 Roadmap
+## 13. v0.3.0 發佈邊界與後續方向
 
-- v0.2：完成本機 end-to-end 驗收、修正阻擋錯誤並建立穩定 tag。
-- v0.3：改善資料品質、公司辨識評估與歷史價格回補策略。
-- v0.4：加入可選的多使用者 authentication、通知與雲端部署設計。
-- v1.0：在資料授權、監控、安全與分析評估完成後，才考慮公開服務。
+`v0.3.0` 已完成目前四階段範圍，正式進入功能凍結與維護狀態。接下來不預設增加功能；優先處理實際使用中發現的資料正確性、來源相容性、安全與文件問題。
 
-Roadmap 是建議，不代表已實作。
+若未來重新啟動開發，可先評估歷史資料回補、公司辨識準確率量測、合法授權的新增來源，以及 production authentication／部署。這些只是候選方向，不是目前已完成的功能或既定承諾。
 
 ## 14. 技術學習與面試摘要
 
@@ -427,7 +433,7 @@ Roadmap 是建議，不代表已實作。
 | Requests | HTML、RSS、TWSE OpenAPI | timeout、retry、headers、HTTP failure |
 | BeautifulSoup | TechNews HTML parser | selector 與網站結構異常 |
 | Pandas | News Record 清理、統計、JSON 準備 | DataFrame、缺值、排序、聚合 |
-| MySQL | 12 組 migrations 與多張關聯 tables | schema、UNIQUE、index、foreign key、transaction |
+| MySQL | 13 組 migrations 與 12 張業務 tables | schema、UNIQUE、index、foreign key、transaction |
 | PyMySQL | parameterized SQL、commit／rollback | 防止 SQL injection 與資料一致性 |
 | HTML／CSS | Dashboard 語意結構與 responsive layout | 可讀性、狀態與版面 |
 | JavaScript | API fetch、DOM、搜尋、分頁、追蹤清單 | async、狀態管理、輸入驗證 |

@@ -4,11 +4,11 @@
 
 | 📦 Commit 數量 | 🗓️ 紀錄範圍 | 🕐 時區 | ↕️ 排列方式 |
 |:---:|:---:|:---:|:---:|
-| **76** | **2026-08-07 ～ 2026-08-12** | **UTC+8** | **由新到舊** |
+| **86（含 v0.3.0 發佈文件）** | **2026-08-07 ～ 2026-08-13** | **UTC+8** | **由新到舊** |
 
 ## 快速導覽
 
-[**2026-08-12**](#2026-08-12) · [**2026-08-11**](#2026-08-11) · [**2026-08-10**](#2026-08-10) · [**2026-08-08**](#2026-08-08) · [**2026-08-07**](#2026-08-07)
+[**v0.3.0（2026-08-13）**](#v030-正式版本摘要2026-08-13) · [**2026-08-12**](#2026-08-12) · [**2026-08-11**](#2026-08-11) · [**2026-08-10**](#2026-08-10) · [**2026-08-08**](#2026-08-08) · [**2026-08-07**](#2026-08-07)
 
 ### 變更類型
 
@@ -20,9 +20,134 @@
 
 ---
 
+## v0.3.0 正式版本摘要（2026-08-13）
+
+`v0.3.0` 收斂四個開發階段：五個新聞取得來源、每來源最新 60 篇平衡樣本、九步 Pipeline、13 組 Migration、公司／市場／財務資料、晨報、自選公司、Flask API、Dashboard、Docker 與 CI。此版本之後停止主動擴充功能，改以資料正確性、來源相容性、安全與文件維護為主。
+
+> 發佈文件 commit 會成為 `v0.3.0` annotated tag 的錨點。Git commit 無法在建立前知道自己的 hash，因此下方逐筆紀錄完整列到發佈文件前一筆 commit；這是避免「為了記錄自身 hash 而永久改變 hash」的正常做法。
+
+---
+
 ## 2026-08-12
 
 <details open>
+<summary>🟢 <strong><code>feat: balance latest 60 news per source</code></strong> · <sub>2026-08-12 16:25:00（UTC+8）</sub></summary>
+
+<br>
+
+<strong>Commit：</strong> [`4d96744`](https://github.com/OllieHu12304/Morning-Alpha/commit/4d967441e34df37e4a3abcc34c41c72696dde870)
+
+解決 TWSE 重大訊息數量壓過媒體新聞的問題：MySQL 仍保留全部資料，但 Dashboard、圖表與關鍵字依取得來源各採發布時間最新 60 篇，形成最多 300 篇的近期平衡樣本。
+
+> 💡 <strong>學習重點：</strong> 儲存完整資料與建立分析樣本是兩件事；分層取樣能改善可讀性，又不必刪除原始紀錄。
+
+</details>
+
+<details>
+<summary>🔴 <strong><code>fix: correct source health timestamps</code></strong> · <sub>2026-08-12 16:24:42（UTC+8）</sub></summary>
+
+<br>
+
+<strong>Commit：</strong> [`869fc61`](https://github.com/OllieHu12304/Morning-Alpha/commit/869fc61f01690454a0a060d3f123260ccd36c1d5)
+
+修正 MySQL session timezone 與 Python 時區轉換重複套用造成的來源狀態時間偏移，改以 epoch 讀取後統一轉成 Asia/Taipei 顯示。
+
+> 💡 <strong>學習重點：</strong> 時間資料必須先明確定義儲存時區，再只做一次顯示層轉換。
+
+</details>
+
+<details>
+<summary>🔴 <strong><code>fix: support live Yahoo Taiwan Finance RSS format</code></strong> · <sub>2026-08-12 15:30:58（UTC+8）</sub></summary>
+
+<br>
+
+<strong>Commit：</strong> [`44c886b`](https://github.com/OllieHu12304/Morning-Alpha/commit/44c886bb27ef32925868822f50f2e6483a1205ac)
+
+依正式 Yahoo股市 RSS 的實際 XML 修正 parser，支援缺少原始 publisher 與空白 guid 的 item，並從文章 URL 建立穩定來源 ID。
+
+> 💡 <strong>學習重點：</strong> fixture 必須反映真實外部資料；可選欄位缺少時要有誠實且可測試的 fallback。
+
+</details>
+
+<details>
+<summary>🟢 <strong><code>feat: collect all TechNews homepage articles</code></strong> · <sub>2026-08-12 12:40:12（UTC+8）</sub></summary>
+
+<br>
+
+<strong>Commit：</strong> [`bbd4994`](https://github.com/OllieHu12304/Morning-Alpha/commit/bbd49946d4db74869931c19ec44333ceaf9f6709)
+
+移除 TechNews 首頁最多 5 篇的舊限制，改為解析當次首頁所有符合既有 HTML 結構的文章，增加科技新聞涵蓋量。
+
+> 💡 <strong>學習重點：</strong> 開發初期的小樣本限制不應默默成為正式產品規則；資料量策略需要與使用需求一致。
+
+</details>
+
+<details>
+<summary>🟢 <strong><code>feat: add Yahoo Taiwan Finance RSS aggregator</code></strong> · <sub>2026-08-12 12:36:00（UTC+8）</sub></summary>
+
+<br>
+
+<strong>Commit：</strong> [`6f43d0d`](https://github.com/OllieHu12304/Morning-Alpha/commit/6f43d0da996d9ab6d10cf5fd63fe9fb8c68bbad2)
+
+加入 Yahoo股市台股動態 RSS adapter、fixture、來源健康與 Pipeline 整合，並保存取得來源、publisher fallback 與來源文章 ID。
+
+> 💡 <strong>學習重點：</strong> 聚合平台的「取得來源」與「原始發布者」可能不同，資料模型必須分開保存兩者。
+
+</details>
+
+<details>
+<summary>🔴 <strong><code>fix: destroy analytics charts before dashboard refresh</code></strong> · <sub>2026-08-12 12:23:37（UTC+8）</sub></summary>
+
+<br>
+
+<strong>Commit：</strong> [`a6dc06a`](https://github.com/OllieHu12304/Morning-Alpha/commit/a6dc06a0307058bb672c59b9b393fa184f427400)
+
+修正 Pipeline 完成後 Dashboard 重載資料時重複使用同一 canvas，造成圖表區空白的問題；更新前先銷毀舊 Chart.js instances。
+
+> 💡 <strong>學習重點：</strong> 前端重新渲染不只是覆蓋資料，也要釋放第三方元件保存的舊狀態。
+
+</details>
+
+<details>
+<summary>🟢 <strong><code>feat: add beginner-friendly project launcher</code></strong> · <sub>2026-08-12 12:15:45（UTC+8）</sub></summary>
+
+<br>
+
+<strong>Commit：</strong> [`92a5cab`](https://github.com/OllieHu12304/Morning-Alpha/commit/92a5cabbcf5d3f76ea8c0d0050421e658112655e)
+
+新增 `python3 start.py` 統一啟動器，自動尋找 `.venv`、檢查設定、啟動 API、等待健康檢查並開啟瀏覽器。
+
+> 💡 <strong>學習重點：</strong> 好的入口會把必要檢查與服務生命週期集中處理，降低初學者記憶多條指令的負擔。
+
+</details>
+
+<details>
+<summary>🟢 <strong><code>feat: run data pipeline from dashboard</code></strong> · <sub>2026-08-12 12:09:48（UTC+8）</sub></summary>
+
+<br>
+
+<strong>Commit：</strong> [`116b997`](https://github.com/OllieHu12304/Morning-Alpha/commit/116b9979a36d8d187795638fde96338720895e0d)
+
+把完整 Pipeline 接入 Dashboard 按鈕，以 API 同一個 Python 與 MySQL 環境啟動背景程序，阻止重複執行並在完成後刷新頁面。
+
+> 💡 <strong>學習重點：</strong> 由後端統一啟動背景工作，可避免終端與網頁分別連到不同 database 的環境不一致。
+
+</details>
+
+<details>
+<summary>🔵 <strong><code>docs: improve project history readability</code></strong> · <sub>2026-08-12 11:54:37（UTC+8）</sub></summary>
+
+<br>
+
+<strong>Commit：</strong> [`f7b02de`](https://github.com/OllieHu12304/Morning-Alpha/commit/f7b02de5c18fdd7feb0753da46ca2b48c81b9fbb)
+
+以可折疊區塊、變更類型色彩、快速日期導覽與一致的學習重點改善更迭歷史閱讀體驗。
+
+> 💡 <strong>學習重點：</strong> 技術文件的資訊層級與可掃讀性，會直接影響團隊是否真正使用版本紀錄。
+
+</details>
+
+<details>
 <summary>🔵 <strong><code>docs: add complete project evolution history</code></strong> · <sub>2026-08-12 11:49:01（UTC+8）</sub></summary>
 
 <br>
