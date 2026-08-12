@@ -27,7 +27,17 @@ class TechNewsAdapterTests(unittest.TestCase):
             "publish_time": datetime(2026, 8, 11, 9, 30),
             "url": "https://technews.tw/example-one/",
         })
-        self.assertEqual(len(articles), 2)
+        self.assertEqual(len(articles), 6)
+
+    def test_parse_articles_does_not_stop_after_five_articles(self):
+        html = FIXTURE_PATH.read_text(encoding="utf-8")
+        articles = parse_articles(html)
+
+        self.assertEqual(articles[5]["title"], "測試科技新聞六")
+        self.assertEqual(
+            articles[5]["url"],
+            "https://technews.tw/example-six/",
+        )
 
     def test_parse_articles_skips_incomplete_article(self):
         html = '<article class="post"><h1>缺少必要欄位</h1></article>'

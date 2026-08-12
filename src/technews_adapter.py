@@ -13,7 +13,6 @@ from news_record import create_news_record
 
 SOURCE = "technews"
 NEWS_URL = "https://technews.tw/"
-ARTICLE_LIMIT = 5
 REQUEST_TIMEOUT = 10
 PUBLISH_TIME_FORMAT = "%Y 年 %m 月 %d 日 %H:%M"
 
@@ -58,7 +57,7 @@ def parse_articles(html):
             "TechNews 結構異常：找不到 article.post。"
         )
 
-    for article_element in article_elements[:ARTICLE_LIMIT]:
+    for article_element in article_elements:
         title_link = article_element.select_one("h1.entry-title a")
         publish_label = None
 
