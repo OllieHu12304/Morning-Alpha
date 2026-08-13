@@ -2,20 +2,27 @@
 
 > 適用版本：Morning Alpha v0.3.2 之後的目前版本
 >
-> 文件定位：先協助自己讀懂專案，再從中裁切成 15 分鐘內的口頭報告
+> 文件定位：先理解專案，再從中整理成 15 分鐘內的口頭報告
 >
-> 建議分配：簡報約 10 分鐘、實機操作約 3 分 30 秒、切換與緩衝約 1 分 30 秒
+> 建議分配：簡報約 9 分 30 秒、實機操作約 3 分 30 秒、切換與緩衝約 2 分鐘
 
-## 這份文件怎麼使用
+## 這次改版的重點
 
-這份文件刻意比實際講稿完整，**不需要逐字全部念完**。每一頁分成四種內容：
+新版簡報由 13 頁收斂成 10 頁，合併原本重複的功能、資料流、Pipeline、專案演進、限制與展望內容。技術說明以初學者能掌握的核心邏輯為主：
 
-- **理解重點**：報告前要真正弄懂的概念。
-- **程式對照**：目前 repository 中負責這件事的檔案與精簡程式碼。
-- **設計原因**：說明為什麼採用這種方式，以及它解決什麼問題。
-- **上台建議講法**：可直接再濃縮成口頭報告的版本。
+- 第 3 頁把「能做什麼、技術棧、資料流」整合成一張圖。
+- 第 5 頁用實際例子解釋 Adapter 與「解耦」。
+- 第 6 頁用白話區分「同一篇文章」與「同一件事」。
+- 第 7 頁把 Pipeline 執行順序與專案演進整合。
+- 第 9 頁聚焦三個具代表性的 commits。
+- 第 10 頁把目前限制與未來方向放在同一個判斷架構中。
 
-程式碼只節錄與簡報概念最有關的片段，目的是理解資料如何流動，不是逐行介紹整個專案。
+每一頁包含：
+
+- **理解重點**：報告前應真正弄懂的內容。
+- **程式對照**：repository 中負責此功能的檔案或精簡程式。
+- **設計原因**：為什麼採用這個做法。
+- **上台建議講法**：可以再濃縮成口語報告的版本。
 
 ---
 
@@ -27,12 +34,12 @@
    python3 start.py
    ```
 
-2. 確認瀏覽器可以開啟 `http://127.0.0.1:5050`。
-3. 預先完成一次 Pipeline，避免把外部網站下載時間算進現場 demo。
-4. 在 My Watchlist 加入一間確實有相關新聞的公司。
-5. 在 Company Market Data 選好一間具有價格與財務資料的公司。
-6. 另開 Terminal，保留最近一次成功 Pipeline 的輸出當作備案。
-7. 關閉 `.env`、MySQL 密碼或其他敏感資訊視窗。
+2. 確認 `http://127.0.0.1:5050` 可以顯示 Dashboard。
+3. 預先執行一次 Pipeline，避免現場等待外部網站下載。
+4. 在 My Watchlist 保留兩間有新聞與市場資料的公司。
+5. 預先確認 Company Market Data 可以搜尋並快速切換追蹤公司。
+6. 另開 Terminal，保留最近一次成功 Pipeline 的輸出。
+7. 關閉 `.env` 或任何可能顯示密碼的畫面。
 
 ---
 
@@ -40,212 +47,122 @@
 
 ## 理解重點
 
-Morning Alpha 不是單一爬蟲，也不是單純的新聞網頁。它是一個小型的「資料產品」，將以下工作串成完整流程：
-
-1. 從外部網站取得科技、財經新聞與市場資料。
-2. 把不同來源整理成共同格式。
-3. 將資料永久保存到 MySQL。
-4. 建立新聞、公司與市場價格之間的關聯。
-5. 透過 Flask API 把資料轉成前端可以使用的 JSON。
-6. 由 JavaScript 將資料呈現在 Dashboard。
-
-專案目前的使用者是希望集中閱讀台灣科技、財經與上市公司消息的個人使用者。它提供的是「資料蒐集、整理與觀察工具」，不是自動投資決策系統。
-
-## 專案定位
+Morning Alpha 是一個小型資料產品，不只是爬蟲，也不只是網頁。它把分散的科技新聞、財經新聞、公司公告、價格與財務資料整理到同一個 Dashboard。
 
 ```text
 Morning Alpha
-＝ 新聞收集器
-＋ 資料整理流程
-＋ MySQL 資料庫
+＝ 資料收集
+＋ 資料整理
+＋ MySQL 保存
 ＋ Flask API
-＋ 互動式 Dashboard
+＋ Dashboard 呈現
 ```
 
-## 設計原因
-
-如果只有爬蟲，資料只能印在 Terminal 或留在記憶體中；如果只有網頁，網頁本身也沒有可靠的資料來源。Morning Alpha 的重點是讓資料從取得、保存、查詢到顯示形成完整閉環。
+專案的主要價值是減少使用者在不同網站之間搜尋、整理和比對資訊的時間。目前定位是個人資訊整理與學習工具，不是自動投資決策系統。
 
 ## 上台建議講法（約 30 秒）
 
-> 大家好，我今天要介紹的專案是 Morning Alpha。它是一套台灣科技與財經新聞整合系統，會自動收集不同來源的新聞、上市公司和市場資料，整理後保存到 MySQL，再透過 Flask API 顯示在 Dashboard。它的目的不是預測股票，而是降低使用者在多個網站之間搜尋、整理和比對資訊的成本。
+> 大家好，我今天要介紹的專案是 Morning Alpha。它會收集不同來源的科技、財經新聞、公司公告和市場資料，整理後保存到 MySQL，再透過 Flask API 顯示在 Dashboard。它的目的不是預測股票，而是把原本分散的資訊整理成一個可以搜尋、追蹤和觀察的入口。
 
 ---
 
-# 第 2 頁｜我想解決什麼問題？
+# 第 2 頁｜資訊很多，但彼此分散
 
 ## 理解重點
 
-原始資料分散在新聞網站、RSS、證交所 API 等不同位置，而且資料格式不同。使用者實際遇到的不只是「新聞太多」，還包括：
+使用者真正遇到的不只是「新聞太多」，而是資料散落在不同網站，格式也不相同：
 
-- 同一家公司消息散落在不同網站。
-- 一篇文章可能同時與多家公司有關。
-- 同一事件可能被不同媒體重複報導。
-- 新聞發布時間、來源名稱與分類格式不一致。
-- 新聞和股價資料分開，難以放在相同畫面觀察。
-- 每次更新若要手動執行多支程式，操作容易出錯。
+- 今天有哪些重要科技與財經新聞？
+- 這則新聞可能與哪間上市公司有關？
+- 公司近期新聞、股價與財務資料在哪裡？
+- 不同媒體是不是正在報導同一件事情？
+- 如何只追蹤自己真正關心的公司？
 
-因此，這個專案處理的是四層問題：
-
-| 問題層次 | Morning Alpha 的處理方式 |
-|---|---|
-| 資料取得 | Requests、BeautifulSoup、RSS/XML、JSON |
-| 資料品質 | 共同格式、欄位驗證、URL 去重、來源健康狀態 |
-| 資料關聯 | 公司別名比對、事件分組、價格與財務資料 |
-| 使用介面 | Flask API、JavaScript、Chart.js、搜尋與篩選 |
+Morning Alpha 將新聞網站、RSS、公司公告、股價與財務摘要集中到一個 Dashboard，讓使用者不必自行維護多個網站與資料格式。
 
 ## 設計原因
 
-將問題拆成不同層次後，每個模組可以獨立測試。例如網站解析錯誤時，可以只測 Adapter；Dashboard 顯示錯誤時，可以直接測 API 回傳，不必重新爬新聞。
+專案不是要取代所有原始網站，而是建立一個「索引與整理層」。使用者仍能點回原始文章，但搜尋、篩選與公司關聯先由 Morning Alpha 完成。
 
 ## 上台建議講法（約 45 秒）
 
-> 我一開始想解決的是資訊分散問題。科技新聞、財經新聞、公司公告與股價資料來自不同網站，格式也不一樣。使用者不但要切換頁面，還要自行判斷新聞和公司之間的關係。因此我把問題拆成資料取得、資料品質、資料關聯和使用介面四層，讓系統先整理資料，再提供一個可以搜尋和觀察的統一入口。
+> 我一開始觀察到，科技新聞、財經 RSS、證交所公告和市場資料分散在不同地方。使用者不只要一直切換網站，還要自行判斷新聞和公司之間的關係。因此 Morning Alpha 的核心問題不是單純爬更多新聞，而是把不同資料整理成相同格式，再提供一個能搜尋、追蹤和回到原文的統一入口。
 
 ---
 
-# 第 3 頁｜Morning Alpha 可以完成什麼？
+# 第 3 頁｜使用者任務背後，是一條完整技術鏈
 
-## 理解重點
+## 本頁圖形化內容
 
-目前實際完成的功能與負責技術如下：
+簡報以六個相連步驟呈現主要技術棧：
 
-| 使用者任務 | 系統功能 | 主要技術 |
-|---|---|---|
-| 集中閱讀新聞 | Latest News、來源與分類篩選、分頁 | Flask API、JavaScript、MySQL |
-| 確認資料來源狀態 | 顯示最近嘗試、成功與文章數 | Logging、MySQL、Flask |
-| 觀察熱門主題 | Top 20 中文關鍵字與圖表 | jieba、Pandas、Chart.js |
-| 找公司相關新聞 | 建立新聞與公司關聯 | 公司名稱／別名規則、MySQL |
-| 追蹤特定公司 | 搜尋並加入 My Watchlist | JavaScript、Flask REST API |
-| 查看市場資料 | 收盤價、成交資訊與季度摘要 | TWSE JSON、MySQL、Chart.js |
-| 閱讀個人化消息 | 依追蹤公司整理近期新聞 | Watchlist、公司關聯、規則式晨報 |
-| 更新全部資料 | Dashboard 按鈕或 Terminal 執行 Pipeline | Python orchestration、subprocess |
+```text
+外部來源
+HTML／RSS／JSON
+    ↓
+Python 解析
+Requests／BeautifulSoup
+    ↓
+資料整理
+Pandas／jieba
+    ↓
+永久保存
+MySQL／PyMySQL
+    ↓
+後端服務
+Flask API／JSON
+    ↓
+互動介面
+HTML／CSS／JavaScript／Chart.js
+```
 
-## 一個重要區分
+圖下方再放置使用者能完成的任務：
 
-- Dashboard 的**搜尋與篩選**只處理已經載入的新聞，不會每搜尋一次就重新爬網站。
-- Pipeline 的**更新資料**才會連接外部網站、整理並寫入 MySQL。
+```text
+閱讀新聞｜搜尋篩選｜追蹤公司｜查看市場資料｜一鍵更新
+```
 
-這個區分能避免使用者每次輸入關鍵字都必須等待外部網路請求。
+## 理解重點：每項技術各自負責什麼
 
-## 上台建議講法（約 50 秒）
+| 技術 | 在 Morning Alpha 的角色 |
+|---|---|
+| Python | 串起 crawler、資料整理、Database 與 Pipeline |
+| Requests | 向外部網站發出 HTTP request |
+| BeautifulSoup | 從 TechNews HTML 找出文章資訊 |
+| RSS/XML parser | 讀取中央社、自由時報與 Yahoo feed |
+| Pandas | 轉換時間、排序、分組與統計資料 |
+| jieba | 對中文新聞標題進行斷詞 |
+| MySQL | 永久保存新聞、公司、價格、關聯與執行紀錄 |
+| PyMySQL | 讓 Python 執行 MySQL SQL |
+| Flask | 提供 Dashboard 頁面與 JSON API |
+| HTML/CSS | 建立頁面結構與視覺樣式 |
+| JavaScript | 呼叫 API、搜尋、切換公司與更新畫面 |
+| Chart.js | 把統計與價格資料畫成圖表 |
 
-> Morning Alpha 目前可以集中閱讀五個取得來源的新聞與公告，依來源、分類、公司和關鍵字搜尋，也會顯示關鍵字統計、公司價格與部分財務資料。使用者可以搜尋公司加入自選清單，再閱讀相關的近期消息。資料更新則可以直接從 Dashboard 啟動完整 Pipeline。需要注意的是，畫面搜尋只篩選現有資料，真正連接外部來源是在 Pipeline 更新時發生。
+## 完整資料型態如何變化
 
----
-
-# 第 4 頁｜資料從哪裡來？為什麼有 HTML、RSS 與 JSON？
-
-## 理解重點
-
-目前五個新聞／公告取得來源如下：
-
-| 來源 | 主要格式 | 解析方式 | 為什麼這樣做 |
-|---|---|---|---|
-| TechNews 科技新報 | HTML | Requests + BeautifulSoup | 首頁內容直接存在 HTML 標籤中 |
-| 中央社財經 | RSS/XML | XML parser | RSS 已提供標題、連結與時間等結構化欄位 |
-| 自由時報財經 | RSS/XML | XML parser | 使用官方提供的新聞 feed 比解析版面穩定 |
-| Yahoo 股市台股動態 | RSS/XML | XML parser | 聚合來源可保留 publisher 與來源文章身分 |
-| TWSE 上市公司重大訊息 | JSON API | `response.json()`／dict | 官方 API 原本就是欄位化資料，不需解析 HTML |
-
-HTML、RSS 和 JSON 並不是專案自行任意拆成三種做法，而是外部來源本身提供不同介面：
-
-- **HTML** 是給人看的網頁，解析時要找標籤、class 或 DOM 結構。
-- **RSS/XML** 是給程式訂閱內容的 feed，欄位較固定，但仍要處理命名空間與缺漏值。
-- **JSON API** 是給程式交換資料的格式，可直接轉成 Python `dict` 和 `list`。
+```text
+HTTP response
+→ list[dict]
+→ Pandas DataFrame
+→ MySQL rows
+→ Flask JSON response
+→ JavaScript Array/Object
+→ Dashboard
+```
 
 ## 程式對照
 
-`src/news_sources.py` 把五個取得函式集中管理：
-
-```python
-source_fetchers = [
-    ("technews", "TechNews", fetch_technews),
-    ("cna", "中央社財經 RSS", fetch_cna_finance),
-    ("ltn", "自由時報財經 RSS", fetch_ltn_business),
-    ("yahoo_tw_finance", "Yahoo股市台股動態 RSS", fetch_yahoo_finance),
-    ("twse_disclosure", "TWSE 上市公司每日重大訊息", fetch_twse_disclosures),
-]
-```
-
-單一來源發生錯誤時，系統會記錄結果並繼續下一個來源：
-
-```python
-for source, source_name, fetch_articles in source_fetchers:
-    try:
-        source_articles = fetch_articles()
-    except (requests.RequestException, ValueError) as error:
-        logger.error("%s 來源失敗：%s", source_name, error)
-        continue
-
-    articles.extend(source_articles)
-```
-
-## 設計原因與取捨
-
-- 優先使用 RSS 或官方 JSON，因為它們比 HTML 版面穩定。
-- 只有來源未提供合適 feed/API 時，才解析 HTML。
-- 外部網站仍可能改版、逾時或限制存取，因此每個來源都要獨立處理錯誤。
-- Yahoo 是聚合來源，`source` 代表取得管道，`publisher` 才代表原始發布媒體，兩者不能混為一談。
-
-## 上台建議講法（約 70 秒）
-
-> 目前系統有五個新聞與公告取得來源。TechNews 首頁是一般 HTML，因此用 BeautifulSoup 找出文章標籤；中央社、自由時報和 Yahoo 提供 RSS，所以解析 XML；證交所提供官方 JSON API，可以直接轉成 Python 字典。三種方法的差異來自來源本身，而不是為了刻意增加複雜度。每個來源都包在獨立 Adapter 中，單一來源失敗時會留下錯誤紀錄，但不會讓其他來源一起停止。
-
----
-
-# 第 5 頁｜一則新聞如何進入 Dashboard？
-
-## 理解重點：完整資料流
-
-```text
-外部網站
-  ↓ HTTP response（HTML／XML／JSON）
-來源 Adapter
-  ↓ list[dict]，共同 News Record
-Pandas
-  ↓ DataFrame，轉時間、排序與清理
-PyMySQL
-  ↓ SQL INSERT，永久保存在 MySQL
-Flask API
-  ↓ JSON response
-JavaScript
-  ↓ 儲存前端狀態、篩選、建立 DOM
-Dashboard
-```
-
-不同階段的資料型態也會跟著改變：
-
-| 階段 | 常見資料型態 | 作用 |
-|---|---|---|
-| Requests 下載 | `str`、`Response` | 接收外部資料 |
-| Adapter 解析 | `list[dict]` | 一篇文章是一個 dictionary |
-| Pandas 整理 | `DataFrame` | 批次轉換、排序、統計 |
-| PyMySQL 寫入 | `tuple`、SQL row | 對應 Database columns |
-| Flask 回傳 | Python `dict` → JSON | 前後端交換資料 |
-| JavaScript | Array／Object | 搜尋、篩選、繪圖與渲染 |
-
-## 程式對照 1：Pandas 整理
-
-`src/analyze_news.py` 會把共同格式資料轉成 DataFrame，再處理時間與排序：
+Pandas 將文字時間轉成可排序的時間型態：
 
 ```python
 dataframe["publish_time"] = pd.to_datetime(
     dataframe["publish_time"],
     errors="coerce",
 )
-
-dataframe = dataframe.sort_values(
-    by="publish_time",
-    ascending=False,
-).reset_index(drop=True)
 ```
 
-`errors="coerce"` 的意思是無法解析的日期會變成 Pandas 的缺失時間 `NaT`，後續可以明確驗證，而不是把錯誤字串直接寫進 Database。
-
-## 程式對照 2：Flask 查詢與回傳 JSON
-
-`src/api.py` 的 `/api/news` 不直接產生 HTML，而是回傳資料：
+Flask 從 MySQL 讀取資料並回傳 JSON：
 
 ```python
 @app.get("/api/news")
@@ -255,707 +172,538 @@ def news():
     return jsonify(build_news_payload(dataframe, company_links))
 ```
 
-## 程式對照 3：JavaScript 載入資料
-
-`dashboard/app.js` 再用 `fetch()` 呼叫 API：
+JavaScript 再呼叫 API 並更新畫面：
 
 ```javascript
-async function loadNews() {
-    const payload = await fetchJson(NEWS_API);
-    newsRecords = payload.news;
-    populateFilters();
-    renderTable();
-}
+const payload = await fetchJson("/api/news");
+newsRecords = payload.news;
+renderTable();
 ```
 
-## 設計原因
+## 重要區分
 
-瀏覽器不應直接拿到 MySQL 帳密，也不適合直接執行 SQL。Flask 位在中間，負責資料查詢、格式轉換與錯誤處理；JavaScript 只處理使用者互動與畫面呈現。這就是前端、後端與 Database 的基本分工。
+- **Pipeline** 負責把新資料搬進 MySQL。
+- **Flask API** 負責把已保存的資料提供給 Dashboard。
+- **JavaScript 搜尋**只篩選已載入資料，不會每輸入一次就重新爬網站。
 
-## 上台建議講法（約 80 秒）
+## 上台建議講法（約 90 秒）
 
-> 一則新聞會經過多個資料型態。Requests 先下載 HTML、XML 或 JSON，Adapter 把它轉成相同欄位的 Python dictionary，Pandas 再將多筆資料組成 DataFrame，處理時間、排序和缺失值。整理後由 PyMySQL 寫入 MySQL。使用者打開 Dashboard 時，瀏覽器不是直接連資料庫，而是呼叫 Flask API；Flask 查詢 MySQL 並回傳 JSON，最後 JavaScript 把資料渲染成表格和圖表。這幾項技術其實是在同一條資料管線上接力。
+> 使用者看到的是一個 Dashboard，但背後其實是一條技術鏈。Requests 先下載 HTML、RSS 或 JSON；BeautifulSoup 或 parser 負責解析；Pandas 將多筆資料整理成 DataFrame；PyMySQL 再把資料寫進 MySQL。使用者打開網頁時，Flask API 從 MySQL 查詢並回傳 JSON，最後由 JavaScript 和 Chart.js 顯示成表格與圖表。每項技術不是各自獨立，而是接力處理同一筆資料。Pipeline 負責更新資料，API 負責提供資料，前端則負責互動。
 
 ---
 
-# 第 6 頁｜不同網站如何共用同一條流程？
+# 第 4 頁｜五個新聞管道，三種資料格式
 
-## 理解重點：Adapter 與資料契約
+## 理解重點
 
-每個來源的原始欄位不同，例如可能叫 `pubDate`、`date` 或 `發布日期`。如果後續程式逐一判斷來源，程式會充滿 `if source == ...`。因此專案使用 Adapter，把來源差異隔離在各自模組中。
+| 來源 | 資料內容 | 格式 | 解析方式 |
+|---|---|---|---|
+| TechNews | 科技新聞 | HTML | Requests + BeautifulSoup |
+| 中央社財經 | 財經新聞 | RSS/XML | XML parser |
+| 自由時報財經 | 財經新聞 | RSS/XML | XML parser |
+| Yahoo 股市 | 聚合型台股新聞 | RSS/XML | XML parser |
+| TWSE | 重大訊息、公司、價格與財務 | JSON API | Python dict/list |
 
-所有 Adapter 最後都要產生相同 News Record：
+三種方法不是刻意增加複雜度，而是來源本身提供不同介面：
 
-| 欄位 | 意義 |
-|---|---|
-| `source` | Morning Alpha 從哪個管道取得資料 |
-| `publisher` | 實際發布文章的媒體或單位 |
-| `source_article_id` | 來源提供的文章識別碼 |
-| `source_category` | 來源原本提供的分類 |
-| `title` | 新聞標題 |
-| `publish_time` | 轉成 Python `datetime` 的發布時間 |
-| `url` | 原始文章網址 |
+- **HTML** 是給人閱讀的網頁，需要找出 DOM 標籤與 class。
+- **RSS/XML** 是給程式訂閱內容的 feed，通常已有標題、網址與時間。
+- **JSON API** 是給程式交換資料的格式，可直接轉成 Python `dict` 和 `list`。
 
 ## 程式對照
 
-`src/news_record.py` 同時定義格式與基本驗證：
+`src/news_sources.py` 集中管理所有來源：
 
 ```python
-NEWS_RECORD_FIELDS = (
-    "source",
-    "publisher",
-    "source_article_id",
-    "source_category",
-    "title",
-    "publish_time",
-    "url",
-)
+source_fetchers = [
+    ("technews", "TechNews", fetch_technews),
+    ("cna", "中央社財經 RSS", fetch_cna_finance),
+    ("ltn", "自由時報財經 RSS", fetch_ltn_business),
+    ("yahoo_tw_finance", "Yahoo股市 RSS", fetch_yahoo_finance),
+    ("twse_disclosure", "TWSE 重大訊息", fetch_twse_disclosures),
+]
 ```
 
-```python
-return {
-    "source": source.strip(),
-    "publisher": publisher.strip(),
-    "source_article_id": source_article_id,
-    "source_category": source_category,
-    "title": title.strip(),
-    "publish_time": publish_time,
-    "url": url.strip(),
-}
-```
+如果單一來源失敗，程式會記錄錯誤並繼續其他來源。這稱為 graceful degradation：部分外部服務異常時，整個系統不必完全停止。
 
-必要文字不能是空白，`publish_time` 必須先轉成 `datetime`。這個共同格式可以視為模組之間的「資料契約」：只要 Adapter 遵守契約，Pandas、MySQL 和 API 就不用知道文章來自哪種網站。
+## 上台建議講法（約 65 秒）
 
-## 設計原因與取捨
-
-- 優點：新增來源時主要新增 Adapter，不需重寫整條 Pipeline。
-- 優點：每個 Adapter 可以使用 fixture 獨立測試。
-- 代價：每個來源仍要維護自己的解析規則。
-- 注意：共同格式只統一欄位，不代表不同來源的資料品質完全相同。
-
-## 上台建議講法（約 60 秒）
-
-> 不同網站的欄位名稱和結構不一樣，所以我建立 Adapter。它可以想成翻譯員，把來源自己的 HTML、RSS 或 JSON 翻成統一 News Record。共同欄位包含取得來源、原始 publisher、文章 ID、分類、標題、發布時間和網址。後面的 Pandas 和 MySQL 只認這份共同格式，因此新增來源時不必重新改寫所有後續程式。這也是專案從單一爬蟲擴充成多來源系統的關鍵。
+> 目前共有五個新聞與公告取得管道。TechNews 是一般 HTML，所以使用 BeautifulSoup；中央社、自由時報與 Yahoo 提供 RSS，因此解析 XML；TWSE 提供官方 JSON API，可以直接轉成 Python 字典。三種方法的差異來自來源本身。系統會分開記錄每個來源的成功或失敗，因此其中一個網站 timeout 時，其他來源仍能繼續更新。
 
 ---
 
-# 第 7 頁｜資料如何避免重複？
+# 第 5 頁｜Adapter 用「解耦」隔離網站差異
 
-## 理解重點：相同文章與相同事件不同
+## 先用白話理解解耦
 
-去重必須先區分兩件事：
+「耦合」代表兩段程式彼此知道太多細節，改動其中一邊時，另一邊也必須跟著修改。
 
-1. **完全相同的文章**：同一來源、同一網址或同一文章 ID 被重複取得，應阻止重複寫入。
-2. **不同媒體報導同一事件**：文章本身不同，應保留每篇報導，只建立跨來源事件分組。
+「解耦」則是先約定一個共同介面，讓兩邊只依賴這個約定，不依賴彼此的內部做法。
 
-只用標題去重會出現兩種錯誤：
+可以把 Adapter 想成插座轉接頭：
 
-- 兩家媒體使用相同標題，卻被誤刪成只剩一篇。
-- 同一篇文章改了一點標題，反而沒有被辨識成重複。
+```text
+不同規格插頭
+HTML／RSS／JSON
+       ↓
+    Adapter
+       ↓
+統一規格插座
+共同 News Record
+```
 
-## 程式對照 1：Canonical URL
+## 沒有 Adapter 時
 
-系統先正規化 URL，例如統一網域大小寫、移除 fragment 與常見追蹤參數，再計算固定長度 SHA-256 hash。MySQL 使用 hash 建立 UNIQUE constraint：
+假設 Pandas 必須知道每個網站的欄位：
+
+```python
+if source == "TechNews":
+    title = article["post_title"]
+elif source == "Yahoo":
+    title = item["title"]
+elif source == "TWSE":
+    title = record["主旨"]
+```
+
+這代表新增或修改來源時，Pandas、MySQL 和後續分析都可能一起被迫修改，耦合很高。
+
+## 使用 Adapter 後
+
+每個 Adapter 自己理解來源格式，但都輸出相同欄位：
+
+```python
+return create_news_record(
+    source=source,
+    publisher=publisher,
+    source_article_id=article_id,
+    title=title,
+    publish_time=publish_time,
+    url=url,
+)
+```
+
+共同 News Record 包含：
+
+```text
+source｜publisher｜source_article_id
+title｜publish_time｜url｜source_category
+```
+
+後面的 Pandas 與 MySQL 只認共同格式，不需要知道資料原本來自 HTML、RSS 還是 JSON。
+
+## 具體例子
+
+如果 TechNews 改變 HTML class：
+
+- 主要修改 `src/technews_adapter.py`。
+- `src/analyze_news.py` 不需要知道 HTML 改版。
+- `src/store_news.py` 仍然接收相同 News Record。
+- Flask API 與 Dashboard 也不需要跟著重寫。
+
+這就是 Adapter 帶來的解耦：**把容易變動的網站細節，限制在一個小範圍內。**
+
+## 設計取捨
+
+- 優點：新增來源時不必重寫整條 Pipeline。
+- 優點：每個 Adapter 可使用 fixture 獨立測試。
+- 代價：每個來源仍需要自己的解析程式與維護成本。
+
+## 上台建議講法（約 85 秒）
+
+> Adapter 是我一開始比較陌生的概念。它主要解決的是解耦，也就是不要讓後面的 Pandas、MySQL 知道每個網站的特殊結構。可以把它想成轉接頭：HTML、RSS 和 JSON 是不同插頭，Adapter 把它們轉成統一 News Record。假設 TechNews 改了 HTML class，我只需要修 TechNews Adapter；只要輸出欄位不變，後面的資料整理、Database 和 Dashboard 就不用一起修改。這能把外部網站最容易變動的部分隔離起來。
+
+---
+
+# 第 6 頁｜先判斷是不是同一篇，再決定是否分組
+
+## 白話理解
+
+系統需要分清楚兩種情況：
+
+### 情況一：完全相同的文章
+
+例如同一篇文章因為 Pipeline 執行兩次而再次出現。這種資料不應重複寫入。
+
+系統使用兩個主要線索：
+
+1. 將網址整理成標準形式，再比較 canonical URL。
+2. 比較 `source + source_article_id`。
+
+### 情況二：不同媒體報導同一件事
+
+例如中央社與 Yahoo 都報導同一場法說會。雖然事件相同，但它們仍是不同 publisher 的文章，因此應該全部保留，只在 Dashboard 標示為同一事件群組。
+
+## 主要技術邏輯
+
+```text
+同一網址或同一來源文章 ID
+→ 視為同一篇文章
+→ MySQL 不重複寫入
+
+不同網址、不同 publisher，但事件相似
+→ 保留每篇文章
+→ Dashboard 只做分組
+```
+
+MySQL 使用 UNIQUE constraint 最後把關：
 
 ```sql
 UNIQUE KEY unique_canonical_url_hash (canonical_url_hash),
 UNIQUE KEY unique_source_article (source, source_article_id)
 ```
 
-`src/store_news.py` 使用：
+寫入使用 `INSERT IGNORE`，遇到已存在的唯一資料時不再新增。
 
-```sql
-INSERT IGNORE INTO news_records (...)
-VALUES (...);
-```
+## 為什麼不直接比較標題
 
-若 UNIQUE constraint 已存在，MySQL 會忽略這次重複插入；資料規則由 Database 最後把關，而不是只依賴 Python 在記憶體檢查。
-
-## 程式對照 2：事件分組
-
-在輸出 Dashboard 資料時，`src/run_pipeline.py` 會另外呼叫：
-
-```python
-records = prepare_dashboard_records(dataframe)
-records = group_similar_events(records)
-```
-
-因此「文章去重」發生在儲存層，「同事件分組」發生在分析／顯示層。兩者目的不同。
-
-## 設計原因與限制
-
-- URL 與來源文章 ID 對完全重複文章較可靠。
-- Database UNIQUE constraint 可防止不同執行批次重複寫入。
-- 事件分組目前仍是規則式相似度，可能漏掉標題差異很大的同事件。
-- 保留原文能追溯不同媒體觀點，比分組後直接刪除更安全。
+- 不同媒體可能使用完全相同的標題，但仍是不同文章。
+- 同一篇文章也可能稍微修改標題。
+- 只看標題容易誤刪或漏掉重複資料。
 
 ## 上台建議講法（約 65 秒）
 
-> 去重時我把相同文章和相同事件分開處理。完全相同的文章會先正規化網址，再用 URL hash，以及來源加文章 ID 的 UNIQUE constraint 阻止重複寫入。不同媒體報導同一事件則不刪除，因為 publisher 和內容仍然不同；系統只在分析層把它們分成同一事件群組。這比只用標題去重更能保留資料來源，也比較不容易誤刪。
+> 去重時，我先分辨是不是同一篇文章。如果網址整理後相同，或來源和文章 ID 相同，MySQL 就不再重複寫入。但如果只是不同媒體在報導同一件事，系統會保留每篇文章，只在 Dashboard 把它們分組。這樣既能避免 Pipeline 重複寫入，又不會因為標題相似而誤刪不同媒體的內容。
 
 ---
 
-# 第 8 頁｜一次 Pipeline 更新完成哪些工作？
+# 第 7 頁｜從多支程式，整合成一個九步 Pipeline
 
-## 理解重點：Pipeline 是協調者
+## 專案演進
 
-`src/run_pipeline.py` 不負責所有細節，而是依照資料相依順序呼叫不同模組。完整九個步驟是：
+Morning Alpha 早期需要分別執行多支 Python scripts。這容易出現兩個問題：
 
-| 步驟 | 工作 | 為何要放在這個順序 |
-|---|---|---|
-| 1 | 爬取、整理並儲存新聞 | 後面關聯與晨報需要新聞資料 |
-| 2 | 同步 TWSE 公司資料 | 公司關聯需要公司與別名目錄 |
-| 3 | 建立新聞公司關聯 | 晨報、自選股與事件觀察都會使用 |
-| 4 | 同步 TWSE 每日價格 | 事件觀察需要交易日價格 |
-| 5 | 同步 TWSE 財務摘要 | 提供公司市場資料區使用 |
-| 6 | 產生並保存每日晨報 | 使用已完成的新聞與公司關聯 |
-| 7 | 匯出 Dashboard 新聞資料 | 保留靜態 JSON 相容輸出 |
-| 8 | 產生圖表資料 | 使用已整理的新聞樣本 |
-| 9 | 產生 Top 20 關鍵字 | 使用 jieba 與 Pandas 統計 |
+- 使用者必須記住執行順序。
+- 少執行一支程式，就可能讓 Dashboard 使用舊資料。
 
-## 程式對照 1：步驟計時與失敗紀錄
+Commit `13e9130 feat: add unified data pipeline runner` 首次建立 `src/run_pipeline.py`，將多項資料工作整合成單一入口：
 
-```python
-def execute_pipeline_step(step_results, step, function):
-    step_start_time = time.perf_counter()
-
-    try:
-        result = function()
-    except Exception:
-        update_step_result(step_results, step, "failure", ...)
-        raise
-
-    return result, get_duration_ms(step_start_time)
+```bash
+python3 src/run_pipeline.py
 ```
 
-每一步都記錄狀態、耗時與摘要，所以 Dashboard 可以顯示最近 Pipeline 歷史，也能知道是哪一步失敗。
+後續功能增加後，Pipeline 發展成目前九個步驟：
 
-## 程式對照 2：從 Dashboard 啟動
+| 步驟 | 工作 |
+|---|---|
+| 1 | 爬取、整理並儲存新聞 |
+| 2 | 同步 TWSE 公司資料 |
+| 3 | 建立新聞公司關聯 |
+| 4 | 同步 TWSE 每日價格 |
+| 5 | 同步 TWSE 財務摘要 |
+| 6 | 產生並保存每日晨報 |
+| 7 | 匯出 Dashboard 新聞 JSON |
+| 8 | 產生圖表資料 |
+| 9 | 產生 Top 20 關鍵字 |
 
-Dashboard 按鈕會送出：
+## Pipeline 的角色
+
+`run_pipeline.py` 是協調者，不是把所有功能重寫在同一個檔案。它依照資料相依順序呼叫現有模組：
+
+```python
+collect_and_store_news()
+sync_company_data()
+run_news_company_sync()
+sync_market_prices()
+```
+
+這種設計讓每個功能仍能單獨測試，而使用者只需要一個入口。
+
+## 從 Dashboard 啟動
+
+現在使用者還可以按下「立即更新資料」：
 
 ```text
-POST /api/pipeline/run
+JavaScript
+→ POST /api/pipeline/run
+→ Flask
+→ subprocess 啟動 run_pipeline.py
+→ 前端輪詢執行狀態
+→ 完成後重新載入 Dashboard
 ```
 
-Flask 再使用 `src/pipeline_process.py` 啟動同一支程式：
+## 設計原因
 
-```python
-_pipeline_process = subprocess.Popen(
-    [sys.executable, str(PIPELINE_SCRIPT)],
-    cwd=PROJECT_DIRECTORY,
-)
-```
+- 固定執行順序，避免漏步驟。
+- 每一步記錄成功、失敗、耗時與摘要。
+- 同一支 `run_pipeline.py` 可由 Terminal 或 Dashboard 執行。
+- 各功能仍保留獨立函式與測試。
 
-`sys.executable` 代表沿用目前執行 Flask 的 Python，因此會使用相同 virtual environment 與已安裝套件。Lock 和 process status 則用來阻止重複啟動。
+## 上台建議講法（約 90 秒）
 
-## 設計原因與取捨
-
-- Pipeline 適合長時間、批次且有固定順序的工作。
-- 使用 subprocess 可讓 HTTP request 先回應，不必讓瀏覽器連線等待九個步驟完成。
-- 目前狀態只存在單一 Flask process 記憶體中，適合本機使用；若要多使用者正式部署，應改成工作佇列，例如 Celery/RQ。
-
-## 上台建議講法（約 80 秒）
-
-> Pipeline 是整個更新流程的協調者。它依序處理新聞、公司目錄、公司關聯、每日價格、財務摘要、晨報和 Dashboard 分析資料。順序不能任意交換，例如建立公司關聯之前必須先有新聞和公司目錄。每一步都記錄成功、失敗和耗時。從網頁按下更新時，Flask 會用目前相同的 Python 環境在背景啟動 `run_pipeline.py`，並阻止使用者重複執行，所以前端可以持續查詢進度，而不必讓一次 HTTP request 等完整流程結束。
+> 專案早期需要手動執行多支 Python scripts，使用者不但要記住順序，也可能漏掉其中一步。Commit 13e9130 首次建立統一的 `run_pipeline.py`。後續功能增加後，目前已經有九個步驟，從新聞、公司、價格、財務到晨報與關鍵字。Pipeline 本身是協調者，它依序呼叫各模組，而不是把所有程式寫在一起。現在同一支 Pipeline 也能由 Dashboard 按鈕透過 Flask 啟動，使用者不必再記指令。
 
 ---
 
-# 第 9 頁｜實際操作 Morning Alpha
+# 第 8 頁｜實際操作 Morning Alpha
 
-## Demo 前要理解的技術邏輯
-
-實際操作不是只展示畫面，而是驗證前面介紹的資料流：
+## Demo 前要理解的流程
 
 ```text
 使用者操作
-→ JavaScript event listener
-→ fetch Flask API
-→ Flask 查詢／修改 MySQL
+→ JavaScript event
+→ Flask API
+→ MySQL
 → JSON response
 → JavaScript 更新畫面
 ```
 
-例如 JavaScript 共用的 API 請求函式會關閉瀏覽器快取並檢查 HTTP status：
+## Demo 1：搜尋與篩選新聞（約 45 秒）
 
-```javascript
-async function fetchJson(url, options = {}) {
-    const response = await fetch(url, {
-        cache: "no-store",
-        ...options,
-    });
+1. 在 Latest News 搜尋一間公司。
+2. 切換來源或分類。
+3. 指出 publisher、分析分類、公司標籤與發布時間。
 
-    if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-    }
+講法：
 
-    return response.json();
-}
-```
+> 新聞由 Flask API 從 MySQL 載入，JavaScript 再處理搜尋、篩選、排序和分頁，因此操作時不會重新爬網站。
 
-`cache: "no-store"` 可避免 Pipeline 完成後瀏覽器仍顯示舊 API response。
+## Demo 2：加入 My Watchlist（約 45 秒）
 
-## 上台銜接講法（約 15 秒）
+1. 使用公司名稱或股票代號搜尋。
+2. 加入一間追蹤公司。
+3. 指出個人化近期追蹤新聞。
 
-> 接下來我會切換到實際 Dashboard，依序示範新聞搜尋、自選公司、市場資料，以及完整 Pipeline 的更新入口。這些操作都會經過剛才介紹的 JavaScript、Flask API 和 MySQL。
+講法：
 
----
+> Watchlist 保存的是 `company_id`，再透過新聞公司關聯找到近期文章，不是只保存畫面文字。
 
-# 實機操作流程（約 3 分 30 秒）
+## Demo 3：快速切換 Company Market Data（約 55 秒）
 
-## Demo 1：Latest News（約 50 秒）
+1. 在 Company Market Data 搜尋公司。
+2. 使用「我的追蹤公司」按鈕快速切換兩間公司。
+3. 指出最新交易日、收盤價、趨勢圖與季度摘要。
 
-### 操作
+講法：
 
-1. 捲動到 Latest News。
-2. 在搜尋框輸入一間公司名稱。
-3. 示範來源或公司篩選。
-4. 指出標題、取得來源、publisher、分析分類、公司標籤和發布時間。
+> My Watchlist 與市場資料共用同一個 `company_id`。切換按鈕後，JavaScript 會重新呼叫該公司的價格與財務 API。這些是 TWSE 盤後資料，不是即時行情。
 
-### 背後邏輯
+## Demo 4：Pipeline 更新入口（約 55 秒）
 
-- Flask `/api/news` 從 MySQL 讀取資料並加入公司關聯。
-- JavaScript 把 JSON 保存到 `newsRecords` array。
-- 搜尋、排序與分頁主要在瀏覽器內處理，不會重新查外部新聞網站。
-- Dashboard 每個取得來源顯示最新 60 篇平衡樣本；MySQL 仍保存完整歷史資料。
+1. 展示「立即更新資料」按鈕。
+2. 指出最近一次成功紀錄與九個步驟。
+3. 不必等待完整 Pipeline 現場執行完成。
 
-### 建議講法
+講法：
 
-> 新聞由 Flask API 從 MySQL 載入後，JavaScript 負責目前畫面的搜尋、篩選、排序和分頁，因此操作時不需要重新爬取網站。畫面每個來源保留最新 60 篇，避免大量 TWSE 公告完全壓過媒體新聞，但這個限制只影響 Dashboard 樣本，不會刪除 Database 原始資料。
-
-## Demo 2：My Watchlist（約 50 秒）
-
-### 操作
-
-1. 使用搜尋欄輸入股票代號或公司名稱。
-2. 加入或展示已加入的公司。
-3. 指出追蹤晨報內與該公司相關的新聞。
-
-### 背後邏輯
-
-- 公司搜尋使用已載入的市場公司清單。
-- 加入公司會呼叫 `POST /api/watchlist/<company_id>`。
-- 移除公司會呼叫 `DELETE /api/watchlist/<company_id>`。
-- Database 保存的是穩定的 `company_id`，不是畫面上的公司名稱文字。
-- 個人化晨報使用新聞公司關聯表，找出追蹤公司的近期相關新聞。
-
-### 建議講法
-
-> 追蹤清單保存的是公司 ID，而不是只有畫面文字。這樣即使顯示名稱調整，關聯仍然能維持。系統再利用新聞與公司的中介關聯，找出自選公司的近期文章。這裡的公司辨識是規則式方法，不是 AI 閱讀全文，因此仍可能漏判。
-
-## Demo 3：Company Market Data（約 55 秒）
-
-### 操作
-
-1. 選擇一間有資料的公司。
-2. 指出最新交易日、收盤價與價格圖。
-3. 指出季度財務摘要。
-4. 若畫面有 stale warning，說明預期日期與來源實際日期的差異。
-
-### 背後邏輯
-
-- 公司價格 endpoint 回傳最近 90 筆每日價格。
-- 財務摘要 endpoint 回傳最近 8 季資料。
-- Chart.js 把 JSON 數列轉成折線圖。
-- Pipeline 會比較「預期最近交易日」和「Database 實際最新日期」，並回補近期缺漏平日。
-
-### 建議講法
-
-> 這裡的資料來自 TWSE 盤後與財務資料，不是即時報價。後端會保存每日交易資料並檢查最新交易日；若官方快照尚未更新，畫面會提示資料延遲，而不是把 API 成功誤稱為行情已經最新。價格圖只提供歷史觀察，不構成投資建議。
-
-## Demo 4：Pipeline（約 55 秒）
-
-### 操作
-
-1. 捲動到 Pipeline 執行區。
-2. 指出「立即更新資料」按鈕。
-3. 展示最近一次成功紀錄、總耗時與九個步驟。
-4. 現場可按下更新，但不必等待所有外部來源完成。
-
-### 背後邏輯
-
-- 按鈕呼叫 `POST /api/pipeline/run`。
-- API 成功啟動時回傳 HTTP `202 Accepted`。
-- 已有 Pipeline 執行時回傳 `409 Conflict`，避免重複工作。
-- 前端輪詢 `/api/pipeline/status`；完成後重新載入 Dashboard API。
-- Pipeline 的詳細歷史另外保存在 MySQL，重新啟動 Flask 後仍可查詢。
-
-### 建議講法
-
-> 這個按鈕啟動的就是和 Terminal 相同的九步 Pipeline。API 會先回應已接受工作，JavaScript 再定期查詢狀態。若已經有一個 Pipeline 在執行，後端會拒絕第二次啟動。現場外部網站可能需要時間，所以我主要用最近一次成功紀錄展示每一步的結果與耗時。
+> 這個按鈕啟動的就是和 Terminal 相同的 Pipeline。因為外部網站下載時間不固定，我使用最近一次成功紀錄說明每一步的結果與耗時。
 
 ## Demo 失敗備案
 
-### Dashboard 無法開啟
+### 單一來源 timeout
 
-> 目前本機服務沒有成功連線，因此我改用簡報中的流程與歷史畫面說明。這也反映本專案仍是本機開發版本，需要 Flask 和 MySQL 同時運作。
-
-### 單一新聞來源 timeout
-
-> 外部網站可能暫時逾時。共用 HTTP client 最多嘗試三次，每次失敗會寫入 log；若最後仍失敗，該來源會標記異常，但其他成功來源仍可繼續進入 Pipeline。
-
-共用 retry 的核心在 `src/http_client.py`：
-
-```python
-for attempt in range(1, max_attempts + 1):
-    try:
-        response = requests.get(url, timeout=timeout)
-        response.raise_for_status()
-        return response.text
-    except requests.RequestException:
-        if attempt == max_attempts:
-            raise
-        time.sleep(retry_delay)
-```
+> 共用 HTTP client 最多嘗試三次。最後仍失敗時會記錄來源異常，但其他來源可以繼續。
 
 ### 市場資料日期不是今天
 
-> 股市只有交易日才有資料，而且官方盤後資料也可能延遲。系統會顯示來源實際最新交易日、警告延遲並嘗試回補近期缺漏，但不會自行捏造不存在的日期。
+> 週末與休市日沒有交易資料，官方盤後資料也可能延遲。系統會顯示實際最新交易日，並嘗試回補近期缺漏，而不會自行製造日期。
 
 ---
 
-# 第 10 頁｜從單一爬蟲發展成完整系統
+# 第 9 頁｜三次關鍵修正：更快、更準、更容易使用
 
-## 理解重點
-
-專案不是一次完成，而是透過 Git commits 把不同責任逐步拆開。幾個關鍵演進如下：
-
-| 演進階段 | 代表性修改 | 架構上的意義 |
-|---|---|---|
-| 單一來源 | 第一個 TechNews crawler | 驗證 Requests + BeautifulSoup 能取得資料 |
-| 共同格式 | 多來源 News Record | 將來源差異與後續流程分離 |
-| 資料品質 | canonical URL、正式欄位、Migration | 讓 Database 可追溯並防止重複 |
-| 統一更新 | `run_pipeline.py` | 用固定順序串起資料工作 |
-| 動態 Dashboard | Flask API | 從靜態 JSON 進化為即時查詢 MySQL |
-| 公司與市場 | 公司目錄、價格、財務、關聯 | 從新聞閱讀擴充成公司觀察工具 |
-| 個人化 | Watchlist、晨報 | 讓使用者聚焦自己關心的公司 |
-| 收斂修正 | 來源平衡、價格回補、事件資料 | 針對真實資料問題改善可靠性 |
-
-## 為什麼 Git commit 在這裡重要
-
-每個 feature 對應一個 commit，可以保留：
-
-- 當時要解決的問題。
-- 修改了哪些檔案。
-- 測試是否通過。
-- 如果新版本出錯，可以比較前後差異。
-
-Database Schema 變更則使用 Migration，讓不同電腦可以依序把舊資料庫升級到目前結構，而不是手動猜測要新增哪些欄位。
-
-## 上台建議講法（約 65 秒）
-
-> 這個專案最早只有 TechNews 爬蟲，後來先建立共同新聞格式，才有辦法安全加入其他來源。接著加入 URL 去重、Database Migration 和統一 Pipeline，再由 Flask API 讓 Dashboard 直接讀取 MySQL。最後才加入公司、市場、自選股與晨報。這個過程讓我理解，功能增加之前通常要先整理資料格式和模組責任；Git commit 則保留每一次問題、設計與驗證結果。
-
----
-
-# 第 11 頁｜幾次關鍵問題與修正
-
-## 案例一：公司短名稱造成誤判
+## 案例一：`ff09d4a` 公司關聯效率提升
 
 ### 問題
 
-「中華電攜手 Nokia」曾同時被判定與「華電」、「中華」和「中華電」相關。原因是這些公司別名存在包含與重疊關係，單純使用 `if alias in title` 會把短字串全部命中。
+Pipeline Step 3 要把新聞標題與上千間公司的名稱、別名和股票代號比對。原本每處理一篇新聞，都重新準備一次相同的公司規則，造成大量重複計算。
 
 ### 修正
 
-Commit：`8e479b4 fix: prevent overlapping company alias matches`
+Commit：[`ff09d4a perf: reuse prepared company matching context`](https://github.com/OllieHu12304/Morning-Alpha/commit/ff09d4a7718bdff799191658cd4a2f91c9e923b2)
 
-- 優先接受較完整、較長的公司名稱。
-- 已命中的文字範圍不再重複分配給其他公司。
-- 股票代號與公司別名先整理成可重用的 matching context。
-
-### 學習重點
-
-字串「有出現」不等於語意「真的相關」。規則式 NLP 必須處理邊界、重疊與優先順序。
-
-## 案例二：Step 3/9 公司關聯過慢
-
-### 問題
-
-每篇新聞都重新整理一次上千間公司的名稱、別名和股票代號，造成大量重複計算。
-
-### 修正
-
-Commit：`ff09d4a perf: reuse prepared company matching context`
-
-將公司規則先準備一次，再重複提供給所有新聞使用。同規模基準由約 **6.031 秒降至 0.134 秒**，約提升 **45 倍**。
-
-### 學習重點
-
-效能問題不一定要靠進階演算法；先找出迴圈內不必要的重複工作，常能得到最大改善。
-
-## 案例三：TWSE 公告壓過其他來源
-
-### 問題
-
-TWSE 一次可能有數百筆重大訊息，若全部直接顯示，來源統計和新聞列表會幾乎只剩 TWSE。
-
-### 修正
-
-Commit：`4d96744 feat: balance latest 60 news per source`
-
-`src/read_news.py` 會針對每個 `source` 依時間排序並取最新 60 篇：
-
-```python
-for source in prepared_dataframe["source"].dropna().unique():
-    source_dataframe = prepared_dataframe.loc[
-        prepared_dataframe["source"] == source
-    ]
-    source_dataframe = source_dataframe.sort_values(
-        by="publish_time",
-        ascending=False,
-    ).head(per_source_limit)
+```text
+修改前：每篇新聞都重新準備公司比對規則
+修改後：先準備一次 matching context，再重複使用
 ```
 
-這是顯示層取樣，MySQL 不刪除完整新聞。
+同規模基準由約 **6.031 秒降至 0.134 秒**，約提升 **45 倍**。
 
 ### 學習重點
 
-「保存多少資料」和「畫面顯示多少資料」是兩個不同決策。分析樣本需要平衡，但原始資料仍應保留。
+效能改善不一定要使用艱深演算法。先找出迴圈中沒有必要重複執行的工作，往往就能得到明顯改善。
 
-## 案例四：官方快照成功，但缺少交易日
+## 案例二：`36ad56f` 排除不相關新聞
 
 ### 問題
 
-API request 成功只代表伺服器有回應，不代表資料內容已更新到預期交易日。只保存最新快照會讓延遲當天永久形成缺口。
+中央社財經 RSS 曾出現「今彩 539」等與科技、財經分析目標無關的內容。雖然爬蟲成功取得文章，但「取得成功」不等於「資料符合需求」。
 
 ### 修正
 
-Commit：`48f47af fix: backfill missing TWSE daily market prices`
+Commit：[`36ad56f fix: exclude CNA lottery news`](https://github.com/OllieHu12304/Morning-Alpha/commit/36ad56f4defad8ca9238e98e3805adee37346e6f)
 
-- 比較 Database 已有日期與預期交易日。
-- 檢查近期 14 個日曆日內缺少的平日。
-- 嘗試使用指定日期資料回補。
-- 週末、休市日或官方尚無資料時安全略過。
+- 在 CNA Adapter 取得資料時先過濾明顯不相關內容。
+- 在讀取既有 Database 新聞時再次套用 relevance rule。
+- 加入固定 RSS fixture 與測試，避免日後回歸。
+
+```text
+原始 RSS
+→ 相關性規則
+→ 只保留符合 Morning Alpha 目標的新聞
+```
 
 ### 學習重點
 
-HTTP 成功、資料格式正確與業務資料新鮮，是三種不同層次的成功條件。
+Crawler 的品質不能只看抓到幾篇，也要驗證抓到的內容是不是使用者真正需要的資料。
 
-## 上台建議講法（約 90 秒，只挑三例）
+## 案例三：`13e9130` 整合多支 Python 執行序
 
-> 開發後期主要不是一直加功能，而是用真實資料找錯誤。第一個例子是「中華電」曾同時比對到華電和中華，後來改成完整名稱優先並排除重疊範圍。第二個是公司關聯步驟每篇新聞都重建一次公司規則，改成只準備一次後，同規模測試從約 6 秒降到 0.134 秒。第三個是 TWSE 公告數量過多，所以 Dashboard 改成每個來源顯示最新 60 篇，但 MySQL 仍保留完整資料。這些案例讓我理解正確性、效能與顯示策略是不同問題。
+### 問題
 
----
+早期流程需要依序執行不同 scripts。只要漏掉其中一支，Database、JSON 或 Dashboard 就可能不同步。
 
-# 第 12 頁｜目前限制
+### 修正
 
-## 理解重點
+Commit：[`13e9130 feat: add unified data pipeline runner`](https://github.com/OllieHu12304/Morning-Alpha/commit/13e9130a883e142d4ce511cacf9cb45104c15a73)
 
-| 目前限制 | 技術原因 | 使用時應如何解讀 |
-|---|---|---|
-| 只有五個新聞／公告取得來源 | 每個來源都需 Adapter、測試與維護 | 不代表涵蓋所有公司消息 |
-| 主要是 TWSE 上市公司 | 公司目錄與市場 API 以 TWSE 為主 | 上櫃、海外公司資料可能不足 |
-| 沒有文章全文分析 | 目前主要保存標題與來源欄位 | 晨報與關聯可能缺少內文語意 |
-| 公司辨識是規則式 | 使用名稱、別名、代號和重疊規則 | 仍可能漏判、誤判或遇到同名詞 |
-| 關鍵字不是生成式 AI | jieba 斷詞後以 Pandas 計數 | 高頻詞不一定等於重要投資事件 |
-| 晨報是規則式摘要 | 對結構化欄位與時間窗整理 | 不是模型閱讀全文後生成的摘要 |
-| 股價不是即時行情 | 使用 TWSE 盤後資料 | 不能用於即時交易決策 |
-| Event Observation 不代表因果 | 只比較新聞附近的價格時間變化 | 不能宣稱新聞造成漲跌 |
-| Watchlist 是本機單一使用者 | 沒有帳號、登入與權限模型 | 不適合直接做多人公開服務 |
-| Flask 是開發型部署 | 沒有完整 HTTPS、rate limit、production server | 不應直接暴露到公開 Internet |
+- 建立單一 `src/run_pipeline.py`。
+- 明確定義執行順序。
+- 任一步驟失敗時停止並回傳非零 exit code。
+- 為 Pipeline orchestration 建立獨立測試。
 
-## Event Observation 應如何解讀
+```text
+多支手動 scripts
+→ 一個統一入口
+→ 固定順序、統一錯誤處理、統一摘要
+```
 
-假設一則新聞發布後股價上漲，也可能同時受到大盤、產業、財報、匯率或其他新聞影響。Morning Alpha 只能說「新聞事件附近觀察到價格變化」，不能說「新聞造成價格上漲」。
+### 學習重點
 
-這也是程式 API 明確使用 `event-market-observations` 與 methodology／limitations，而不命名成 prediction 的原因。
+自動化不只是省下輸入指令的時間，也能減少人為漏步驟與不同資料版本混用。
 
-## 設計態度
+## 上台建議講法（約 110 秒）
 
-清楚標示限制不是否定專案，而是區分：
-
-- 系統實際做了什麼。
-- 資料能支持什麼結論。
-- 哪些結論目前沒有足夠證據。
-
-## 上台建議講法（約 70 秒）
-
-> 目前專案仍有清楚的界線。新聞來源只有五個，主要涵蓋 TWSE 上市公司，也沒有分析文章全文。公司辨識、事件分組和晨報都是規則式方法，因此可能誤判或漏判。市場價格是盤後資料，不是即時行情；新聞附近的價格變化只能表示時間上的關聯，不能證明因果。專案目前適合本機學習和個人研究，尚未具備帳號、安全和正式部署能力，因此不能視為正式投資平台。
+> 我選三個 commits 說明專案如何從問題中改進。第一個是 ff09d4a，公司關聯原本每篇新聞都重建相同規則，改成先準備一次再重用後，基準時間從約 6 秒降到 0.134 秒，提升約 45 倍。第二個是 36ad56f，Crawler 曾抓到今彩 539 這類不相關新聞，因此加入相關性規則、舊資料過濾和 fixture tests。第三個是 13e9130，將原本多支 Python scripts 整合成單一 Pipeline，固定執行順序與錯誤處理。這三次修改分別改善了效能、資料品質與操作可靠性。
 
 ---
 
-# 第 13 頁｜未來發展方向
+# 第 10 頁｜先承認限制，再決定下一步
 
-## 理解重點：優先順序比功能數量重要
+## 目前限制
 
-### 短期：先提升資料可信度
+- 目前只有五個新聞／公告取得來源，主要涵蓋 TWSE 上市公司。
+- 晨報、公司辨識、分類與事件分組主要使用標題和規則式方法。
+- 尚未合法取得並分析所有文章全文。
+- 市場價格是盤後資料，不是即時行情。
+- Event Observation 只表示新聞附近的時間關聯，不能證明因果。
+- Watchlist 仍是本機單一使用者，沒有登入與權限管理。
+- Flask 目前是本機開發服務，尚不是正式公開部署架構。
 
-- 增加來源 fixture 與結構異常測試。
+## 未來方向
+
+### 近期：先提升資料可信度
+
+- 增加可靠合法來源與來源結構測試。
 - 改善公司別名、同名詞與跨來源事件辨識。
-- 擴充上櫃公司與更多可靠官方資料來源。
-- 加入資料品質指標，例如來源涵蓋率與缺漏率。
+- 補強歷史市場資料與資料品質指標。
 
-### 中期：改善分析與個人化
+### 中期：再改善個人化
 
-- 在合法範圍內取得文章摘要或全文，再做更可靠的語意分析。
-- 讓使用者設定自選公司、產業與關鍵字。
-- 提供 Email 或通訊軟體的排程晨報。
-- 將事件觀察加入大盤與產業基準，避免只看單一股票漲跌。
+- 增加上櫃與更多市場資料。
+- 提供每位使用者獨立 Watchlist。
+- 加入 Email 或通訊軟體晨報推播。
 
-### 長期：成為多人服務
+### 長期：研究更完整的分析
 
-- 帳號、登入、權限與每人獨立 Watchlist。
-- 正式工作佇列與 scheduler，取代單機 subprocess 狀態。
-- Production server、HTTPS、rate limit、監控與備份。
-- 進行模型評估後，才考慮 AI 摘要或事件分類。
+- 在合法取得內容後研究全文 NLP／AI 摘要。
+- 加入大盤與產業基準，改善事件觀察方法。
+- 建立正式部署、安全、監控與備份機制。
 
-## 設計原因
-
-下一步不應只追求「再加一個功能」。資料品質若不足，加入更複雜的 AI 或預測只會放大錯誤。比較合理的順序是：
+## 核心原則
 
 ```text
 資料完整性
 → 關聯正確性
 → 分析方法
 → 個人化
-→ 多人部署與安全
+→ 正式部署
 ```
 
-## 上台建議講法（約 55 秒）
+先確保資料可信，再增加複雜分析，避免錯誤資料被包裝成看似精準的結論。
 
-> 未來短期會優先改善來源涵蓋率、公司辨識與資料品質，而不是立刻加入股價預測。中期可以在合法取得更多文字內容後，改善語意分析與個人化晨報；事件分析也應加入大盤和產業基準。若要發展成公開服務，長期還需要帳號權限、背景工作佇列、HTTPS、監控和備份。我認為這個專案目前最重要的成果，是完成從資料取得、整理、保存，到 API 和網頁呈現的完整流程。以上是我的報告。
+## 上台建議講法（約 75 秒）
 
----
-
-# 報告時最值得說清楚的三個技術觀念
-
-## 1. Pipeline 和 Flask API 不一樣
-
-- **Pipeline**：負責連接外部來源並更新 Database，是較慢的批次工作。
-- **Flask API**：負責接收瀏覽器 request、查詢現有 Database 並快速回傳 JSON。
-- **Dashboard**：呼叫 API 並顯示資料，不直接存取 MySQL。
-
-一句話版本：
-
-> Pipeline 負責把新資料搬進來，Flask API 負責把已保存的資料提供出去。
-
-## 2. Pandas 和 MySQL 不一樣
-
-- **Pandas** 適合一次處理一批記憶體中的表格資料，例如轉日期、排序、分組與統計。
-- **MySQL** 適合永久保存資料、建立關聯、使用 UNIQUE constraint 與支援多次查詢。
-
-一句話版本：
-
-> Pandas 是資料加工桌，MySQL 是有規則、可長期保存的資料倉庫。
-
-## 3. JSON 是交換格式，不是整個 Database
-
-Flask 使用 JSON 把 Python 資料傳給 JavaScript。JSON 適合前後端交換，但目前主要真實資料仍保存在 MySQL。Pipeline 產生的 `news.json`、`chart_data.json` 和 `keyword.json` 是相容與匯出結果，不應和 Database 的完整歷史資料混為一談。
-
-一句話版本：
-
-> MySQL 負責保存，JSON 負責傳遞或匯出，JavaScript 負責顯示。
+> Morning Alpha 目前仍是資訊整理工具，不是投資預測平台。新聞來源只有五個，公司辨識和晨報主要依賴標題與規則，股價也是盤後資料。新聞附近的價格變化只能表示時間關聯，不能證明因果。未來短期會先改善資料來源、公司辨識和歷史資料品質；中期再發展多使用者與晨報推播；最後才研究全文 NLP、AI 摘要和正式部署。我的核心原則是先讓資料更完整、更準確，再擴大功能。
 
 ---
 
 # 老師可能提問與回答
 
+## Pipeline 和 Flask API 有什麼不同？
+
+Pipeline 負責連接外部來源、整理資料並寫入 MySQL，是較慢的批次工作；Flask API 負責快速查詢已保存資料並回傳 JSON。簡單來說：
+
+> Pipeline 把資料搬進來，Flask API 把資料提供出去。
+
+## Adapter 和一般函式有什麼不同？
+
+Adapter 也是以函式或 class 實作，但它的設計目的很明確：把外部來源特殊介面轉換成系統內部共同介面。在這個專案中，每個 Adapter 都輸出相同 News Record，讓後續流程不依賴網站細節。
+
+## 什麼是解耦？
+
+解耦是讓不同模組只透過清楚的介面合作，而不是互相知道所有內部細節。TechNews HTML 改版時只修 Adapter，而不需要一起重寫 Pandas、MySQL 和 Dashboard，就是解耦的效果。
+
 ## 為什麼使用 Pandas？
 
-多個 Adapter 產生共同欄位後，Pandas 很適合把 `list[dict]` 轉成 DataFrame，批次處理日期轉換、排序、分組和關鍵字統計。Pandas 不是永久儲存工具，所以整理完成後仍交給 MySQL。
+Pandas 適合將多筆 `dict` 轉成 DataFrame，再批次處理日期、排序、分組與統計。永久資料仍交給 MySQL 保存。
 
 ## 為什麼需要 Flask API？
 
-瀏覽器不應直接取得 MySQL 帳密或執行 SQL。Flask 位在中間，負責驗證 request、查詢 Database、將 Python 資料轉成 JSON，並用 HTTP status 告訴前端成功或失敗。
-
-## Flask 在這個專案中算什麼？
-
-它同時負責兩件事：第一，提供 Dashboard 的 HTML/CSS/JavaScript 靜態檔案；第二，提供 `/api/news`、`/api/watchlist`、`/api/pipeline/run` 等資料與操作 endpoints。它是前端和 MySQL／Pipeline 之間的後端介面。
+瀏覽器不應直接取得 MySQL 帳密或執行 SQL。Flask 位在中間，負責接收 request、查詢 Database、回傳 JSON 並處理錯誤。
 
 ## 為什麼不用標題去重？
 
-相同標題可能是不同媒體的獨立文章，略有不同的標題也可能是同一篇文章。完全相同文章使用 canonical URL 與來源文章 ID 去重；不同文章但同事件則保留並分組。
+不同媒體可能使用相同標題，但仍是不同文章；同一篇文章也可能修改標題。因此同一篇文章使用 canonical URL 和來源文章 ID 去重，同事件的不同文章則保留並分組。
 
-## 為什麼還保留 JSON 檔案，Dashboard 不是已經使用 API 嗎？
+## `source` 與 `publisher` 有什麼差異？
 
-目前 Dashboard 的主要動態資料來自 Flask API；Pipeline 仍匯出幾個 JSON，作為舊流程相容、離線檢查與可讀的分析產物。它們不是 MySQL 的完整替代品。
-
-## `source` 和 `publisher` 有什麼不同？
-
-`source` 是 Morning Alpha 實際取得資料的管道，例如 Yahoo RSS；`publisher` 是文章原始發布者，例如中央社。直接來源通常兩者相同，聚合來源則可能不同。
-
-## 為什麼需要 Adapter？
-
-Adapter 把外部來源的特殊格式轉成共同 News Record。網站變動時主要修改對應 Adapter；後面的 Pandas、MySQL、API 和 Dashboard 不需要一起改。
-
-## 如果網站結構改變會怎樣？
-
-Adapter 可能解析不到文章，因此程式會把空結果視為來源失敗，保存來源健康狀態並寫入 log。Fixture tests 使用固定 HTML、RSS 或 JSON 樣本檢查正常與異常結構，但真實網站改版後仍需要更新 Adapter。
-
-## 為什麼 retry 最多三次？
-
-短暫 timeout 可能下一次就恢復，所以 retry 能提高成功率；但無限重試會讓 Pipeline 永遠卡住。三次是在容錯與執行時間之間的簡單折衷。
-
-## 為什麼選擇 MySQL？
-
-新聞、公司、股票代號、公司別名、價格、財務資料和 Watchlist 彼此有明確關聯。關聯式 Database 可以使用 primary key、foreign key、JOIN、index 和 UNIQUE constraint 管理一致性。
-
-## 為什麼 Dashboard 每個來源最多 60 篇？
-
-TWSE 公告數量遠高於媒體新聞，若完全混合，畫面與統計會失去來源平衡。系統針對每個取得來源顯示發布時間最新 60 篇；MySQL 仍保存所有原始紀錄。
+`source` 是 Morning Alpha 從哪個管道取得文章，例如 Yahoo RSS；`publisher` 是原始發布者，例如中央社。直接來源通常兩者相同，聚合來源則可能不同。
 
 ## 關鍵字分析有使用 AI 嗎？
 
-沒有使用生成式 AI。系統先用 jieba 對中文標題斷詞，再用 Pandas 計算詞頻並取 Top 20。它是統計結果，不代表系統理解文章完整語意。
+沒有使用生成式 AI。系統使用 jieba 對中文標題斷詞，再用 Pandas 計算詞頻和 Top 20。
 
 ## 公司新聞關聯如何建立？
 
-系統使用公司正式名稱、別名與股票代號比對標題，並處理短名稱重疊。這種方法容易理解與測試，但仍可能漏掉沒有直接寫出公司名稱的文章。
+系統使用公司正式名稱、簡稱、別名與股票代號比對標題，並處理短名稱重疊。它容易理解與測試，但仍可能漏掉沒有直接寫出公司名稱的新聞。
 
 ## Morning Alpha 可以預測股價嗎？
 
-目前不能。Event Observation 只把新聞時間附近的歷史價格放在一起觀察，沒有控制大盤、產業、財報與其他事件，因此不能宣稱因果，也不能當成交易訊號。
-
-## 為什麼股價資料可能不是今天？
-
-週末和休市日沒有交易資料，官方盤後資料也可能延遲。系統會比較預期最近交易日與實際最新日期、顯示 stale warning，並嘗試回補近期缺漏平日。
-
-## 為什麼 Pipeline 要用 subprocess？
-
-完整更新可能要數秒或更久。若讓一個 HTTP request 一直等待，瀏覽器容易 timeout。Flask 因此啟動背景 subprocess，先回覆 `202 Accepted`，前端再定期查詢狀態。
+目前不能。Event Observation 只把新聞附近的歷史價格放在一起觀察，沒有控制大盤、產業、財報和其他事件，所以不能宣稱因果或當成交易訊號。
 
 ## Docker 是不是唯一執行方式？
 
-不是。專案可以使用本機 virtual environment、MySQL 和 `python3 start.py` 執行；Docker Compose 是另一種把 Python、套件與 MySQL 環境一起封裝的選項，主要幫助不同電腦重現環境。
-
-## 其他人能不能直接使用？
-
-可以 clone 後依 README 設定 Python、MySQL、Migration 和 `.env`，也可選擇 Docker。但目前是本機單一使用者架構，沒有登入、權限、HTTPS 和 production server，不適合直接公開到 Internet。
+不是。可以使用本機 virtual environment、MySQL 與 `python3 start.py`；Docker Compose 是另一種封裝環境的選項，主要幫助不同電腦重現相同設定。
 
 ---
 
 # 初學者名詞速查
 
-| 名詞 | 在本專案中的白話意思 |
+| 名詞 | 在 Morning Alpha 中的白話意思 |
 |---|---|
-| Crawler | 主動下載並解析外部網站資料的程式 |
-| Adapter | 把某個來源的特殊格式翻成共同格式的模組 |
-| Data contract | 模組間約定好的欄位、型態與必要規則 |
-| DataFrame | Pandas 提供的記憶體表格結構 |
-| Schema | Database 有哪些 tables、columns、types 和 constraints |
-| Migration | 依版本修改既有 Database Schema 的 SQL |
-| Primary key | 唯一識別一筆資料的 key，例如 `company_id` |
-| Foreign key | 指向另一張 table 資料的欄位 |
-| UNIQUE constraint | 阻止某個值或欄位組合重複的 Database 規則 |
-| Canonical URL | 移除不必要差異後，用來代表文章身分的標準網址 |
-| API endpoint | 後端提供的一個 HTTP 路徑，例如 `/api/news` |
+| Crawler | 下載並解析外部網站資料的程式 |
+| Adapter | 把來源特殊格式轉成共同格式的轉接層 |
+| Coupling | 模組彼此知道太多細節，修改時容易互相影響 |
+| Decoupling | 模組透過共同介面合作，降低互相影響 |
+| Data contract | 模組間約定好的欄位、型態和規則 |
+| DataFrame | Pandas 提供的記憶體表格 |
+| Schema | Database 的 tables、columns、types 與 constraints |
+| UNIQUE constraint | 阻止欄位值重複的 Database 規則 |
+| Canonical URL | 清除不必要差異後的標準文章網址 |
+| API endpoint | 後端提供的 HTTP 路徑，例如 `/api/news` |
 | JSON | 前後端交換結構化資料的文字格式 |
-| HTTP status | API 回覆結果，例如 200、202、409、500 |
-| Subprocess | 由目前 Python 程式另外啟動的一個作業系統程序 |
-| Logging | 以不同等級保存程式執行與錯誤資訊 |
+| Subprocess | 由目前程式另外啟動的一個作業系統程序 |
 | Fixture | 測試使用的固定 HTML、RSS 或 JSON 樣本 |
-| Graceful degradation | 一個來源失敗時，讓其他可用功能繼續運作 |
+| Graceful degradation | 單一來源失敗時，其他可用功能仍繼續 |
 | Backfill | 回頭補齊先前缺少的歷史資料 |
-| Correlation | 兩件事同時或先後發生的關聯，不等於因果 |
 
 ---
 
-# 最後濃縮：如果只能記住整個專案的六句話
+# 最後濃縮：報告時記住這六句話
 
-1. Morning Alpha 把分散的科技、財經、公司公告與市場資料整理到同一個 Dashboard。
-2. HTML、RSS 與 JSON 由不同 Adapter 解析，但最後都轉成共同 News Record。
-3. Pandas 負責批次整理，MySQL 負責永久保存與資料一致性。
-4. Pipeline 負責更新資料，Flask API 負責把已保存資料提供給 JavaScript。
-5. 相同文章用 URL／文章 ID 去重，同一事件的不同報導只分組、不刪除。
-6. 目前的公司關聯、晨報與事件觀察是規則式輔助工具，不是 AI 投資預測。
+1. Morning Alpha 把分散的新聞、公司與市場資料整理到同一個 Dashboard。
+2. HTML、RSS 與 JSON 由不同 Adapter 轉成共同 News Record。
+3. Adapter 將網站細節與後續流程解耦，來源改版時不必重寫整個系統。
+4. Pandas 負責整理，MySQL 負責保存，Flask API 負責提供 JSON，JavaScript 負責互動。
+5. Pipeline 將多支 Python 工作整合成一個固定順序的更新入口。
+6. 目前是規則式資訊整理工具，不是 AI 投資預測平台。
