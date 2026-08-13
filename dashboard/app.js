@@ -50,7 +50,10 @@ const previousPageButton = document.querySelector("#previous-page");
 const nextPageButton = document.querySelector("#next-page");
 const pageStatus = document.querySelector("#page-status");
 const tableHeaders = document.querySelectorAll("th[data-key]");
-const marketCompanySelect = document.querySelector("#market-company-select");
+const marketCompanySearch = document.querySelector("#market-company-search");
+const marketCompanySearchMessage = document.querySelector("#market-company-search-message");
+const marketCompanySearchResults = document.querySelector("#market-company-search-results");
+const marketWatchlistShortcuts = document.querySelector("#market-watchlist-shortcuts");
 const watchlistToggle = document.querySelector("#watchlist-toggle");
 const companyMarketMessage = document.querySelector("#company-market-message");
 const latestClosePrice = document.querySelector("#latest-close-price");
@@ -74,7 +77,9 @@ let eventGroupFilter = null;
 let companyPriceChart = null;
 const analyticsCharts = {};
 let watchlistCompanyIds = new Set();
+let watchlistCompanies = [];
 let marketCompanies = [];
+let selectedMarketCompanyId = null;
 let watchlistUpdateInProgress = false;
 let pipelineWasRunning = false;
 let pipelineStatusTimer = null;
@@ -102,15 +107,33 @@ async function loadWatchlist() {
             throw new Error("watchlist API 格式不正確。");
         }
 
+        watchlistCompanies = payload.items;
         watchlistCompanyIds = new Set(
-            payload.items.map((item) => String(item.company_id)),
+            watchlistCompanies.map((item) => String(item.company_id)),
         );
-        renderWatchlistItems(payload.items);
+        renderWatchlistItems(watchlistCompanies);
+        renderMarketWatchlistShortcuts();
         updateWatchlistButton();
         renderWatchlistSearchResults();
+
+        if (!selectedMarketCompanyId) {
+            const firstAvailableCompany = watchlistCompanies.find((company) => (
+                marketCompanies.some((record) => (
+                    String(record.company_id) === String(company.company_id)
+                ))
+            ));
+
+            if (firstAvailableCompany) {
+                await selectMarketCompany(firstAvailableCompany.company_id);
+            }
+        }
+
         return true;
     } catch (error) {
+        watchlistCompanies = [];
+        watchlistCompanyIds = new Set();
         watchlistItems.replaceChildren();
+        renderMarketWatchlistShortcuts();
         watchlistToggle.disabled = true;
         personalizedBriefMessage.textContent = `無法載入追蹤清單：${error.message}`;
         personalizedBriefMessage.classList.add("error-message");
@@ -162,6 +185,27 @@ function getWatchlistCompanyLabel(company) {
 }
 
 
+function findMarketCompanies(query) {
+    const normalizedQuery = query.trim().toLocaleLowerCase("zh-TW");
+
+    if (!normalizedQuery) {
+        return [];
+    }
+
+    return marketCompanies.filter((company) => {
+        const searchableText = [
+            company.ticker,
+            company.name,
+            company.short_name,
+        ]
+            .map((value) => String(value || "").toLocaleLowerCase("zh-TW"))
+            .join(" ");
+
+        return searchableText.includes(normalizedQuery);
+    }).slice(0, 8);
+}
+
+
 function closeWatchlistSearchResults() {
     watchlistSearchResults.replaceChildren();
     watchlistSearchResults.hidden = true;
@@ -179,17 +223,7 @@ function renderWatchlistSearchResults() {
         return;
     }
 
-    const matches = marketCompanies.filter((company) => {
-        const searchableText = [
-            company.ticker,
-            company.name,
-            company.short_name,
-        ]
-            .map((value) => String(value || "").toLocaleLowerCase("zh-TW"))
-            .join(" ");
-
-        return searchableText.includes(query);
-    }).slice(0, 8);
+    const matches = findMarketCompanies(query);
 
     watchlistSearchResults.replaceChildren();
     watchlistSearchResults.hidden = false;
@@ -226,6 +260,125 @@ function renderWatchlistSearchResults() {
         item.appendChild(button);
         watchlistSearchResults.appendChild(item);
     }
+}
+
+
+function closeMarketCompanySearchResults() {
+    marketCompanySearchResults.replaceChildren();
+    marketCompanySearchResults.hidden = true;
+    marketCompanySearch.setAttribute("aria-expanded", "false");
+}
+
+
+function renderMarketCompanySearchResults() {
+    const query = marketCompanySearch.value.trim();
+
+    if (!query || marketCompanies.length === 0) {
+        closeMarketCompanySearchResults();
+        return;
+    }
+
+    const matches = findMarketCompanies(query);
+    marketCompanySearchResults.replaceChildren();
+    marketCompanySearchResults.hidden = false;
+    marketCompanySearch.setAttribute("aria-expanded", "true");
+
+    if (matches.length === 0) {
+        const item = document.createElement("li");
+        item.className = "market-company-search-empty";
+        item.textContent = "找不到符合條件的公司。";
+        marketCompanySearchResults.appendChild(item);
+        return;
+    }
+
+    for (const company of matches) {
+        const item = document.createElement("li");
+        const button = document.createElement("button");
+        const companyId = String(company.company_id);
+        const label = getWatchlistCompanyLabel(company);
+        const isSelected = selectedMarketCompanyId === companyId;
+        button.type = "button";
+        button.className = "market-company-search-result";
+        button.disabled = isSelected || watchlistUpdateInProgress;
+        button.setAttribute("aria-label", isSelected
+            ? `${label} 目前顯示中`
+            : `瀏覽 ${label}`);
+
+        const companyLabel = document.createElement("span");
+        companyLabel.textContent = label;
+        const actionLabel = document.createElement("small");
+        actionLabel.textContent = isSelected ? "顯示中" : "瀏覽";
+        button.append(companyLabel, actionLabel);
+        button.addEventListener("click", () => {
+            selectMarketCompany(companyId);
+        });
+        item.appendChild(button);
+        marketCompanySearchResults.appendChild(item);
+    }
+}
+
+
+function renderMarketWatchlistShortcuts() {
+    marketWatchlistShortcuts.replaceChildren();
+
+    if (watchlistCompanies.length === 0) {
+        const item = document.createElement("li");
+        item.className = "market-watchlist-empty";
+        item.textContent = "尚未追蹤公司";
+        marketWatchlistShortcuts.appendChild(item);
+        return;
+    }
+
+    for (const company of watchlistCompanies) {
+        const companyId = String(company.company_id);
+        const availableCompany = marketCompanies.find((record) => (
+            String(record.company_id) === companyId
+        ));
+        const item = document.createElement("li");
+        const button = document.createElement("button");
+        const label = getWatchlistCompanyLabel(company);
+        const isSelected = selectedMarketCompanyId === companyId;
+        button.type = "button";
+        button.className = "market-watchlist-button";
+        button.textContent = label;
+        button.disabled = !availableCompany;
+        button.setAttribute("aria-pressed", String(isSelected));
+        button.setAttribute("aria-label", availableCompany
+            ? `瀏覽追蹤公司 ${label}`
+            : `${label} 尚無市場資料`);
+
+        if (isSelected) {
+            button.classList.add("market-watchlist-button-active");
+        }
+
+        if (availableCompany) {
+            button.addEventListener("click", () => {
+                selectMarketCompany(companyId);
+            });
+        }
+
+        item.appendChild(button);
+        marketWatchlistShortcuts.appendChild(item);
+    }
+}
+
+
+async function selectMarketCompany(companyId) {
+    const company = marketCompanies.find((record) => (
+        String(record.company_id) === String(companyId)
+    ));
+
+    if (!company) {
+        return;
+    }
+
+    selectedMarketCompanyId = String(company.company_id);
+    marketCompanySearch.value = getWatchlistCompanyLabel(company);
+    marketCompanySearchMessage.textContent = `目前顯示 ${getWatchlistCompanyLabel(company)}`;
+    closeMarketCompanySearchResults();
+    renderMarketWatchlistShortcuts();
+    updateWatchlistButton();
+    await loadSelectedCompanyMarketData();
 }
 
 
@@ -283,11 +436,10 @@ function renderPersonalizedBrief(brief) {
 
 
 function updateWatchlistButton() {
-    const companyId = marketCompanySelect.value;
+    const companyId = selectedMarketCompanyId;
 
     if (
         !companyId
-        || marketCompanySelect.disabled
         || watchlistUpdateInProgress
     ) {
         watchlistToggle.disabled = true;
@@ -303,7 +455,7 @@ function updateWatchlistButton() {
 
 
 async function toggleSelectedCompanyWatchlist() {
-    const companyId = marketCompanySelect.value;
+    const companyId = selectedMarketCompanyId;
 
     if (!companyId) {
         return;
@@ -322,6 +474,7 @@ async function setWatchlistCompany(companyId, shouldTrack) {
     watchlistUpdateInProgress = true;
     watchlistToggle.disabled = true;
     watchlistCompanySearch.disabled = true;
+    marketCompanySearch.disabled = true;
     renderWatchlistSearchResults();
 
     try {
@@ -354,6 +507,7 @@ async function setWatchlistCompany(companyId, shouldTrack) {
     } finally {
         watchlistUpdateInProgress = false;
         watchlistCompanySearch.disabled = marketCompanies.length === 0;
+        marketCompanySearch.disabled = marketCompanies.length === 0;
         updateWatchlistButton();
         renderWatchlistSearchResults();
     }
@@ -409,19 +563,40 @@ async function loadMarketCompanies() {
         }
 
         marketCompanies = payload.companies;
-        populateMarketCompanySelect(payload.companies);
+        validateMarketCompanies(payload.companies);
         watchlistCompanySearch.disabled = payload.companies.length === 0;
+        marketCompanySearch.disabled = payload.companies.length === 0;
         watchlistSearchMessage.textContent = payload.companies.length > 0
             ? `可搜尋 ${payload.companies.length} 家公司`
             : "目前沒有可供搜尋的公司。";
+        marketCompanySearchMessage.textContent = payload.companies.length > 0
+            ? `可搜尋 ${payload.companies.length} 家公司`
+            : "目前沒有可供搜尋的公司。";
+        renderMarketWatchlistShortcuts();
 
-        if (payload.companies.length > 0) {
+        const selectedCompanyIsAvailable = marketCompanies.some((company) => (
+            String(company.company_id) === selectedMarketCompanyId
+        ));
+
+        if (selectedCompanyIsAvailable) {
             await loadSelectedCompanyMarketData();
+        } else {
+            selectedMarketCompanyId = null;
+            marketCompanySearch.value = "";
+            renderCompanyMarketData([], []);
+            companyMarketMessage.textContent = payload.companies.length > 0
+                ? "請搜尋公司，或從我的追蹤公司快速切換。"
+                : "請先同步 TWSE 資料";
+            updateWatchlistButton();
         }
     } catch (error) {
         marketCompanies = [];
+        selectedMarketCompanyId = null;
         watchlistCompanySearch.disabled = true;
+        marketCompanySearch.disabled = true;
         watchlistSearchMessage.textContent = `無法載入公司清單：${error.message}`;
+        marketCompanySearchMessage.textContent = `無法載入公司清單：${error.message}`;
+        renderMarketWatchlistShortcuts();
         showCompanyMarketError(`無法載入公司市場資料：${error.message}`);
     }
 }
@@ -555,40 +730,17 @@ function appendEventMarketEmptyRow(message) {
 }
 
 
-function populateMarketCompanySelect(companies) {
-    marketCompanySelect.replaceChildren();
-
-    if (companies.length === 0) {
-        const option = document.createElement("option");
-        option.value = "";
-        option.textContent = "尚無市場或財務資料";
-        marketCompanySelect.appendChild(option);
-        marketCompanySelect.disabled = true;
-        companyMarketMessage.textContent = "請先同步 TWSE 資料";
-        renderCompanyMarketData([], []);
-        updateWatchlistButton();
-        return;
-    }
-
+function validateMarketCompanies(companies) {
     for (const company of companies) {
         if (!company.company_id || !company.ticker || !company.name) {
-            throw new Error("公司選單包含無效資料。");
+            throw new Error("公司清單包含無效資料。");
         }
-
-        const option = document.createElement("option");
-        option.value = String(company.company_id);
-        const name = company.short_name || company.name;
-        option.textContent = `${company.ticker} ${name}`;
-        marketCompanySelect.appendChild(option);
     }
-
-    marketCompanySelect.disabled = false;
-    updateWatchlistButton();
 }
 
 
 async function loadSelectedCompanyMarketData() {
-    const companyId = marketCompanySelect.value;
+    const companyId = selectedMarketCompanyId;
 
     if (!companyId) {
         updateWatchlistButton();
@@ -2117,8 +2269,13 @@ pageSizeSelect.addEventListener("change", () => {
 clearFiltersButton.addEventListener("click", clearFilters);
 pipelineRunButton.addEventListener("click", runPipelineFromDashboard);
 
-marketCompanySelect.addEventListener("change", loadSelectedCompanyMarketData);
 watchlistToggle.addEventListener("click", toggleSelectedCompanyWatchlist);
+marketCompanySearch.addEventListener("input", renderMarketCompanySearchResults);
+marketCompanySearch.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+        closeMarketCompanySearchResults();
+    }
+});
 watchlistCompanySearch.addEventListener("input", renderWatchlistSearchResults);
 watchlistCompanySearch.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {

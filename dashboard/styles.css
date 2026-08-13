@@ -695,32 +695,152 @@ h3 {
 }
 
 .company-market-heading {
-    align-items: center;
+    align-items: flex-start;
+    flex-wrap: wrap;
 }
 
 .market-company-actions {
-    display: flex;
+    display: grid;
+    grid-template-columns: minmax(280px, 440px) auto;
+    flex: 1;
     align-items: end;
     gap: 10px;
+    max-width: 640px;
 }
 
-.market-company-control {
-    display: grid;
-    min-width: 230px;
-    gap: 5px;
+.market-company-search {
+    position: relative;
+}
+
+.market-company-search label,
+.market-watchlist-shortcuts > p {
+    display: block;
+    margin: 0 0 6px;
     color: var(--text-secondary);
     font-size: 0.76rem;
     font-weight: 700;
 }
 
-.market-company-control select {
-    min-height: 40px;
-    padding: 8px 10px;
+.market-company-search input {
+    width: 100%;
+    min-height: 42px;
+    padding: 9px 12px;
     border: 1px solid var(--border);
     border-radius: 8px;
     background: var(--surface);
     color: var(--text-primary);
     font: inherit;
+}
+
+.market-company-search input:focus {
+    border-color: var(--accent);
+    outline: 3px solid rgba(11, 110, 105, 0.14);
+}
+
+.market-company-search-message {
+    margin: 5px 0 0;
+    color: var(--text-secondary);
+    font-size: 0.76rem;
+}
+
+.market-company-search-results {
+    position: absolute;
+    z-index: 5;
+    width: 100%;
+    max-height: 300px;
+    margin: 4px 0 0;
+    padding: 5px;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: var(--surface);
+    box-shadow: var(--shadow);
+    list-style: none;
+}
+
+.market-company-search-result {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 9px 10px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text-primary);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.market-company-search-result:hover:not(:disabled),
+.market-company-search-result:focus-visible {
+    background: #edf8f6;
+    outline: none;
+}
+
+.market-company-search-result:disabled {
+    color: var(--text-secondary);
+    cursor: default;
+}
+
+.market-company-search-result small {
+    color: var(--accent-dark);
+    font-weight: 700;
+}
+
+.market-company-search-empty,
+.market-watchlist-empty {
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+}
+
+.market-company-search-empty {
+    padding: 9px 10px;
+}
+
+.market-watchlist-shortcuts {
+    grid-column: 1 / -1;
+}
+
+.market-watchlist-shortcuts ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.market-watchlist-button {
+    padding: 6px 11px;
+    border: 1px solid #b9d9d5;
+    border-radius: 999px;
+    background: #f5fbfa;
+    color: var(--accent-dark);
+    font: inherit;
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.market-watchlist-button:hover:not(:disabled),
+.market-watchlist-button:focus-visible {
+    border-color: var(--accent);
+    background: #e5f5f2;
+    outline: none;
+}
+
+.market-watchlist-button-active {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: #ffffff;
+}
+
+.market-watchlist-button:disabled {
+    opacity: 0.55;
+    cursor: default;
 }
 
 .company-market-content {
@@ -1177,12 +1297,12 @@ noscript .error-message {
 
     .market-company-actions {
         width: 100%;
-        align-items: stretch;
-        flex-direction: column;
+        grid-template-columns: 1fr;
+        max-width: none;
     }
 
-    .market-company-control {
-        min-width: 0;
+    .market-watchlist-shortcuts {
+        grid-column: auto;
     }
 
     .company-market-content,

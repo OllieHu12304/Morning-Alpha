@@ -143,6 +143,8 @@ let trackedCompanies = [];
 let pipelineStarted = false;
 let pipelineStatusChecks = 0;
 let newsRequestCount = 0;
+let marketPriceRequestCompanyIds = [];
+let financialRequestCompanyIds = [];
 
 
 function createPersonalizedBriefPayload() {
@@ -170,6 +172,8 @@ test.beforeEach(async ({ page }) => {
     pipelineStarted = false;
     pipelineStatusChecks = 0;
     newsRequestCount = 0;
+    marketPriceRequestCompanyIds = [];
+    financialRequestCompanyIds = [];
     await page.route("**/api/news", (route) => route.fulfill({
         contentType: "application/json",
         body: JSON.stringify({
@@ -240,14 +244,22 @@ test.beforeEach(async ({ page }) => {
         contentType: "application/json",
         body: JSON.stringify(marketCompaniesPayload),
     }));
-    await page.route("**/api/companies/8/market-prices", (route) => route.fulfill({
-        contentType: "application/json",
-        body: JSON.stringify({ prices: [] }),
-    }));
-    await page.route("**/api/companies/8/financial-metrics", (route) => route.fulfill({
-        contentType: "application/json",
-        body: JSON.stringify({ metrics: [] }),
-    }));
+    await page.route(/\/api\/companies\/\d+\/market-prices$/, (route) => {
+        const urlParts = route.request().url().split("/");
+        marketPriceRequestCompanyIds.push(Number(urlParts.at(-2)));
+        return route.fulfill({
+            contentType: "application/json",
+            body: JSON.stringify({ prices: [] }),
+        });
+    });
+    await page.route(/\/api\/companies\/\d+\/financial-metrics$/, (route) => {
+        const urlParts = route.request().url().split("/");
+        financialRequestCompanyIds.push(Number(urlParts.at(-2)));
+        return route.fulfill({
+            contentType: "application/json",
+            body: JSON.stringify({ metrics: [] }),
+        });
+    });
     await page.route("**/api/event-market-observations", (route) => route.fulfill({
         contentType: "application/json",
         body: JSON.stringify({
@@ -410,6 +422,8 @@ test("runs Pipeline and refreshes Dashboard data", async ({ page }) => {
 
 
 test("adds and removes a company from the local watchlist", async ({ page }) => {
+    await page.locator("#market-company-search").fill("台積電");
+    await page.getByRole("button", { name: "瀏覽 2330 台積電" }).click();
     await expect(page.locator("#watchlist-toggle")).toHaveText("加入追蹤");
 
     await page.locator("#watchlist-toggle").click();
@@ -424,6 +438,47 @@ test("adds and removes a company from the local watchlist", async ({ page }) => 
 
     await expect(page.locator("#watchlist-toggle")).toHaveText("加入追蹤");
     await expect(page.locator("#watchlist-items")).toContainText("尚未追蹤公司");
+});
+
+
+test("searches market data and switches between watchlist companies", async ({ page }) => {
+    const marketSearch = page.locator("#market-company-search");
+    const shortcuts = page.locator("#market-watchlist-shortcuts");
+
+    await marketSearch.fill("國巨");
+    await expect(page.locator("#market-company-search-results")).toBeVisible();
+    await page.getByRole("button", { name: "瀏覽 2327 國巨" }).click();
+
+    await expect(marketSearch).toHaveValue("2327 國巨");
+    await expect(page.locator("#market-company-search-message")).toHaveText(
+        "目前顯示 2327 國巨",
+    );
+    await expect.poll(() => marketPriceRequestCompanyIds).toContain(9);
+    await expect.poll(() => financialRequestCompanyIds).toContain(9);
+
+    await page.locator("#watchlist-toggle").click();
+    await expect(shortcuts).toContainText("2327 國巨");
+
+    await page.locator("#watchlist-company-search").fill("台積電");
+    await page.getByRole("button", { name: "加入 2330 台積電" }).click();
+    await expect(shortcuts.locator(".market-watchlist-button")).toHaveCount(2);
+
+    const tsmcShortcut = page.getByRole("button", {
+        name: "瀏覽追蹤公司 2330 台積電",
+    });
+    await tsmcShortcut.click();
+
+    await expect(marketSearch).toHaveValue("2330 台積電");
+    await expect(tsmcShortcut).toHaveAttribute("aria-pressed", "true");
+    await expect.poll(() => marketPriceRequestCompanyIds).toContain(8);
+    await expect.poll(() => financialRequestCompanyIds).toContain(8);
+
+    const yageoShortcut = page.getByRole("button", {
+        name: "瀏覽追蹤公司 2327 國巨",
+    });
+    await yageoShortcut.click();
+    await expect(marketSearch).toHaveValue("2327 國巨");
+    await expect(yageoShortcut).toHaveAttribute("aria-pressed", "true");
 });
 
 
