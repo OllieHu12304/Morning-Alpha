@@ -14,6 +14,48 @@ import sync_market_prices  # noqa: E402
 
 
 class SyncMarketPricesTests(unittest.TestCase):
+    @patch("sync_market_prices.assess_market_data_freshness")
+    @patch("sync_market_prices.fetch_missing_market_prices")
+    @patch("sync_market_prices.get_expected_trade_date")
+    @patch("sync_market_prices.save_market_prices")
+    @patch("sync_market_prices.fetch_market_prices")
+    def test_stale_snapshot_is_completed_by_current_historical_prices(
+        self,
+        mock_fetch_snapshot,
+        mock_save_prices,
+        mock_expected_date,
+        mock_fetch_missing,
+        mock_assess_freshness,
+    ):
+        snapshot_records = [{"trade_date": date(2026, 8, 13)}]
+        historical_records = [{"trade_date": date(2026, 8, 14)}]
+        mock_fetch_snapshot.return_value = snapshot_records
+        mock_expected_date.return_value = date(2026, 8, 14)
+        mock_fetch_missing.return_value = (
+            historical_records,
+            ["2026-08-14"],
+        )
+        mock_save_prices.side_effect = [
+            {"source_count": 1, "saved_count": 1, "skipped_count": 0},
+            {"source_count": 1, "saved_count": 1, "skipped_count": 0},
+        ]
+        mock_assess_freshness.return_value = {
+            "latest_trade_date": "2026-08-14",
+            "expected_trade_date": "2026-08-14",
+            "is_stale": False,
+            "availability_status": "available",
+        }
+
+        result = sync_market_prices.run()
+
+        self.assertEqual(result["latest_trade_date"], "2026-08-14")
+        self.assertEqual(result["backfilled_trade_dates"], ["2026-08-14"])
+        self.assertEqual(mock_save_prices.call_count, 2)
+        mock_assess_freshness.assert_called_once_with(
+            snapshot_records + historical_records,
+            expected_trade_date=date(2026, 8, 14),
+        )
+
     def test_existing_history_only_fetches_dates_after_latest(self):
         summary = {
             "minimum_date": date(2026, 8, 10),

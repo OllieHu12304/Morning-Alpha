@@ -249,7 +249,19 @@ test.beforeEach(async ({ page }) => {
         marketPriceRequestCompanyIds.push(Number(urlParts.at(-2)));
         return route.fulfill({
             contentType: "application/json",
-            body: JSON.stringify({ prices: [] }),
+            body: JSON.stringify({
+                prices: [{
+                    trade_date: "2026-08-13",
+                    close_price: 885,
+                    price_change: 5,
+                    fetched_at: "2026-08-14T07:06:13+00:00",
+                }],
+                market_status: {
+                    status: "pending_or_closed",
+                    latest_trade_date: "2026-08-13",
+                    expected_trade_date: "2026-08-14",
+                },
+            }),
         });
     });
     await page.route(/\/api\/companies\/\d+\/financial-metrics$/, (route) => {
@@ -452,6 +464,9 @@ test("searches market data and switches between watchlist companies", async ({ p
     await expect(marketSearch).toHaveValue("2327 國巨");
     await expect(page.locator("#market-company-search-message")).toHaveText(
         "目前顯示 2327 國巨",
+    );
+    await expect(page.locator("#company-market-message")).toContainText(
+        "2026-08-14 行情尚未發布或當日休市",
     );
     await expect.poll(() => marketPriceRequestCompanyIds).toContain(9);
     await expect.poll(() => financialRequestCompanyIds).toContain(9);

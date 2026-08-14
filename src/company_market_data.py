@@ -4,6 +4,7 @@ from datetime import date, datetime
 from decimal import Decimal
 
 from store_news import connect_to_database, get_database_config
+from twse_market_adapter import get_expected_trade_date
 
 
 READ_MARKET_COMPANIES_SQL = """
@@ -148,6 +149,36 @@ def fetch_company_market_prices(connection, company_id, limit=90):
         READ_COMPANY_MARKET_PRICES_SQL,
         (company_id, limit),
     )
+
+
+def build_market_price_status(prices, current_time=None):
+    """以後端的交易日規則建立 Dashboard 共用狀態。"""
+    expected_date = get_expected_trade_date(current_time)
+
+    if not prices:
+        return {
+            "status": "no_data",
+            "latest_trade_date": None,
+            "expected_trade_date": expected_date.isoformat(),
+        }
+
+    latest_date_text = prices[0].get("trade_date")
+
+    try:
+        latest_date = date.fromisoformat(latest_date_text)
+    except (TypeError, ValueError) as error:
+        raise ValueError("市場價格缺少有效 trade_date。") from error
+
+    status = "available"
+
+    if latest_date < expected_date:
+        status = "pending_or_closed"
+
+    return {
+        "status": status,
+        "latest_trade_date": latest_date.isoformat(),
+        "expected_trade_date": expected_date.isoformat(),
+    }
 
 
 def fetch_company_financial_metrics(connection, company_id, limit=8):

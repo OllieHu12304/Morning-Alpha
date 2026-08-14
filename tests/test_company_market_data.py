@@ -2,7 +2,7 @@
 
 import sys
 import unittest
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from decimal import Decimal
 from pathlib import Path
 from unittest.mock import MagicMock
@@ -12,6 +12,7 @@ SOURCE_DIRECTORY = Path(__file__).resolve().parent.parent / "src"
 sys.path.insert(0, str(SOURCE_DIRECTORY))
 
 from company_market_data import (  # noqa: E402
+    build_market_price_status,
     build_records,
     fetch_company_market_prices,
     fetch_market_companies,
@@ -20,6 +21,23 @@ from company_market_data import (  # noqa: E402
 
 
 class CompanyMarketDataTests(unittest.TestCase):
+    def test_market_status_uses_backend_trade_date_rule(self):
+        current_time = datetime(2026, 8, 14, 6, 0, tzinfo=timezone.utc)
+        records = [{"trade_date": "2026-08-14"}]
+
+        status = build_market_price_status(records, current_time)
+
+        self.assertEqual(status["status"], "available")
+        self.assertEqual(status["expected_trade_date"], "2026-08-14")
+
+    def test_market_status_reports_pending_or_closed_date(self):
+        current_time = datetime(2026, 8, 14, 6, 0, tzinfo=timezone.utc)
+        records = [{"trade_date": "2026-08-13"}]
+
+        status = build_market_price_status(records, current_time)
+
+        self.assertEqual(status["status"], "pending_or_closed")
+
     def test_build_records_serializes_decimal_and_dates(self):
         rows = [(
             date(2026, 8, 11),

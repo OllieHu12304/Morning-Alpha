@@ -9,6 +9,7 @@ from flask import Flask, jsonify, request
 
 from analyze_keywords import count_top_keywords, create_title_dataframe
 from company_market_data import (
+    build_market_price_status,
     load_company_financial_metrics,
     load_company_market_prices,
     load_market_companies,
@@ -301,7 +302,10 @@ def company_market_prices(company_id):
     """回傳指定公司最近九十筆每日價格。"""
     try:
         prices = load_company_market_prices(company_id, limit=90)
-        return jsonify({"prices": prices})
+        return jsonify({
+            "prices": prices,
+            "market_status": build_market_price_status(prices),
+        })
     except (pymysql.MySQLError, ValueError) as error:
         return company_data_error_response(error)
 

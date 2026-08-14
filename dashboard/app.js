@@ -762,6 +762,11 @@ async function loadSelectedCompanyMarketData() {
             throw new Error("market prices API 格式不正確。");
         }
 
+        if (!pricePayload.market_status
+            || typeof pricePayload.market_status.status !== "string") {
+            throw new Error("market prices API 缺少資料狀態。");
+        }
+
         if (!financialPayload || !Array.isArray(financialPayload.metrics)) {
             throw new Error("financial metrics API 格式不正確。");
         }
@@ -770,7 +775,10 @@ async function loadSelectedCompanyMarketData() {
             pricePayload.prices,
             financialPayload.metrics,
         );
-        renderMarketDataStatus(pricePayload.prices);
+        renderMarketDataStatus(
+            pricePayload.prices,
+            pricePayload.market_status,
+        );
     } catch (error) {
         showCompanyMarketError(`無法載入公司資料：${error.message}`);
     }
@@ -825,48 +833,21 @@ function renderCompanyMarketData(prices, metrics) {
 }
 
 
-function getExpectedMarketDate(currentTime = new Date()) {
-    const dateFormatter = new Intl.DateTimeFormat("en-CA", {
-        timeZone: "Asia/Taipei",
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-    });
-    const taipeiDateText = dateFormatter.format(currentTime);
-    const taipeiHour = Number(new Intl.DateTimeFormat("en-US", {
-        timeZone: "Asia/Taipei",
-        hour: "2-digit",
-        hour12: false,
-    }).format(currentTime));
-    const expectedDate = new Date(`${taipeiDateText}T12:00:00+08:00`);
-
-    if (taipeiHour < 17) {
-        expectedDate.setDate(expectedDate.getDate() - 1);
-    }
-
-    while ([0, 6].includes(expectedDate.getDay())) {
-        expectedDate.setDate(expectedDate.getDate() - 1);
-    }
-
-    return dateFormatter.format(expectedDate);
-}
-
-
-function renderMarketDataStatus(prices) {
+function renderMarketDataStatus(prices, marketStatus) {
     const latestPrice = prices[0] || null;
+    companyMarketMessage.classList.remove("error-message");
 
     if (!latestPrice) {
         companyMarketMessage.textContent = "目前沒有每日價格資料";
         return;
     }
 
-    const expectedDate = getExpectedMarketDate();
     const fetchedTime = latestPrice.fetched_at
         ? formatPublishTime(latestPrice.fetched_at)
         : "未知";
 
-    if (latestPrice.trade_date < expectedDate) {
-        companyMarketMessage.textContent = `資料落後：最新交易日 ${latestPrice.trade_date}，擷取於 ${fetchedTime}。TWSE 可能尚未更新；國定休市日請以官方日曆為準。`;
+    if (marketStatus.status === "pending_or_closed") {
+        companyMarketMessage.textContent = `最新交易日 ${latestPrice.trade_date}，擷取於 ${fetchedTime}。${marketStatus.expected_trade_date} 行情尚未發布或當日休市。`;
         companyMarketMessage.classList.add("error-message");
         return;
     }

@@ -66,6 +66,22 @@ class TwseMarketAdapterTests(unittest.TestCase):
             date(2026, 8, 14),
         )
 
+    def test_expected_trade_date_uses_today_after_market_close(self):
+        current_time = datetime(2026, 8, 14, 6, 0, tzinfo=timezone.utc)
+
+        self.assertEqual(
+            get_expected_trade_date(current_time),
+            date(2026, 8, 14),
+        )
+
+    def test_expected_trade_date_uses_yesterday_during_market_hours(self):
+        current_time = datetime(2026, 8, 14, 5, 0, tzinfo=timezone.utc)
+
+        self.assertEqual(
+            get_expected_trade_date(current_time),
+            date(2026, 8, 13),
+        )
+
     def test_freshness_reports_official_data_behind_expected_date(self):
         records = [{"trade_date": date(2026, 8, 11)}]
         current_time = datetime(2026, 8, 12, 12, 0, tzinfo=timezone.utc)
@@ -75,6 +91,7 @@ class TwseMarketAdapterTests(unittest.TestCase):
         self.assertEqual(status["latest_trade_date"], "2026-08-11")
         self.assertEqual(status["expected_trade_date"], "2026-08-12")
         self.assertTrue(status["is_stale"])
+        self.assertEqual(status["availability_status"], "pending_or_closed")
 
     def test_parse_market_prices_returns_common_records(self):
         fetched_at = datetime(2026, 8, 11, 8, 0, tzinfo=timezone.utc)

@@ -88,7 +88,10 @@ def run():
         result["skipped_count"] += historical_result["skipped_count"]
 
     all_records = records + historical_records
-    result.update(assess_market_data_freshness(all_records))
+    result.update(assess_market_data_freshness(
+        all_records,
+        expected_trade_date=expected_date,
+    ))
     result["backfilled_trade_dates"] = backfilled_dates
     return result
 

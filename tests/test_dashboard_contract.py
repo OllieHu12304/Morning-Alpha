@@ -133,7 +133,7 @@ class DashboardContractTests(unittest.TestCase):
         self.assertIn("renderMarketWatchlistShortcuts", javascript)
         self.assertIn("renderCompanyPriceChart", javascript)
         self.assertIn("renderMarketDataStatus", javascript)
-        self.assertIn("資料落後", javascript)
+        self.assertIn("行情尚未發布或當日休市", javascript)
         self.assertIn("renderFinancialTable", javascript)
         self.assertIn("不構成投資建議", html)
         self.assertIn(".company-market-content", styles)

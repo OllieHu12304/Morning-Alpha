@@ -398,18 +398,33 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.get_json()["companies"][0]["ticker"], "2330")
 
+    @patch("api.build_market_price_status")
     @patch("api.load_company_market_prices")
-    def test_company_market_prices_uses_fixed_limit(self, mock_load):
+    def test_company_market_prices_uses_fixed_limit(
+        self,
+        mock_load,
+        mock_build_status,
+    ):
         mock_load.return_value = [{
             "trade_date": "2026-08-11",
             "close_price": 885.0,
         }]
+        mock_build_status.return_value = {
+            "status": "available",
+            "latest_trade_date": "2026-08-11",
+            "expected_trade_date": "2026-08-11",
+        }
 
         response = self.client.get("/api/companies/8/market-prices")
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.get_json()["prices"][0]["close_price"], 885.0)
+        self.assertEqual(
+            response.get_json()["market_status"]["status"],
+            "available",
+        )
         mock_load.assert_called_once_with(8, limit=90)
+        mock_build_status.assert_called_once_with(mock_load.return_value)
 
     @patch("api.load_company_financial_metrics")
     def test_company_financial_metrics_uses_fixed_limit(self, mock_load):

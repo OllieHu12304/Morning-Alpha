@@ -17,7 +17,7 @@ from market_data_contract import (
 REQUEST_TIMEOUT = 20
 EMPTY_NUMBER_VALUES = {"", "--", "---", "-"}
 TAIPEI_TIMEZONE = ZoneInfo("Asia/Taipei")
-MARKET_DATA_READY_HOUR = 17
+MARKET_CLOSE_TIME = time(hour=13, minute=30)
 HISTORICAL_MARKET_URL = (
     "https://www.twse.com.tw/rwd/zh/afterTrading/MI_INDEX"
 )
@@ -38,7 +38,7 @@ logger = logging.getLogger(__name__)
 
 
 def get_expected_trade_date(current_time=None):
-    """估計此刻應可取得的最近平日；國定休市仍以官方資料為準。"""
+    """收盤後檢查今天；盤中則使用上一個平日。"""
     if current_time is None:
         current_time = datetime.now(TAIPEI_TIMEZONE)
 
@@ -48,7 +48,7 @@ def get_expected_trade_date(current_time=None):
     taipei_time = current_time.astimezone(TAIPEI_TIMEZONE)
     expected_date = taipei_time.date()
 
-    if taipei_time.time() < time(hour=MARKET_DATA_READY_HOUR):
+    if taipei_time.time() < MARKET_CLOSE_TIME:
         expected_date -= timedelta(days=1)
 
     while expected_date.weekday() >= 5:
@@ -57,17 +57,27 @@ def get_expected_trade_date(current_time=None):
     return expected_date
 
 
-def assess_market_data_freshness(records, current_time=None):
+def assess_market_data_freshness(
+    records,
+    current_time=None,
+    expected_trade_date=None,
+):
     """回報官方資料日期，避免只看保存筆數誤以為行情已更新。"""
     if not records:
         raise ValueError("無法檢查空白的市場價格資料。")
 
     latest_trade_date = max(record["trade_date"] for record in records)
-    expected_trade_date = get_expected_trade_date(current_time)
+    if expected_trade_date is None:
+        expected_trade_date = get_expected_trade_date(current_time)
+
+    is_stale = latest_trade_date < expected_trade_date
     return {
         "latest_trade_date": latest_trade_date.isoformat(),
         "expected_trade_date": expected_trade_date.isoformat(),
-        "is_stale": latest_trade_date < expected_trade_date,
+        "is_stale": is_stale,
+        "availability_status": (
+            "pending_or_closed" if is_stale else "available"
+        ),
     }
 
 
