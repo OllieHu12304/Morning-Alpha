@@ -671,9 +671,9 @@ Pandas 適合將多筆 `dict` 轉成 DataFrame，再批次處理日期、排序�
 
 目前不能。Event Observation 只把新聞附近的歷史價格放在一起觀察，沒有控制大盤、產業、財報和其他事件，所以不能宣稱因果或當成交易訊號。
 
-## Docker 是不是唯一執行方式？
+## 啟動 Morning Alpha 需要哪些環境？
 
-不是。可以使用本機 virtual environment、MySQL 與 `python3 start.py`；Docker Compose 是另一種封裝環境的選項，主要幫助不同電腦重現相同設定。
+專案使用本機 Python virtual environment、MySQL 與 `.env`。完成安裝後只要在 repository 根目錄執行 `python3 start.py`，啟動器就會使用 `.venv` 開啟 Flask API 與 Dashboard。
 
 ---
 

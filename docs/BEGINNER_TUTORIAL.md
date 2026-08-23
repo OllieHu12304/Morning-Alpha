@@ -779,21 +779,7 @@ npm run test:e2e
 - false positive and false negative
 - Jaccard similarity
 
-## 3. Docker
-
-先讀：
-
-- `Dockerfile`
-- `compose.yaml`
-
-只需先分清楚：
-
-- Image：環境模板。
-- Container：正在執行的 instance。
-- Volume：持久保存 MySQL 資料。
-- Build cache：加速建置但會占空間。
-
-## 4. GitHub Actions／CI
+## 3. GitHub Actions／CI
 
 先讀：
 
@@ -807,7 +793,7 @@ npm run test:e2e
 - service container
 - reproducible environment
 
-## 5. Web 安全
+## 4. Web 安全
 
 目前專案只適合本機使用。若未來希望公開服務，再學：
 

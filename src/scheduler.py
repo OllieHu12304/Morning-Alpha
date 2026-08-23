@@ -1,4 +1,4 @@
-"""定期執行 Morning Alpha Pipeline。"""
+"""使用目前的 Python virtual environment 定期執行 Pipeline。"""
 
 import os
 from pathlib import Path

@@ -1,4 +1,4 @@
-"""測試本機 Docker Pipeline scheduler。"""
+"""測試本機 Python Pipeline scheduler。"""
 
 import os
 import sys

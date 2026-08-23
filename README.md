@@ -50,7 +50,7 @@ flowchart LR
 
 `source` 代表 Morning Alpha 實際使用的取得管道，`publisher` 代表原始發布媒體。相同 canonical URL 或同一來源文章 ID 會被 MySQL UNIQUE constraint 阻止重複寫入；不同平台報導同一事件時只分組，不刪除任何來源文章。
 
-## 建議啟動方式：原生環境
+## 啟動方式
 
 若已完成安裝，日常只需在 repository 根目錄執行：
 
@@ -60,9 +60,9 @@ python3 start.py
 
 啟動器會自動使用專案 `.venv`、啟動 Flask API、等待 port 5050 就緒並開啟瀏覽器。進入 Dashboard 後，到「Pipeline 執行紀錄」按「立即更新資料」即可更新全部資料；回到 Terminal 按 `Control + C` 可停止服務。
 
-原生方式不會產生 Docker images 或 build cache，適合 Mac 儲存空間有限的日常使用。
+Morning Alpha 只支援本機 Python virtual environment 與 MySQL，日常執行不會產生額外的 container images 或 build cache。
 
-## 第一次安裝：原生 Python 與 MySQL
+## 第一次安裝
 
 需求：Git、Python 3.13、MySQL 8.4，以及現代瀏覽器。Node.js 22 只有執行 Playwright 測試時需要。
 
@@ -112,43 +112,15 @@ python3 start.py
 
 目前共有 Migration 001～013。
 
-## 選用安裝：Docker Compose
+## 選用本機間隔排程
 
-Docker 適合在新電腦快速重現 Python 3.13 與 MySQL 8.4 環境，不是日常更新新聞的必要條件。
-
-```bash
-git clone https://github.com/OllieHu12304/Morning-Alpha.git
-cd Morning-Alpha
-cp .env.example .env
-```
-
-在 `.env` 設定一組 Docker database 專用密碼後執行：
+若希望電腦開機且 MySQL 正常執行時，依固定小時間隔自動更新，可以使用同一個 `.venv` 啟動 Scheduler：
 
 ```bash
-docker compose build api
-docker compose up -d db
-docker compose run --rm api python src/run_pipeline.py
-docker compose up -d api
+./.venv/bin/python src/scheduler.py
 ```
 
-接著開啟 [http://127.0.0.1:5050](http://127.0.0.1:5050)。`docker compose build api` 只需在第一次安裝，或應用程式／packages 改變後重建；單純更新資料不要重複 build。
-
-MySQL 資料保存在 `mysql-data` named volume。`docker compose down` 會保留資料；`docker compose down -v` 會刪除整個 database volume，除非已備份且確定不再需要，否則不要使用。
-
-檢查與限制 build cache：
-
-```bash
-docker system df -v
-docker buildx du
-docker buildx prune --max-used-space 300mb
-```
-
-選用本機間隔排程：
-
-```bash
-docker compose --profile scheduler up -d api scheduler
-docker compose logs -f scheduler
-```
+間隔由 `.env` 的 `PIPELINE_INTERVAL_HOURS` 控制，預設為 24 小時。Scheduler 啟動後會先立即執行一次 Pipeline；按 `Control + C` 可停止。
 
 ## 九步 Pipeline
 
@@ -180,7 +152,7 @@ Dashboard 主要讀取 Flask API 與 MySQL。`dashboard/news.json`、`chart_data
 | Database | MySQL 8.4、PyMySQL 1.2.0、13 組 Migration |
 | 前端 | HTML、CSS、原生 JavaScript、Chart.js 4.5.1 |
 | 驗證 | Python `unittest`、Playwright 1.62.1、GitHub Actions |
-| 重現環境 | `.venv`、Docker、Docker Compose |
+| 重現環境 | Python `.venv`、鎖定版本的 requirements |
 
 Dashboard 沒有使用 DataTables；搜尋、篩選、排序與分頁均由原生 JavaScript 實作。
 

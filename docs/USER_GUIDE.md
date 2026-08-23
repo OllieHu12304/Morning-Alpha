@@ -1,6 +1,6 @@
 # Morning Alpha 使用手冊
 
-本手冊只描述 repository 在 `v0.3.2` 實際完成的功能。Morning Alpha 可以在本機或 Docker 中安裝、執行、學習及展示，但尚未達到可直接公開營運的投資產品等級。
+本手冊只描述 repository 在 `v0.3.2` 實際完成的功能。Morning Alpha 使用本機 Python virtual environment 與 MySQL 安裝、執行、學習及展示，但尚未達到可直接公開營運的投資產品等級。
 
 ## 1. 專案概覽
 
@@ -38,7 +38,7 @@ Morning Alpha 解決的問題是：科技與財經資訊分散在不同來源，
 | 追蹤清單 | 本機單一使用者加入／移除公司 | Flask POST/DELETE、MySQL |
 | 個人化晨報 | 只計入追蹤公司且公司比對成功的新聞 | Flask、Python |
 | Dashboard | 新聞、圖表、晨報、公司資料、追蹤清單與狀態 | HTML、CSS、JavaScript、Chart.js |
-| 自動化與測試 | Docker scheduler、GitHub Actions、unit／integration／Playwright tests | Docker、GitHub Actions |
+| 自動化與測試 | 本機 Python scheduler、GitHub Actions、unit／integration／Playwright tests | Python、GitHub Actions |
 
 Dashboard 沒有使用 DataTables。搜尋、篩選、排序及分頁都是原生 JavaScript。
 
@@ -85,8 +85,6 @@ flowchart TD
 Morning-Alpha/
 ├── .github/workflows/ci.yml
 ├── .env.example
-├── Dockerfile
-├── compose.yaml
 ├── requirements.txt
 ├── package.json
 ├── playwright.config.js
@@ -139,7 +137,7 @@ Morning-Alpha/
 | `src/run_pipeline.py` | 日常更新 | 所有 adapters、Pandas、MySQL stores、JSON exporters |
 | `src/pipeline_process.py` | Dashboard 按下更新時 | 使用 API 當下的 Python 環境啟動並追蹤 Pipeline |
 | `src/api.py` | 使用 Dashboard 前 | MySQL 與 `dashboard/` |
-| `src/scheduler.py` | 選用 Docker 排程 | 定期呼叫 `run_pipeline.py` |
+| `src/scheduler.py` | 選用本機排程 | 使用目前 `.venv` 定期呼叫 `run_pipeline.py` |
 | `src/run_migrations.py` | 既有 database 升級前 | `sql/001`～`013` |
 | `src/news_sources.py` | Pipeline 第 1 步 | TechNews、中央社、自由時報、Yahoo股市、TWSE 重大訊息 adapters |
 | `src/twse_*_adapter.py` | Pipeline 第 2、4、5 步 | TWSE 官方 OpenAPI |
@@ -154,16 +152,6 @@ Morning-Alpha/
 
 ## 5. 系統需求
 
-### Docker 方式
-
-- Git
-- Docker Desktop
-- 現代瀏覽器
-
-Docker image 使用 Python 3.13 slim 與 MySQL 8.4。
-
-### 原生方式
-
 - Python 3.13
 - MySQL 8.4
 - Git
@@ -173,43 +161,6 @@ Docker image 使用 Python 3.13 slim 與 MySQL 8.4。
 `requirements.txt` 已鎖定：Requests 2.34.2、BeautifulSoup 4.15.0、Pandas 3.0.5、PyMySQL 1.2.0、jieba-py 0.46.12、python-dotenv 1.2.2、Flask 3.1.3。Chart.js 是 4.5.1；Playwright 是 1.62.1。
 
 ## 6. 安裝
-
-### 方式 A：Docker
-
-1. Clone 並建立 `.env`：
-
-```bash
-git clone https://github.com/OllieHu12304/Morning-Alpha.git
-cd Morning-Alpha
-cp .env.example .env
-```
-
-2. 編輯 `.env`，為這份 Docker MySQL 建立一組新密碼：
-
-```text
-MYSQL_USER=morning_alpha_app
-MYSQL_PASSWORD=請換成安全的新密碼
-MYSQL_DATABASE=morning_alpha
-```
-
-這組密碼不是 Mac 密碼，也不需要與其他 MySQL 相同。`.env` 不可 commit。
-
-3. Build 並啟動 database：
-
-```bash
-docker compose build api
-docker compose up -d db
-docker compose ps
-```
-
-4. 第一次更新及啟動 API：
-
-```bash
-docker compose run --rm api python src/run_pipeline.py
-docker compose up -d api
-```
-
-### 方式 B：原生 Python 與 MySQL
 
 1. Clone、建立 venv、安裝 packages：
 
@@ -291,7 +242,17 @@ python3 start.py
 ./.venv/bin/python src/run_pipeline.py
 ```
 
-這個按鈕會使用 API 當下的 Python 與 MySQL 環境，因此本機 API 更新本機 MySQL，Docker API 更新 Docker MySQL，不會再發生兩個環境交叉讀寫。終端指令 `./.venv/bin/python src/run_pipeline.py` 仍保留給除錯與觀察完整 log 使用。
+這個按鈕會使用啟動 API 的同一個 `.venv` 與本機 MySQL。終端指令 `./.venv/bin/python src/run_pipeline.py` 仍保留給除錯與觀察完整 log 使用。
+
+### 選用本機排程
+
+若希望在電腦與 MySQL 持續運作時定期更新，可執行：
+
+```bash
+./.venv/bin/python src/scheduler.py
+```
+
+Scheduler 會先立即執行一次 Pipeline，之後依 `.env` 的 `PIPELINE_INTERVAL_HOURS` 等待下一次執行；預設為 24 小時。按 `Control + C` 可停止。
 
 ## 8. 預期結果
 
@@ -407,7 +368,6 @@ LIMIT 20;
 | 股價停在較早交易日 | 查看 Pipeline Step 4 的「TWSE 最新交易日」與 freshness warning；程式會嘗試回補最近 14 個日曆日內的缺漏平日，但不會補齊完整歷史 |
 | Event Observation 沒有資料 | 依頁面提示確認 Step 3 是否建立公司關聯，以及 `market_prices` 是否至少有事件附近兩個交易日 |
 | 來源狀態數量與 crawler log 不同 | 這是不同口徑：來源卡片以 Latest News 平衡樣本為準；crawler log 顯示當次來源解析量 |
-| Docker 修改密碼後仍失敗 | 既有 volume 不會因 `.env` 改密碼；需使用原密碼，或明確刪除不需要的 volume 後重建 |
 
 ## 12. 目前限制
 
@@ -423,7 +383,7 @@ LIMIT 20;
 - 事件與價格分析沒有控制大盤、產業、財報或其他同時因素，不能推論因果。
 - 追蹤清單沒有帳號與多使用者隔離；個人化晨報沒有 email／推播發送。
 - API 無 authentication、rate limiting、HTTPS 與 production server。
-- 本機 scheduler 需要電腦和 Docker 持續運作。
+- 本機 scheduler 需要電腦、本機 MySQL 與 Python 程序持續運作。
 - 外部網站或官方 API 改版時，adapter 仍需人工修改。
 
 ## 13. v0.3.2 發佈邊界與後續方向
@@ -451,4 +411,4 @@ LIMIT 20;
 
 面試時可以這樣簡述：
 
-> Morning Alpha 是我完成的端到端本機資料產品。我用 adapters 收集 HTML、RSS 與 TWSE OpenAPI，以 Pandas 統一新聞資料，再用 MySQL 管理 canonical URL 去重、公司關聯、價格、財務、晨報與追蹤清單。Flask API 把資料提供給原生 JavaScript Dashboard，並用 unit tests、MySQL integration、Playwright、Docker 與 GitHub Actions 驗證整條流程。我也明確標示規則式分析、非即時資料與非因果觀察的限制。
+> Morning Alpha 是我完成的端到端本機資料產品。我用 adapters 收集 HTML、RSS 與 TWSE OpenAPI，以 Pandas 統一新聞資料，再用 MySQL 管理 canonical URL 去重、公司關聯、價格、財務、晨報與追蹤清單。Flask API 把資料提供給原生 JavaScript Dashboard，並用 unit tests、MySQL integration、Playwright 與 GitHub Actions 驗證整條流程。我也明確標示規則式分析、非即時資料與非因果觀察的限制。

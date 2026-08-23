@@ -64,24 +64,13 @@ class HistoryRetentionTests(unittest.TestCase):
             "SET time_zone = '+00:00';",
         )
 
-    def test_docker_and_example_environment_include_retention_settings(self):
+    def test_example_environment_includes_retention_settings(self):
         environment_example = (
             PROJECT_DIRECTORY / ".env.example"
-        ).read_text(encoding="utf-8")
-        compose_text = (
-            PROJECT_DIRECTORY / "compose.yaml"
         ).read_text(encoding="utf-8")
 
         self.assertIn("HISTORY_RETENTION_DAYS=90", environment_example)
         self.assertIn("PIPELINE_FAILURE_WEBHOOK_URL=", environment_example)
-        self.assertEqual(
-            compose_text.count("      HISTORY_RETENTION_DAYS:"),
-            2,
-        )
-        self.assertEqual(
-            compose_text.count("      PIPELINE_FAILURE_WEBHOOK_URL:"),
-            2,
-        )
 
 
 if __name__ == "__main__":
